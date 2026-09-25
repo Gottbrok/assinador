@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Assinador (prova de native messaging)",
+  "description": "Extensão de medição da F0: confere se o navegador lança o programa e se o programa alcança a leitora. Não é o produto.",
+  "version": "0.0.1",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnIbdNW1+dPq9Z0VAjhs/kTS4EftfRAFVxg4i14IXdh6zFFZqmgjv3J78d47asrnUyjUJeB2HrmqG4OW9JXeYxnvK/aE70zOMZkpBXsf66ZVRXJ4XEkJ8BbWi19RnvuCHE1HKXDSjIZQ7JnCc0epYapU3ZrMo0/XsEHSLMOrUElyOXI9s79rkb8VDh+U/rNIHx9sSZcKXftxSLHHpoA4r2f1cipNGw86VjkR6e4g9gsZWQ50TGFEuz05dZc0pr7+vKo0ckG4wvWnX10vhF+i7FjPGe68F5rtBaG5YTe8qoTh0k3w6mRdaKA80OHQvsd/GB+yulhXpoiHHL8rFspn6gQIDAQAB",
+  "permissions": ["nativeMessaging"],
+  "action": { "default_popup": "pagina.html", "default_title": "Prova do Assinador" },
+  "browser_specific_settings": {
+    "gecko": { "id": "prova-assinador@confidata.com.br", "strict_min_version": "115.0" }
+  }
+}

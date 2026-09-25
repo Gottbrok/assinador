@@ -1,0 +1,14 @@
+# Binários de ferramenta e de build
+ferramentas/prova-mensagens/bin/
+/bin/
+/dist/
+
+# Saídas de prova (assinatura e certificado exportado ficam fora do repositório)
+*.bin
+*.pem
+*.der
+
+# Editor e sistema
+.idea/
+.vscode/
+.DS_Store
