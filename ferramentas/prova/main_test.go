@@ -8,6 +8,8 @@ import (
 	"encoding/asn1"
 	"encoding/hex"
 	"math/big"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -66,6 +68,43 @@ func TestPrefixoEhODerDoDigestInfo(t *testing.T) {
 func TestMascararTiraOsDigitos(t *testing.T) {
 	if got := Mascarar("MARIA DA SILVA:12345678901"); got != "MARIA DA SILVA:***********" {
 		t.Fatalf("mascarado: %q", got)
+	}
+}
+
+// lerPin fora do terminal lê a primeira linha da entrada padrão, sem guardar cópia em buffer.
+func TestLerPinDaEntradaPadrao(t *testing.T) {
+	casos := []struct {
+		entrada string
+		quer    string
+		erro    bool
+	}{
+		{"1234\n", "1234", false},
+		{"1234\r\nresto", "1234", false},
+		{"98765", "98765", false},
+		{"", "", true},
+		{strings.Repeat("9", tetoDoPin+1) + "\n", "", true},
+	}
+	original := os.Stdin
+	defer func() { os.Stdin = original }()
+	for _, c := range casos {
+		r, w, err := os.Pipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = w.WriteString(c.entrada)
+		_ = w.Close()
+		os.Stdin = r
+		pin, err := lerPin()
+		_ = r.Close()
+		if c.erro {
+			if err == nil {
+				t.Fatalf("%q: esperava erro", c.entrada)
+			}
+			continue
+		}
+		if err != nil || string(pin) != c.quer {
+			t.Fatalf("%q: pin %q, erro %v", c.entrada, pin, err)
+		}
 	}
 }
 

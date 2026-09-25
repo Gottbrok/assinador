@@ -13,8 +13,6 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -35,6 +33,9 @@ import (
 
 // prefixoDigestInfoSHA256 é o DER de DigestInfo{ sha256, NULL } sem o OCTET STRING do resumo:
 // com CKM_RSA_PKCS o cartão assina exatamente o que recebe, então quem monta o DigestInfo é o chamador.
+// tetoDoPin cobre folgado os PINs de cartão e token (em geral de 4 a 16 dígitos).
+const tetoDoPin = 64
+
 var prefixoDigestInfoSHA256 = []byte{
 	0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20,
 }
@@ -279,11 +280,34 @@ func lerPin() ([]byte, error) {
 		fmt.Fprintln(os.Stderr)
 		return pin, err
 	}
-	linha, err := bufio.NewReader(os.Stdin).ReadBytes('\n')
-	if err != nil && len(linha) == 0 {
-		return nil, errors.New("sem PIN na entrada padrão")
+	// Byte a byte, sem bufio: o buffer interno dele guardaria uma cópia do PIN que ninguém zera.
+	// Capacidade fixa: o append nunca realoca, e nenhuma cópia parcial fica para trás.
+	pin := make([]byte, 0, tetoDoPin)
+	var b [1]byte
+	for {
+		n, err := os.Stdin.Read(b[:])
+		if n == 1 {
+			if b[0] == '\n' {
+				break
+			}
+			if b[0] != '\r' {
+				if len(pin) == tetoDoPin {
+					zerar(pin[:cap(pin)])
+					b[0] = 0
+					return nil, fmt.Errorf("PIN com mais de %d caracteres", tetoDoPin)
+				}
+				pin = append(pin, b[0])
+			}
+		}
+		if err != nil {
+			if len(pin) == 0 {
+				return nil, errors.New("sem PIN na entrada padrão")
+			}
+			break
+		}
 	}
-	return bytes.TrimRight(linha, "\r\n"), nil
+	b[0] = 0
+	return pin, nil
 }
 
 func zerar(b []byte) {
@@ -368,6 +392,11 @@ func assinar(args []string) error {
 		pin, err = lerPin()
 		if err != nil {
 			return err
+		}
+		// PIN vazio nunca vai ao cartão: com o comprimento zero o pacote manda NULL, e há
+		// middleware que conta isso como tentativa errada. O cartão bloqueia depois de poucas.
+		if len(pin) == 0 {
+			return errors.New("PIN vazio: nada foi enviado ao cartão")
 		}
 	}
 	inicio := time.Now()

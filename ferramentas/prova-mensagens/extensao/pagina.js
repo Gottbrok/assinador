@@ -20,4 +20,16 @@ function enviar(op) {
 registrar('navegador', { userAgent: navigator.userAgent });
 document.getElementById('ola').addEventListener('click', () => enviar('ola'));
 document.getElementById('listar').addEventListener('click', () => enviar('listar'));
-document.getElementById('copiar').addEventListener('click', () => navigator.clipboard.writeText(saida.textContent));
+document.getElementById('copiar').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(saida.textContent);
+  } catch {
+    // Sem permissão de área de transferência: seleciona o texto para copiar com Ctrl+C.
+    const faixa = document.createRange();
+    faixa.selectNodeContents(saida);
+    const selecao = window.getSelection();
+    selecao.removeAllRanges();
+    selecao.addRange(faixa);
+    registrar('copiar', { aviso: 'o navegador não deixou copiar; o texto ficou selecionado, use Ctrl+C' });
+  }
+});
