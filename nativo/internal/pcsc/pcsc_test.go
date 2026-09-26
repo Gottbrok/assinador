@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"testing"
 )
@@ -63,6 +64,61 @@ func TestConsultaDeVerdade(t *testing.T) {
 		t.Fatalf("estado inesperado: %+v", r)
 	}
 	t.Logf("nesta máquina: %+v", r)
+}
+
+// compilarPCSCFalso compila o pcsc-lite falso de `testes/pcsc-falso` (com os tipos de `tipos.h`).
+func compilarPCSCFalso(t *testing.T) string {
+	t.Helper()
+	gcc, err := exec.LookPath("gcc")
+	if err != nil {
+		t.Skip("sem gcc")
+	}
+	saida := filepath.Join(t.TempDir(), "libpcsclite-falso.so")
+	if out, err := exec.Command(gcc, "-shared", "-fPIC", "-I.", "-o", saida, filepath.Join("..", "..", "testes", "pcsc-falso", "pcsc.c")).CombinedOutput(); err != nil {
+		t.Fatalf("gcc: %v %s", err, out)
+	}
+	return saida
+}
+
+// Com leitora e cartão (a biblioteca falsa), a consulta traz as duas leitoras, o cartão na
+// primeira e o ATR dele; a lista que cresce no meio é lida de novo; o ATR acima de 33 bytes não é
+// lido; o cartão mudo aparece como mudo; a lista acima do teto é falha.
+func TestLeitorasPelaBibliotecaFalsa(t *testing.T) {
+	anterior := biblioteca
+	biblioteca = compilarPCSCFalso(t)
+	defer func() { biblioteca = anterior }()
+
+	casos := []struct {
+		modo   string
+		estado string
+		atr    string
+		mudo   bool
+	}{
+		{"cartao", EstadoOk, "3B8F8001", false},
+		{"cresce", EstadoOk, "3B8F8001", false},
+		{"atr-grande", EstadoOk, "", false},
+		{"mudo", EstadoOk, "3B8F8001", true},
+		{"enorme", EstadoFalhou, "", false},
+	}
+	for _, c := range casos {
+		t.Run(c.modo, func(t *testing.T) {
+			t.Setenv("ASSINADOR_PCSC_FALSO", c.modo)
+			r := Consultar()
+			if r.Estado != c.estado {
+				t.Fatalf("%+v", r)
+			}
+			if c.estado != EstadoOk {
+				return
+			}
+			if len(r.Leitoras) != 2 || r.Leitoras[0].Nome != "Leitora Falsa A 00 00" || r.Leitoras[1].Nome != "Leitora Falsa B 01 00" {
+				t.Fatalf("leitoras: %+v", r.Leitoras)
+			}
+			a, b := r.Leitoras[0], r.Leitoras[1]
+			if !a.ComCartao || a.ATR != c.atr || a.Mudo != c.mudo || b.ComCartao || b.ATR != "" {
+				t.Fatalf("estado das leitoras: %+v", r.Leitoras)
+			}
+		})
+	}
 }
 
 func TestBibliotecaAusente(t *testing.T) {
