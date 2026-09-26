@@ -51,8 +51,16 @@ powershell -ExecutionPolicy Bypass -File .\registrar-windows.ps1 -Programa .\ass
       `CurrentUser\My` (o `certmgr.msc`, e a lista do diagnóstico), com o provedor que o SafeSign
       registra: anotar aqui o NOME do provedor (é ele que entra no catálogo do Windows) e se é CSP
       legado ou KSP (`windows:csp` ou `windows:cng` na lista), e se o SHA-256 funciona.
-- [ ] **(e) da F0:** o diálogo de PIN do provedor abre na FRENTE do Chrome e do Edge (a janela-mãe
-      que eles passam), e anotar onde ele abre no Firefox, que não passa janela.
+- [ ] **(e) da F0:** o diálogo de PIN do provedor abre na FRENTE do navegador, no Chrome, no Edge e
+      no Firefox. O Chrome documenta `--parent-window` zero quando quem conecta é um contexto de
+      fundo (no Manifest V3, o service worker da extensão), e aí o programa usa a janela em primeiro
+      plano na hora de assinar: anotar se o Chrome passou zero ou não (o Process Explorer mostra a
+      linha de comando do `assinador.exe`), e se o diálogo abriu na frente. Cancelar o diálogo e
+      fechar a aba no meio do PIN: a janela do navegador volta a responder (o programa a reabilita).
+- [ ] **PIN errado no diálogo do provedor:** errar o PIN uma vez e anotar se o provedor devolve a
+      recusa (a página recebe `pin-incorreto`) ou se pede o PIN de novo no próprio diálogo (a regra 2
+      do CLAUDE.md, de encerrar no primeiro erro, só vale no primeiro caso; no segundo, quem conta as
+      tentativas é o diálogo do fabricante).
 - [ ] O diagnóstico mostra a leitora, o ATR, o cartão e o provedor, e o estado do serviço de
       Propagação de Certificados; com o serviço parado (`services.msc`) e o cartão na leitora, o
       aviso dele aparece. Anotar o ATR (se ainda não entrou pelo gate da F2b).
@@ -61,8 +69,9 @@ powershell -ExecutionPolicy Bypass -File .\registrar-windows.ps1 -Programa .\ass
       (`openssl`, ou a própria conferência do programa). PIN errado uma vez (o diálogo do Windows
       diz), e cancelar o diálogo (a página recebe `cancelado`).
 - [ ] Com o segundo token (SafeNet ou Gemalto), se veio.
-- [ ] Se algum provedor recusar a assinatura já na abertura da chave (`modulo-falhou` com a etapa
-      "abrir a chave", código `NTE_BAD_PUBLIC_KEY` `0x80090015` ou parecido): é a conferência da
+- [ ] Se algum provedor recusar a assinatura já na abertura da chave (`chave-ausente` ou
+      `modulo-falhou` com a etapa "abrir a chave", código `NTE_BAD_PUBLIC_KEY` `0x80090015` ou
+      parecido) com o certificado certo e o cartão na leitora: é a conferência da
       chave contra o certificado (`CRYPT_ACQUIRE_COMPARE_KEY_FLAG`), que o CSP do fabricante pode
       não saber fazer. Anotar o provedor e o código: ela é defesa redundante (o host confere a
       assinatura contra o certificado depois) e pode sair para esse caso.

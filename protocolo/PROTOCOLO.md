@@ -218,13 +218,13 @@ com a etapa):
 | `pin-incorreto` | `SCARD_W_WRONG_CHV`, sempre sem `tentativas` (o Windows não as informa) |
 | `token-bloqueado` | `SCARD_W_CHV_BLOCKED` |
 | `algoritmo-nao-suportado` | `NTE_BAD_ALGID`, `NTE_NOT_SUPPORTED` (o CSP legado sem SHA-256) |
-| `chave-ausente` | `SCARD_E_NO_SMARTCARD`, `SCARD_W_REMOVED_CARD`, `NTE_NO_KEY`, `NTE_BAD_KEYSET`, `NTE_KEYSET_NOT_DEF`, `CRYPT_E_NO_KEY_PROPERTY` (o certificado continua no repositório, e o cartão não está) |
-| `permissao-negada` | `NTE_PERM`, `ERROR_ACCESS_DENIED` |
-| `certificado-nao-encontrado` | o certificado saiu do repositório entre a lista e a assinatura |
-| `modulo-falhou` | qualquer outra recusa do provedor do fabricante |
+| `certificado-nao-encontrado` | `SCARD_E_NO_SMARTCARD`, `SCARD_W_REMOVED_CARD` (o certificado continua no repositório, e o cartão dele não está na leitora: o "cartão removido" do Linux); o certificado que saiu do repositório entre a lista e a assinatura |
+| `chave-ausente` | `NTE_NO_KEY`, `NTE_BAD_KEYSET`, `CRYPT_E_NO_KEY_PROPERTY`, e `NTE_BAD_PUBLIC_KEY` (a chave não é a do certificado) |
+| `modulo-falhou` | `NTE_KEYSET_NOT_DEF` (o provedor do fabricante não está instalado), `NTE_PERM` e `ERROR_ACCESS_DENIED` (o provedor recusou o acesso), a recusa sem código (`E_FAIL`) e qualquer outra recusa do provedor |
 
-`nativo-ausente`, `nativo-desatualizado` e `bilhete-expirado` são da extensão ou da biblioteca; o
-programa não os produz (a `permissao-negada` o programa só produz no Windows).
+`nativo-ausente`, `nativo-desatualizado`, `permissao-negada` e `bilhete-expirado` são da extensão ou
+da biblioteca; o programa não os produz. (A `permissao-negada` é a do ENDEREÇO nas opções da
+extensão: um acesso negado pelo provedor do Windows é `modulo-falhou`, e não ela.)
 
 ## Módulos PKCS#11 (Linux e macOS)
 
@@ -266,9 +266,11 @@ No Windows não há PKCS#11: o programa usa a API do próprio sistema, sem cgo
 - **Lista:** o repositório pessoal do usuário (`CurrentUser\My`), cada certificado com
   `CERT_KEY_PROV_INFO_PROP_ID`, lido SEM abrir a chave (listar nunca pede PIN). O certificado do
   cartão chega ali pelo serviço de Propagação de Certificados; o A1 importado no Windows também
-  aparece, e assina. `provedor` é `windows:cng` (a chave num KSP) ou `windows:csp` (num CSP legado);
-  `rotuloDoProvedor` é "Certificado instalado no Windows" para os provedores de software da Microsoft
-  (e o do TPM), e o nome do provedor para o cartão ou token. `exigePin` é sempre falso: o PIN é
+  aparece, e assina. `provedor` é `windows:cng` (a chave registrada num KSP) ou `windows:csp` (num
+  CSP legado): é o registro, e na assinatura o CNG pode abrir por um KSP a chave registrada num CSP;
+  `rotuloDoProvedor` é "Certificado instalado no Windows" para os provedores da Microsoft que guardam
+  a chave no computador (o de software, o do TPM e o do Windows Hello), e o nome do provedor para o
+  cartão ou token. `exigePin` é sempre falso: o PIN é
   pedido pelo PROVEDOR, num diálogo do Windows, e a janela da extensão não mostra campo.
 - **Assinar:** o certificado é achado de novo no repositório pelo DER; a chave, por
   `CryptAcquireCertificatePrivateKey` com `CRYPT_ACQUIRE_PREFER_NCRYPT_KEY_FLAG` e
@@ -277,13 +279,20 @@ No Windows não há PKCS#11: o programa usa a API do próprio sistema, sem cgo
   de CSP legado: `CryptCreateHash(CALG_SHA_256)`, `CryptSetHashParam(HP_HASHVAL)`,
   `CryptSignHash` e a inversão dos bytes (o CSP devolve em little-endian). O host confere a
   assinatura contra o certificado antes de ela sair, como no Linux.
-- **Janela-mãe:** o `--parent-window` que o Chrome e o Edge passam vai ao CSP (`PP_CLIENT_HWND`,
-  antes de adquirir a chave), à aquisição (`CRYPT_ACQUIRE_WINDOW_HANDLE_FLAG`) e à chave CNG
-  (`NCRYPT_WINDOW_HANDLE_PROPERTY`), para o diálogo de PIN abrir na frente do navegador. O Firefox
-  não passa janela.
+- **Janela-mãe:** a janela que o programa dá ao provedor vai ao CSP (`PP_CLIENT_HWND`, antes de
+  adquirir a chave), à aquisição (`CRYPT_ACQUIRE_WINDOW_HANDLE_FLAG`) e à chave CNG
+  (`NCRYPT_WINDOW_HANDLE_PROPERTY`), para o diálogo de PIN abrir na frente do navegador. É o
+  `--parent-window` do Chrome e do Edge quando ele não é zero; o Chrome documenta zero quando quem
+  conecta é um contexto de fundo, que no Manifest V3 é o service worker da extensão, e o Firefox não
+  passa janela. Com zero, é a janela em primeiro plano na hora de assinar (a confirmação da extensão
+  onde a pessoa acabou de clicar). Se o diálogo e a janela ficam como devem é a medição (e) da F0.
 - **Prazo:** a chamada ao provedor bloqueia enquanto o diálogo está aberto e não se interrompe; ela
   corre à parte, e quando a extensão fecha o canal (cada fluxo tem a sua conexão), o programa
-  responde `cancelado` e sai, levando o diálogo junto. Não há o prazo de 90 s do filho do PKCS#11.
+  reabilita a janela-mãe (o diálogo modal a tinha desabilitado, e ela é do navegador), responde
+  `cancelado` e sai, levando o diálogo junto. Não há o prazo de 90 s do filho do PKCS#11.
+- **PIN errado:** quem pede o PIN é o diálogo do provedor, e há provedor que o pede de novo depois de
+  um erro, sem devolver a recusa ao programa: a regra de encerrar no primeiro PIN errado (regra 2 do
+  CLAUDE.md) só vale quando o provedor devolve `SCARD_W_WRONG_CHV`. O que cada provedor faz é medição.
 - **Processo:** o CSP e o KSP do fabricante são DLLs que rodam DENTRO do programa (não há filho, como
   o plano decidiu para o Windows); a proteção do canal contra o que elas escrevem está em
   "Diagnóstico".
@@ -314,9 +323,10 @@ devolvem o MESMO relatório (`nativo/internal/diagnostico`), para o suporte, sem
   `provedores` (o nome do provedor, `detalhe` `cng` ou `csp`), e sem nenhum aparece o próprio
   repositório. O serviço Cartão Inteligente só roda com leitora conectada, então "sem serviço" ali
   vira "nenhuma leitora, ou o serviço parado". O estado do serviço de Propagação de Certificados
-  (`CertPropSvc`, só leitura) entra como aviso quando há cartão lido, nenhum certificado na lista e
-  o serviço parado: é o caso mais provável de "não aparece", e o aviso dele toma o lugar do de
-  instalar o programa do fabricante (sem cartão, o serviço parado é normal: ele inicia por gatilho).
+  (`CertPropSvc`, só leitura) entra como aviso quando há cartão lido, nenhum certificado de CARTÃO na
+  lista (o instalado no computador não conta) e o serviço parado: é o caso mais provável de "não
+  aparece", e o aviso dele toma o lugar do de instalar o programa do fabricante (sem cartão, o serviço
+  parado é normal: ele inicia por gatilho).
   Pelo ATR do catálogo, a sugestão vale, mas o "não está instalado" não se afirma no Windows até o
   provedor do fabricante ser medido lá.
 - **Sugestão pelo ATR:** o ATR que está no catálogo medido diz qual programa do fabricante lê o

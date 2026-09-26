@@ -178,4 +178,30 @@
     ganhou a proteção da regra 12; a assinatura no Windows não tem o prazo de 90 s do filho do
     PKCS#11 (o diálogo do provedor não se interrompe, e o canal fechado encerra); a medição (d) e (e)
     da F0 e o catálogo do Windows esperam a máquina Windows com o cartão; os testes rodam também no
-    arm64 (`windows-11-arm`), que o plano deixava para a F6b.
+    arm64 (`windows-11-arm`), que o plano deixava para a F6b; e a "dica no diagnóstico" do CSP sem
+    SHA-256 (§3.5) mora no `detalhe` do `algoritmo-nao-suportado`, porque o diagnóstico não assina e
+    não tem como saber que o CSP não tem SHA-256.
+- Auditoria da F6a (uma revisão adversarial independente e a nossa), antes do primeiro CI do
+  Windows: nenhum P0. Dois P1 corrigidos, que reprovariam esse CI por motivos alheios ao provedor: o
+  checkout em CRLF do Git do Windows (o `.gitattributes` fixa LF, e as fixtures sem conversão), que
+  quebrava o hash das fixtures e o `chaves.go` gerado; e o teste do catálogo, que conferia caminho
+  Unix com o `filepath` do Windows. Os P2 e P3, corrigidos por decisão do Cairo:
+  - o canal: o handle original protegido contra fechamento antes dos `_dup2` (com os dois C runtimes
+    carregados, o segundo fechava de novo um número que o Windows já podia ter dado a outro
+    recurso), o descritor 1 de cada C runtime conferido depois, e o teste carregando os dois C
+    runtimes ANTES de separar o canal (antes, ele passava sem o `_dup2`);
+  - a janela-mãe: o Chrome documenta `--parent-window` zero para o contexto de fundo (o service
+    worker do Manifest V3), e o código da janela nunca rodaria; com zero, vale a janela em primeiro
+    plano na hora de assinar, e no cancelamento ela é reabilitada;
+  - o mapa de erros: acesso negado e o provedor que não existe viram `modulo-falhou` (a
+    `permissao-negada` da biblioteca é a do endereço na extensão), a chave que não é a do
+    certificado vira `chave-ausente`, o cartão fora da leitora vira `certificado-nao-encontrado`
+    (como no Linux), e a recusa sem código vira `E_FAIL`, nunca o zero do sucesso;
+  - o diagnóstico: os avisos do cartão contam só os certificados de CARTÃO (um A1 instalado
+    silenciava o aviso do `CertPropSvc`), o `Montar` volta a ser puro, e o texto do Linux volta a
+    dizer "serviço pcscd parado";
+  - os testes: o `windowsteste` lê a última linha da saída padrão e limpa pelo assunto antes de ler
+    (não vaza certificado), e o CSP sem SHA-256 é obrigatório no CI;
+  - o registro e a documentação: caminhos literais, as chaves-mãe vazias removidas, a política de
+    execução e o `Unblock-File` nas instruções, o Windows Hello como chave do computador, o
+    `KeepAlive` do nome do repositório, a regra 2 no Windows e o que medir a mais com o cartão.

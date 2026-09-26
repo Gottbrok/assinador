@@ -37,7 +37,9 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
    confere é o PROGRAMA, não a extensão, e ele confere de novo em `assinar` (não guarda estado).
 2. **PIN nunca em log, disco ou resposta.** PIN em `[]byte`, zerado logo após o login. Nunca repita
    login com PIN errado sozinho: um erro de PIN encerra a operação e devolve `pin-incorreto` com o aviso
-   de tentativas.
+   de tentativas. No Windows o PIN é do diálogo do PROVEDOR (o programa nunca o vê), e há provedor
+   que o pede de novo depois de um erro sem devolver a recusa: ali o programa encerra quando o
+   provedor devolve `SCARD_W_WRONG_CHV`, e quem conta as tentativas é o diálogo (medição da F6a).
 3. **Nenhum acesso de rede**, no programa nem na extensão, em nenhum modo. Nenhuma localização: o
    programa não pede permissão de localização e a extensão não declara geolocalização.
 4. **Catálogo de módulos e de ATRs só com entrada MEDIDA**, cada uma com a data e quem mediu. Módulo
