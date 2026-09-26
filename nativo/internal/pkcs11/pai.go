@@ -253,12 +253,13 @@ func (p *Provedor) Assinar(ctx context.Context, c assinatura.Certificado, digest
 	return r.Assinatura, nil
 }
 
-// Diagnosticar diz, por módulo, se carregou e quantos certificados viu, e quais do catálogo não
-// estão instalados. Sem nome de titular nem CPF.
+// Diagnosticar diz, por módulo, se carregou e quantos certificados viu, e quais pedidos (do
+// catálogo, do p11-kit, da configuração) não estão instalados. Os certificados vistos vão em
+// `Vistos`, que não sai no JSON: quem monta o relatório os resume sem CPF.
 func (p *Provedor) Diagnosticar(ctx context.Context) []assinatura.RelatorioDoProvedor {
 	var saida []assinatura.RelatorioDoProvedor
 	for _, r := range p.listarTodos(ctx) {
-		rel := assinatura.RelatorioDoProvedor{Nome: r.modulo.Rotulo, Caminho: r.modulo.Caminho}
+		rel := assinatura.RelatorioDoProvedor{Nome: r.modulo.Rotulo, Caminho: r.modulo.Caminho, Origem: r.modulo.Origem}
 		if r.erro != nil {
 			rel.Estado = assinatura.EstadoFalhou
 			rel.Detalhe = r.erro.Error()
@@ -268,11 +269,16 @@ func (p *Provedor) Diagnosticar(ctx context.Context) []assinatura.RelatorioDoPro
 			if i := r.resposta.Info; i != nil {
 				rel.Detalhe = fmt.Sprintf("%s, Cryptoki %s, biblioteca %s", i.Fabricante, i.Cryptoki, i.Biblioteca)
 			}
+			for _, c := range r.resposta.Certificados {
+				if refConfere(c) {
+					rel.Vistos = append(rel.Vistos, assinatura.Certificado{Ref: c.Ref, DER: c.DER, Provedor: "pkcs11:" + r.modulo.Nome, RotuloDoProvedor: r.modulo.Rotulo, Leitor: c.Leitor})
+				}
+			}
 		}
 		saida = append(saida, rel)
 	}
 	for _, m := range p.Ausentes {
-		saida = append(saida, assinatura.RelatorioDoProvedor{Nome: m.Rotulo, Caminho: m.Caminho, Estado: assinatura.EstadoAusente})
+		saida = append(saida, assinatura.RelatorioDoProvedor{Nome: m.Rotulo, Caminho: m.Caminho, Origem: m.Origem, Estado: assinatura.EstadoAusente})
 	}
 	return saida
 }

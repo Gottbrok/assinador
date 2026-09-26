@@ -6,12 +6,12 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/Gottbrok/assinador/nativo/internal/assinatura"
 	"github.com/Gottbrok/assinador/nativo/internal/bilhete"
+	"github.com/Gottbrok/assinador/nativo/internal/catalogo"
+	"github.com/Gottbrok/assinador/nativo/internal/diagnostico"
 	"github.com/Gottbrok/assinador/nativo/internal/mensagens"
 	"github.com/Gottbrok/assinador/nativo/internal/protocolo"
 )
@@ -164,38 +164,18 @@ func (h *Host) assinar(ctx context.Context, p *mensagens.Pedido) (protocolo.Dado
 	return protocolo.DadosDoAssinar{Assinatura: base64.StdEncoding.EncodeToString(assinada)}, nil
 }
 
-// relatorio é o `relatorio` do diagnóstico. A F2b acrescenta as leitoras, o ATR com a sugestão
-// de middleware e os avisos do sistema (pcscd parado, p11-kit).
-type relatorio struct {
-	Programa   programaNoRelatorio              `json:"programa"`
-	Provedores []assinatura.RelatorioDoProvedor `json:"provedores"`
-}
-
-type programaNoRelatorio struct {
-	Versao     string `json:"versao"`
-	Protocolo  int    `json:"protocolo"`
-	Plataforma string `json:"plataforma"`
-}
-
+// diagnostico é o relatório do pacote `diagnostico`: o mesmo que o modo `assinador diagnostico`
+// imprime no terminal.
 func (h *Host) diagnostico(ctx context.Context) protocolo.DadosDoDiagnostico {
-	r := relatorio{Programa: programaNoRelatorio{Versao: h.Versao, Protocolo: protocolo.Versao, Plataforma: h.Plataforma}, Provedores: []assinatura.RelatorioDoProvedor{}}
-	var linhas []string
-	linhas = append(linhas, fmt.Sprintf("Assinador %s (%s), protocolo %d", h.Versao, h.Plataforma, protocolo.Versao))
-	for _, p := range h.Provedores {
-		for _, rp := range p.Diagnosticar(ctx) {
-			r.Provedores = append(r.Provedores, rp)
-			switch rp.Estado {
-			case assinatura.EstadoCarregado:
-				linhas = append(linhas, fmt.Sprintf("%s: carregado, %d certificado(s) (%s)", rp.Nome, rp.Certificados, rp.Detalhe))
-			case assinatura.EstadoFalhou:
-				linhas = append(linhas, fmt.Sprintf("%s: falhou (%s)", rp.Nome, rp.Detalhe))
-			default:
-				linhas = append(linhas, fmt.Sprintf("%s: não instalado (%s)", rp.Nome, rp.Caminho))
-			}
-		}
-	}
-	if len(r.Provedores) == 0 {
-		linhas = append(linhas, "Nenhum programa de cartão ou token encontrado.")
-	}
-	return protocolo.DadosDoDiagnostico{Relatorio: r, Texto: strings.Join(linhas, "\n")}
+	r, texto := diagnostico.Coletar(ctx, diagnostico.Fontes{
+		Provedores: h.Provedores,
+		Leitoras:   h.Leitoras,
+		Agora:      h.Agora,
+		Versao:     h.Versao,
+		Plataforma: h.Plataforma,
+		Sistema:    h.Sistema,
+		ATRs:       catalogo.ATRs,
+		Modulos:    catalogo.Modulos,
+	})
+	return protocolo.DadosDoDiagnostico{Relatorio: r, Texto: texto}
 }

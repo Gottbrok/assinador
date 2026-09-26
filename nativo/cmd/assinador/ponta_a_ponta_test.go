@@ -207,6 +207,55 @@ func TestPontaAPontaComSoftHSM(t *testing.T) {
 	}
 }
 
+// O `assinador diagnostico` no terminal mostra o módulo e o certificado do token, com o nome
+// mascarado, e nenhum CPF sai (nem no texto, nem no JSON).
+func TestDiagnosticoNoTerminal(t *testing.T) {
+	if testing.Short() {
+		t.Skip("compila o programa")
+	}
+	tk := softhsmteste.Novo(t, softhsmteste.Opcoes{})
+	binario := construir(t, "")
+	cfg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", cfg)
+	if err := os.MkdirAll(filepath.Join(cfg, "confidata-assinador"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfg, "confidata-assinador", "modulos"), []byte(tk.Modulo+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	texto, err := exec.Command(binario, "diagnostico").Output()
+	if err != nil {
+		t.Fatalf("diagnostico: %v", err)
+	}
+	comoJSON, err := exec.Command(binario, "diagnostico", "--json").Output()
+	if err != nil {
+		t.Fatalf("diagnostico --json: %v", err)
+	}
+	var relatorio struct {
+		Certificados []struct {
+			Titular  string `json:"titular"`
+			Situacao string `json:"situacao"`
+		} `json:"certificados"`
+	}
+	if err := json.Unmarshal(comoJSON, &relatorio); err != nil {
+		t.Fatalf("o --json não é JSON: %v", err)
+	}
+	if !strings.Contains(string(texto), "Programa do cartão libsofthsm2.so: carregado, 5 certificado(s)") || !strings.Contains(string(texto), "Certificado: TITULAR DE TESTE:***********") {
+		t.Fatalf("texto:\n%s", texto)
+	}
+	if len(relatorio.Certificados) != 4 { // os 5 do token, menos o da AC
+		t.Fatalf("certificados no relatório: %+v", relatorio.Certificados)
+	}
+	for _, saida := range [][]byte{texto, comoJSON} {
+		if strings.Contains(string(saida), "12345678901") {
+			t.Fatalf("o CPF vazou:\n%s", saida)
+		}
+	}
+	if out, err := exec.Command(binario, "diagnostico", "--xml").CombinedOutput(); err == nil || !strings.Contains(string(out), "uso:") {
+		t.Fatalf("opção desconhecida aceita: %s", out)
+	}
+}
+
 // Chamado por extensão que não é nossa, o programa não faz nada além de recusar.
 func TestChamadorEstranhoERecusado(t *testing.T) {
 	if testing.Short() {

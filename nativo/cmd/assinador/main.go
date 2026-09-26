@@ -9,13 +9,13 @@
 //
 //	assinador <argumentos do navegador>    modo host: native messaging com a extensão (o padrão)
 //	assinador modulo --caminho <módulo>    filho de um módulo PKCS#11 (só o próprio programa o lança)
+//	assinador diagnostico [--json]         o diagnóstico no terminal, para o suporte (sem CPF)
 //	assinador versao                       imprime a versão
-//
-// O modo `diagnostico` no terminal, para o suporte, entra na F2b.
 package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
@@ -24,8 +24,11 @@ import (
 	"time"
 
 	"github.com/Gottbrok/assinador/nativo/internal/bilhete"
+	"github.com/Gottbrok/assinador/nativo/internal/catalogo"
+	"github.com/Gottbrok/assinador/nativo/internal/diagnostico"
 	"github.com/Gottbrok/assinador/nativo/internal/host"
 	"github.com/Gottbrok/assinador/nativo/internal/origem"
+	"github.com/Gottbrok/assinador/nativo/internal/pcsc"
 )
 
 // versao é trocada no build de release (`-ldflags "-X main.versao=1.0.0"`).
@@ -40,16 +43,56 @@ func main() {
 		fmt.Println(versao)
 		return
 	}
+	if len(args) >= 1 && args[0] == "diagnostico" {
+		os.Exit(executarDiagnostico(args[1:]))
+	}
 	os.Exit(executarHost(args))
 }
 
+// executarDiagnostico imprime no terminal o mesmo relatório que a operação `diagnostico` devolve à
+// extensão: em frases, ou em JSON com `--json`.
+func executarDiagnostico(args []string) int {
+	emJSON := len(args) == 1 && args[0] == "--json"
+	if len(args) > 1 || (len(args) == 1 && !emJSON) {
+		fmt.Fprintln(os.Stderr, "uso: assinador diagnostico [--json]")
+		return 2
+	}
+	executavel, err := os.Executable()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "assinador: sem o caminho do próprio programa:", err)
+		return 1
+	}
+	relatorio, texto := diagnostico.Coletar(context.Background(), diagnostico.Fontes{
+		Provedores: provedores(executavel),
+		Leitoras:   pcsc.Consultar,
+		Agora:      time.Now,
+		Versao:     versao,
+		Plataforma: plataforma(),
+		Sistema:    diagnostico.SistemaOperacional(),
+		ATRs:       catalogo.ATRs,
+		Modulos:    catalogo.Modulos,
+	})
+	if emJSON {
+		saida, _ := json.MarshalIndent(relatorio, "", "  ")
+		fmt.Println(string(saida))
+		return 0
+	}
+	fmt.Println(texto)
+	return 0
+}
+
+func plataforma() string {
+	return runtime.GOOS + "-" + runtime.GOARCH
+}
+
 func executarHost(args []string) int {
-	// O canal com a extensão é a saída padrão. Qualquer escrita perdida em `os.Stdout` (de uma
-	// dependência, de um descuido) corromperia o quadro: ela passa a ir para /dev/null, e só o
-	// host escreve no descritor verdadeiro.
-	canal := os.Stdout
-	if nulo, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0); err == nil {
-		os.Stdout = nulo
+	// O canal com a extensão é a saída padrão. Qualquer escrita perdida nela (do Go ou de código em
+	// C, como a biblioteca do PC/SC) corromperia o quadro: o descritor 1 passa a ser /dev/null, e só
+	// o host escreve na cópia do descritor verdadeiro.
+	canal, err := separarCanal()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "assinador: não separei o canal da saída padrão:", err)
+		return 1
 	}
 	if buildDeDesenvolvimento {
 		fmt.Fprintln(os.Stderr, "assinador: build de DESENVOLVIMENTO (aceita chaves dev e localhost)")
@@ -73,7 +116,9 @@ func executarHost(args []string) int {
 		Chaves:     chaves,
 		Agora:      time.Now,
 		Versao:     versao,
-		Plataforma: runtime.GOOS + "-" + runtime.GOARCH,
+		Plataforma: plataforma(),
+		Leitoras:   pcsc.Consultar,
+		Sistema:    diagnostico.SistemaOperacional(),
 	}
 	ctx, parar := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer parar()

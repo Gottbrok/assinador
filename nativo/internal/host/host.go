@@ -16,6 +16,7 @@ import (
 	"github.com/Gottbrok/assinador/nativo/internal/bilhete"
 	"github.com/Gottbrok/assinador/nativo/internal/mensagens"
 	"github.com/Gottbrok/assinador/nativo/internal/origem"
+	"github.com/Gottbrok/assinador/nativo/internal/pcsc"
 	"github.com/Gottbrok/assinador/nativo/internal/protocolo"
 )
 
@@ -33,6 +34,10 @@ type Host struct {
 	Agora      func() time.Time
 	Versao     string
 	Plataforma string
+	// Leitoras consulta o PC/SC para o diagnóstico (`pcsc.Consultar`), e Sistema é o nome do
+	// sistema operacional no relatório.
+	Leitoras func() pcsc.Resultado
+	Sistema  string
 
 	escrita sync.Mutex
 }

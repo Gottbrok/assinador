@@ -1,7 +1,7 @@
-// Package catalogo tem os módulos PKCS#11 que alguém MEDIU (regra 4 do CLAUDE.md): cada entrada
-// com a data, quem mediu e em que equipamento. Módulo novo entra quando alguém instalar o
-// middleware e medir, nunca por suposição. Os ATRs de cartão entram na F2b, junto com o
-// diagnóstico que os usa.
+// Package catalogo tem os módulos PKCS#11 e os cartões (pelo ATR) que alguém MEDIU (regra 4 do
+// CLAUDE.md): cada entrada com a data, quem mediu e em que equipamento. Entrada nova vem de alguém
+// que instalou o middleware ou pôs o cartão na leitora e mediu, nunca de suposição nem de lista
+// alheia.
 package catalogo
 
 import "runtime"
@@ -42,8 +42,15 @@ var medicaoDaF0 = Medicao{
 	Registro:    "docs/medicoes/F0.md",
 }
 
-// Modulos são os medidos. O OpenSC no Fedora (`/usr/lib64/...`) e o arm64 entram quando forem
-// medidos (a F2b instala o `.rpm` num Fedora em contêiner).
+var medicaoDoOpenscNoFedora = Medicao{
+	Em:          "2026-09-26",
+	Por:         "Claude (sessão da F2b)",
+	Equipamento: "Fedora 43 x86_64 em contêiner, OpenSC 0.27.1 e p11-kit 0.26.5 do dnf, sem leitora",
+	Resultado:   "o módulo fica em /usr/lib64/opensc-pkcs11.so (e o p11-kit o registra por nome, em /usr/lib64/pkcs11) e responde a C_GetInfo (Cryptoki 3.0); zero slots",
+	Registro:    "docs/medicoes/F2b.md",
+}
+
+// Modulos são os medidos. O arm64 entra quando for medido.
 var Modulos = []Modulo{
 	{
 		Nome:   "safesign",
@@ -58,8 +65,39 @@ var Modulos = []Modulo{
 		Rotulo:   "OpenSC",
 		Generico: true,
 		Caminhos: map[string][]string{
-			"linux/amd64": {"/usr/lib/x86_64-linux-gnu/opensc-pkcs11.so"},
+			"linux/amd64": {"/usr/lib/x86_64-linux-gnu/opensc-pkcs11.so", "/usr/lib64/opensc-pkcs11.so"},
 		},
-		Medicoes: []Medicao{medicaoDaF0},
+		Medicoes: []Medicao{medicaoDaF0, medicaoDoOpenscNoFedora},
 	},
+}
+
+// ATR é um cartão cujo ATR alguém MEDIU, com o módulo do catálogo que o lê. É o que deixa o
+// diagnóstico dizer "este cartão usa o SafeSign" quando o SafeSign não está instalado.
+type ATR struct {
+	// Valor é o ATR como a leitora o devolve: hexadecimal maiúsculo, sem espaço.
+	Valor string
+	// Cartao é o que a pessoa e o suporte leem ("cartão Certisign").
+	Cartao string
+	// Modulo é o `Nome` do módulo do catálogo que lê este cartão.
+	Modulo   string
+	Medicoes []Medicao
+}
+
+// ATRs são os cartões medidos. O do cartão Certisign do Cairo entra quando ele for lido com o
+// `assinador diagnostico` (o gate da F2b, em `docs/medicoes/F2b.md`).
+var ATRs = []ATR{}
+
+// ModuloDoATR acha, pelo ATR medido, o módulo que lê o cartão.
+func ModuloDoATR(atr string, atrs []ATR, modulos []Modulo) (Modulo, ATR, bool) {
+	for _, a := range atrs {
+		if a.Valor != atr {
+			continue
+		}
+		for _, m := range modulos {
+			if m.Nome == a.Modulo {
+				return m, a, true
+			}
+		}
+	}
+	return Modulo{}, ATR{}, false
 }

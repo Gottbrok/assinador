@@ -54,13 +54,17 @@ type Certificado struct {
 	Interno         any
 }
 
-// RelatorioDoProvedor é o que um provedor diz de si no diagnóstico. Sem CPF, sem nome de titular.
+// RelatorioDoProvedor é o que um provedor diz de si no diagnóstico. Sem CPF, sem nome de titular:
+// os certificados vistos (`Vistos`) não vão ao JSON como estão; quem monta o relatório os resume
+// com o nome mascarado.
 type RelatorioDoProvedor struct {
-	Nome         string `json:"nome"`
-	Caminho      string `json:"caminho,omitempty"`
-	Estado       string `json:"estado"`
-	Certificados int    `json:"certificados"`
-	Detalhe      string `json:"detalhe,omitempty"`
+	Nome         string        `json:"nome"`
+	Caminho      string        `json:"caminho,omitempty"`
+	Origem       string        `json:"origem,omitempty"`
+	Estado       string        `json:"estado"`
+	Certificados int           `json:"certificados"`
+	Detalhe      string        `json:"detalhe,omitempty"`
+	Vistos       []Certificado `json:"-"`
 }
 
 // Estados de provedor no diagnóstico.

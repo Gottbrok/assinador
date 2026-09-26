@@ -24,8 +24,10 @@ import (
 
 	"github.com/Gottbrok/assinador/nativo/internal/assinatura"
 	"github.com/Gottbrok/assinador/nativo/internal/bilhete"
+	"github.com/Gottbrok/assinador/nativo/internal/diagnostico"
 	"github.com/Gottbrok/assinador/nativo/internal/mensagens"
 	"github.com/Gottbrok/assinador/nativo/internal/origem"
+	"github.com/Gottbrok/assinador/nativo/internal/pcsc"
 	"github.com/Gottbrok/assinador/nativo/internal/protocolo"
 )
 
@@ -378,12 +380,20 @@ func TestRefRecalculadaDoDer(t *testing.T) {
 	}
 }
 
+// A operação `diagnostico` responde com o relatório do pacote `diagnostico`, que lê as leitoras
+// pela função que o host recebeu.
 func TestDiagnostico(t *testing.T) {
 	c := novoCenario(t, true)
+	c.host.Leitoras = func() pcsc.Resultado {
+		return pcsc.Resultado{Estado: pcsc.EstadoSemServico, Detalhe: "0x8010001D", Leitoras: []pcsc.Leitora{}}
+	}
 	r := c.host.atender(context.Background(), pedido(t, "diagnostico", origemDaPagina, nil))
 	d := r.Dados.(protocolo.DadosDoDiagnostico)
-	if !r.OK || !strings.Contains(d.Texto, "Assinador 0.1.0-teste") || !strings.Contains(d.Texto, "Falso: carregado, 4 certificado(s)") {
+	if !r.OK || !strings.Contains(d.Texto, "Assinador 0.1.0-teste") || !strings.Contains(d.Texto, "Programa do cartão Falso: carregado, 4 certificado(s)") || !strings.Contains(d.Texto, "O serviço pcscd não está rodando") {
 		t.Fatalf("%+v", d)
+	}
+	if _, ok := d.Relatorio.(diagnostico.Relatorio); !ok {
+		t.Fatalf("relatório de outro tipo: %T", d.Relatorio)
 	}
 }
 
