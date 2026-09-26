@@ -1,0 +1,89 @@
+name: nativo
+
+# O programa nativo no Linux: formatação, vet, testes (com o SoftHSM2 fazendo o papel do cartão),
+# as catracas do build de release, staticcheck, govulncheck e o binário como artefato. As ações são
+# pinadas por commit (a tag vai no comentário): o repositório é público e o CI monta o que roda no
+# computador da pessoa.
+
+on:
+  push:
+    paths:
+      - "nativo/**"
+      - "protocolo/**"
+      - "ferramentas/**"
+      - ".github/workflows/nativo.yml"
+  pull_request:
+    paths:
+      - "nativo/**"
+      - "protocolo/**"
+      - "ferramentas/**"
+      - ".github/workflows/nativo.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: nativo/go.mod
+          cache-dependency-path: |
+            nativo/go.sum
+            ferramentas/go.sum
+
+      - name: SoftHSM2, gcc e openssl
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends softhsm2 gcc openssl
+
+      - name: gofmt
+        run: test -z "$(gofmt -l nativo ferramentas)"
+
+      - name: go vet (release e dev)
+        working-directory: nativo
+        run: |
+          go vet ./...
+          go vet -tags dev ./...
+
+      - name: Testes (release e dev), com o SoftHSM2 obrigatório
+        working-directory: nativo
+        env:
+          ASSINADOR_EXIGE_SOFTHSM: "1"
+        run: |
+          go test -race ./...
+          go test -tags dev ./...
+
+      - name: chaves.go em dia com protocolo/chaves-publicas.json
+        working-directory: nativo
+        run: |
+          go generate ./internal/bilhete
+          git diff --exit-code -- internal/bilhete/chaves.go
+
+      - name: staticcheck e govulncheck
+        working-directory: nativo
+        run: |
+          go run honnef.co/go/tools/cmd/staticcheck@v0.8.1 ./...
+          go run honnef.co/go/tools/cmd/staticcheck@v0.8.1 -tags dev ./...
+          go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+
+      - name: Ferramentas
+        working-directory: ferramentas
+        run: |
+          go vet ./...
+          go test ./...
+
+      - name: Programa (build de release, sem assinatura até a F7a)
+        working-directory: nativo
+        run: go build -trimpath -o ../dist/assinador-linux-amd64 ./cmd/assinador
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: assinador-linux-amd64
+          path: dist/assinador-linux-amd64
+          if-no-files-found: error
