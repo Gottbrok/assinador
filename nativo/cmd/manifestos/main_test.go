@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/Gottbrok/assinador/nativo/internal/origem"
@@ -13,7 +14,12 @@ import (
 // não gera manifesto (seria um manifesto que não deixa ninguém entrar).
 func TestManifestosComAsExtensoesDoPrograma(t *testing.T) {
 	saida := t.TempDir()
-	err := gerar(saida, "/usr/lib/confidata-assinador/assinador")
+	// O caminho absoluto do programa instalado, na forma do sistema que roda o teste.
+	programa := "/usr/lib/confidata-assinador/assinador"
+	if runtime.GOOS == "windows" {
+		programa = `C:\Users\teste\AppData\Local\ConfidataAssinadorDev\assinador.exe`
+	}
+	err := gerar(saida, programa)
 	if len(origem.ExtensoesChrome()) == 0 {
 		if err == nil {
 			t.Fatal("gerou manifesto sem extensão nenhuma do Chrome")
@@ -34,7 +40,7 @@ func TestManifestosComAsExtensoesDoPrograma(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if chromium.Name != "br.com.confidata.assinador" || chromium.Type != "stdio" || chromium.Path != "/usr/lib/confidata-assinador/assinador" {
+	if chromium.Name != "br.com.confidata.assinador" || chromium.Type != "stdio" || chromium.Path != programa {
 		t.Fatalf("%+v", chromium)
 	}
 	for i, id := range origem.ExtensoesChrome() {

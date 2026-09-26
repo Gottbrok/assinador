@@ -6,17 +6,23 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
-// construir compila o programa com as tags pedidas num diretório temporário.
+// construir compila o programa com as tags pedidas num diretório temporário. No Windows o nome leva
+// `.exe`: sem ele, o `CreateProcess` procura `assinador.exe` e não acha o programa.
 func construir(t *testing.T, tags string) string {
 	t.Helper()
 	goBin, err := exec.LookPath("go")
 	if err != nil {
 		t.Fatal("o teste compila o programa e precisa do `go` no PATH")
 	}
-	saida := filepath.Join(t.TempDir(), "assinador")
+	nome := "assinador"
+	if runtime.GOOS == "windows" {
+		nome += ".exe"
+	}
+	saida := filepath.Join(t.TempDir(), nome)
 	args := []string{"build", "-o", saida}
 	if tags != "" {
 		args = append(args, "-tags", tags)
@@ -29,7 +35,7 @@ func construir(t *testing.T, tags string) string {
 }
 
 // A catraca da regra 5 do CLAUDE.md: o binário de RELEASE não leva chave de teste, nem o
-// carregador das chaves de desenvolvimento, nem o apoio de teste do SoftHSM. O de desenvolvimento
+// carregador das chaves de desenvolvimento, nem o apoio de teste do SoftHSM ou do Windows. O de desenvolvimento
 // leva o carregador (prova de que a busca por bytes enxerga o que procura).
 func TestReleaseSemChaveDevNemTeste(t *testing.T) {
 	if testing.Short() {
@@ -52,6 +58,7 @@ func TestReleaseSemChaveDevNemTeste(t *testing.T) {
 	proibidos := []string{
 		"confidata-assinador/chaves-dev.json",
 		"github.com/Gottbrok/assinador/nativo/internal/softhsmteste",
+		"github.com/Gottbrok/assinador/nativo/internal/windowsteste",
 		"build de DESENVOLVIMENTO",
 	}
 	for _, c := range chaves {

@@ -65,14 +65,15 @@ func executarDiagnostico(args []string) int {
 		return 1
 	}
 	relatorio, texto := diagnostico.Coletar(context.Background(), diagnostico.Fontes{
-		Provedores: provedores(executavel),
-		Leitoras:   pcsc.Consultar,
-		Agora:      time.Now,
-		Versao:     versao,
-		Plataforma: plataforma(),
-		Sistema:    diagnostico.SistemaOperacional(),
-		ATRs:       catalogo.ATRs,
-		Modulos:    catalogo.Modulos,
+		Provedores:          provedores(executavel, 0),
+		Leitoras:            pcsc.Consultar,
+		ServicoDePropagacao: servicoDePropagacao,
+		Agora:               time.Now,
+		Versao:              versao,
+		Plataforma:          plataforma(),
+		Sistema:             diagnostico.SistemaOperacional(),
+		ATRs:                catalogo.ATRs,
+		Modulos:             catalogo.Modulos,
 	})
 	if emJSON {
 		saida, _ := json.MarshalIndent(relatorio, "", "  ")
@@ -114,13 +115,15 @@ func executarHost(args []string) int {
 		Saida:      canal,
 		Chamador:   chamador,
 		ChamadorOk: ok,
-		Provedores: provedores(executavel),
-		Chaves:     chaves,
-		Agora:      time.Now,
-		Versao:     versao,
-		Plataforma: plataforma(),
-		Leitoras:   pcsc.Consultar,
-		Sistema:    diagnostico.SistemaOperacional(),
+		// No Windows, a janela que o Chrome informa é a mãe do diálogo de PIN do provedor.
+		Provedores:          provedores(executavel, chamador.JanelaMae),
+		Chaves:              chaves,
+		Agora:               time.Now,
+		Versao:              versao,
+		Plataforma:          plataforma(),
+		Leitoras:            pcsc.Consultar,
+		ServicoDePropagacao: servicoDePropagacao,
+		Sistema:             diagnostico.SistemaOperacional(),
 	}
 	ctx, parar := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer parar()

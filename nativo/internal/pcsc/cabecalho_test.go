@@ -1,4 +1,4 @@
-//go:build linux && pcsc_cabecalho
+//go:build (linux || windows) && pcsc_cabecalho
 
 package pcsc
 
@@ -9,6 +9,9 @@ import "testing"
 // `pcsclite.h` sem o `PCSC/`, então a pasta dele vai no caminho:
 //
 //	CGO_CFLAGS="$(pkg-config --cflags libpcsclite)" go test -tags pcsc_cabecalho ./internal/pcsc/
+//
+// No Windows, a estrutura de `pcsc_windows.go` e as constantes são as do `winscard.h` do SDK (o do
+// MinGW, no CI), com o cgo ligado só para o teste: `CGO_ENABLED=1 go test -tags pcsc_cabecalho`.
 func TestTiposBatemComOCabecalho(t *testing.T) {
 	for nome, par := range comparacaoComOCabecalho() {
 		if par[0] != par[1] {

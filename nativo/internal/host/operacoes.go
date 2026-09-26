@@ -170,14 +170,15 @@ func (h *Host) assinar(ctx context.Context, p *mensagens.Pedido) (protocolo.Dado
 // imprime no terminal.
 func (h *Host) diagnostico(ctx context.Context) protocolo.DadosDoDiagnostico {
 	r, texto := diagnostico.Coletar(ctx, diagnostico.Fontes{
-		Provedores: h.Provedores,
-		Leitoras:   h.Leitoras,
-		Agora:      h.Agora,
-		Versao:     h.Versao,
-		Plataforma: h.Plataforma,
-		Sistema:    h.Sistema,
-		ATRs:       catalogo.ATRs,
-		Modulos:    catalogo.Modulos,
+		Provedores:          h.Provedores,
+		Leitoras:            h.Leitoras,
+		ServicoDePropagacao: h.ServicoDePropagacao,
+		Agora:               h.Agora,
+		Versao:              h.Versao,
+		Plataforma:          h.Plataforma,
+		Sistema:             h.Sistema,
+		ATRs:                catalogo.ATRs,
+		Modulos:             catalogo.Modulos,
 	})
 	return protocolo.DadosDoDiagnostico{Relatorio: r, Texto: texto}
 }

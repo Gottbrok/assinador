@@ -38,6 +38,9 @@ type Host struct {
 	// sistema operacional no relatório.
 	Leitoras func() pcsc.Resultado
 	Sistema  string
+	// ServicoDePropagacao diz o estado do `CertPropSvc` do Windows (`diagnostico.Servico*`); nulo ou
+	// vazio fora dele.
+	ServicoDePropagacao func() string
 
 	escrita sync.Mutex
 }

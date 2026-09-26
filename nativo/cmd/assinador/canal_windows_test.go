@@ -1,0 +1,77 @@
+//go:build windows
+
+package main
+
+import (
+	"os"
+	"os/exec"
+	"syscall"
+	"testing"
+	"unsafe"
+
+	win "golang.org/x/sys/windows"
+)
+
+// escreverPeloCRT escreve pelo descritor 1 de um C runtime, como faria o `printf` de uma DLL de
+// fabricante: carrega o CRT se ainda não estiver (e aí ele já nasce apontando para a saída do
+// processo, que é NUL) e chama o `_write` dele.
+func escreverPeloCRT(dll, texto string) bool {
+	modulo, err := win.LoadLibraryEx(dll, 0, win.LOAD_LIBRARY_SEARCH_SYSTEM32)
+	if err != nil {
+		return false
+	}
+	escrever, err := win.GetProcAddress(modulo, "_write")
+	if err != nil {
+		return false
+	}
+	b := []byte(texto)
+	_, _, _ = syscall.SyscallN(escrever, 1, uintptr(unsafe.Pointer(&b[0])), uintptr(len(b)))
+	return true
+}
+
+// O binário de teste faz o papel do host no teste do canal: separa o canal, escreve "perdida" pelo
+// os.Stdout do Go, pelo handle da saída padrão do processo e pelo descritor 1 dos dois C runtimes
+// compartilhados, e "canal" pela cópia.
+func TestMain(m *testing.M) {
+	if os.Getenv("ASSINADOR_TESTE_DO_CANAL") == "1" {
+		canal, err := separarCanal()
+		if err != nil {
+			os.Exit(3)
+		}
+		_, _ = os.Stdout.WriteString("perdida-pelo-go ")
+		if h, err := win.GetStdHandle(win.STD_OUTPUT_HANDLE); err == nil {
+			b := []byte("perdida-pelo-handle ")
+			var n uint32
+			_ = win.WriteFile(h, b, &n, nil)
+		}
+		if !escreverPeloCRT("msvcrt.dll", "perdida-pelo-msvcrt ") {
+			os.Exit(5)
+		}
+		// O ucrtbase existe do Windows 10 em diante; sem ele, não há o que desviar.
+		_ = escreverPeloCRT("ucrtbase.dll", "perdida-pelo-ucrt ")
+		var flags uint32
+		r, _, _ := win.NewLazySystemDLL("kernel32.dll").NewProc("GetHandleInformation").Call(canal.Fd(), uintptr(unsafe.Pointer(&flags)))
+		if r == 0 || flags&win.HANDLE_FLAG_INHERIT != 0 {
+			os.Exit(4)
+		}
+		_, _ = canal.WriteString("canal")
+		os.Exit(0)
+	}
+	os.Exit(m.Run())
+}
+
+func TestCanalSeparadoDaSaidaPadrao(t *testing.T) {
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(exe, "-test.run=^$")
+	cmd.Env = append(os.Environ(), "ASSINADOR_TESTE_DO_CANAL=1")
+	saida, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("o processo de teste falhou (3: não separou; 4: a cópia herdável; 5: sem o msvcrt): %v", err)
+	}
+	if string(saida) != "canal" {
+		t.Fatalf("a saída verdadeira recebeu %q: o que foi escrito na saída padrão vazou para o canal", saida)
+	}
+}

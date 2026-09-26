@@ -1,9 +1,13 @@
+//go:build !windows
+
 // Package softhsmteste monta, para os TESTES, um token SoftHSM2 num diretório temporário, com
 // chaves e certificados de teste que fazem o papel de um cartão A3. Não entra no programa: só
 // arquivos `_test.go` o importam (a catraca de `cmd/assinador/release_test.go` confere o binário).
 //
 // O módulo é procurado em `ASSINADOR_SOFTHSM` e nos caminhos comuns. Sem ele, o teste é PULADO,
 // a não ser que `ASSINADOR_EXIGE_SOFTHSM=1` (o CI liga), e aí ele reprova.
+//
+// Fora do Windows: o `miekg/pkcs11` não compila lá, e o provedor do Windows não é PKCS#11.
 package softhsmteste
 
 import (

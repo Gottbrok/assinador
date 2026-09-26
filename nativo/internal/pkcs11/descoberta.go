@@ -1,7 +1,9 @@
+//go:build !windows
+
 // Package pkcs11 é o provedor de chaves do Linux e do macOS: acha os módulos PKCS#11, fala com cada
 // um num processo FILHO (regra 8 do CLAUDE.md: biblioteca de fabricante que derruba o processo
 // derruba só o filho), e entra no token com um `C_Login` próprio, que zera a cópia do PIN (achado
-// da F0: o `Login` do `miekg/pkcs11` não zera).
+// da F0: o `Login` do `miekg/pkcs11` não zera). No Windows o provedor é o do `internal/windows`.
 package pkcs11
 
 import (

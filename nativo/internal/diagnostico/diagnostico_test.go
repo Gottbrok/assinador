@@ -49,8 +49,11 @@ type cena struct {
 	provedores []assinatura.RelatorioDoProvedor
 }
 
+// novaCena é uma cena no LINUX, qualquer que seja o sistema que roda o teste: as frases mudam com o
+// sistema, e o teste de cada sistema pede o dele (`novaCenaNo`).
 func novaCena(t *testing.T) *cena {
 	t.Helper()
+	comoSistema(t, "linux")
 	chave, _ := rsa.GenerateKey(rand.Reader, 2048)
 	der := certificadoDeTeste(t, "TITULAR DE TESTE:12345678901", &chave.PublicKey, false, agora.AddDate(1, 0, 0))
 	return &cena{
@@ -184,17 +187,130 @@ func TestTextoDeForaSaiLimpo(t *testing.T) {
 	}
 }
 
-// Fora do Linux, a frase não manda instalar o pcscd.
-func TestAvisoDoPCSCForaDoLinux(t *testing.T) {
+// comoSistema faz o `Montar` falar como se rodasse em `goos`.
+func comoSistema(t *testing.T, goos string) {
+	t.Helper()
 	anterior := sistemaOperacional
-	sistemaOperacional = "windows"
-	defer func() { sistemaOperacional = anterior }()
+	sistemaOperacional = goos
+	t.Cleanup(func() { sistemaOperacional = anterior })
+}
+
+// novaCenaNo é a cena num sistema: a `novaCena` é sempre no Linux, para a suíte dizer o mesmo em
+// qualquer executor (o CI roda também no Windows).
+func novaCenaNo(t *testing.T, goos string) *cena {
+	t.Helper()
 	c := novaCena(t)
+	comoSistema(t, goos)
+	return c
+}
+
+// Fora do Linux, a frase não manda instalar o pcscd; no sistema que ainda não lê leitoras (o
+// macOS, até a F8), ela diz isso.
+func TestAvisoDoPCSCForaDoLinux(t *testing.T) {
+	c := novaCenaNo(t, "darwin")
 	c.leitoras = pcsc.Resultado{Estado: pcsc.EstadoSemBiblioteca, Leitoras: []pcsc.Leitora{}}
 	r, _ := c.montar()
 	avisos := strings.Join(r.Avisos, "\n")
 	if strings.Contains(avisos, "pcscd") || !strings.Contains(avisos, "ainda não lê as leitoras de cartão neste sistema") {
 		t.Fatalf("%v", r.Avisos)
+	}
+}
+
+// No Windows, as frases do PC/SC falam do Windows: o winscard que não abriu, e o serviço Cartão
+// Inteligente, que o Windows só mantém rodando com uma leitora conectada.
+func TestAvisosDoPCSCNoWindows(t *testing.T) {
+	casos := map[string]string{
+		pcsc.EstadoSemBiblioteca: "winscard.dll",
+		pcsc.EstadoSemServico:    "serviço Cartão Inteligente do Windows",
+	}
+	for estado, esperado := range casos {
+		c := novaCenaNo(t, "windows")
+		c.leitoras = pcsc.Resultado{Estado: estado, Leitoras: []pcsc.Leitora{}}
+		r, texto := c.montar()
+		avisos := strings.Join(r.Avisos, "\n")
+		if strings.Contains(avisos+texto, "pcscd") || !strings.Contains(avisos, esperado) {
+			t.Fatalf("%s: %v", estado, r.Avisos)
+		}
+	}
+}
+
+// No Windows, cartão lido e certificado fora da lista com o serviço de Propagação de Certificados
+// parado: o aviso é o do serviço, e não o de instalar o programa do fabricante. Sem cartão, o
+// serviço parado é normal (ele inicia quando o cartão entra) e não vira aviso.
+func TestServicoDePropagacaoParadoNoWindows(t *testing.T) {
+	parado := func() string { return ServicoParado }
+	semCertificados := []assinatura.RelatorioDoProvedor{{Nome: "Windows (repositório do usuário)", Estado: assinatura.EstadoCarregado}}
+
+	c := novaCenaNo(t, "windows")
+	c.fontes.ServicoDePropagacao = parado
+	c.leitoras.Leitoras[0].ATR = "3B00"
+	c.provedores = semCertificados
+	r, _ := c.montar()
+	avisos := strings.Join(r.Avisos, "\n")
+	if !strings.Contains(avisos, "Propagação de Certificados do Windows está parado") || strings.Contains(avisos, "programa do fabricante") {
+		t.Fatalf("com cartão: %v", r.Avisos)
+	}
+
+	c = novaCenaNo(t, "windows")
+	c.fontes.ServicoDePropagacao = parado
+	c.provedores = semCertificados
+	r, _ = c.montar()
+	avisos = strings.Join(r.Avisos, "\n")
+	if !strings.Contains(avisos, "Propagação de Certificados") || strings.Contains(avisos, "instale o SafeSign para Windows") {
+		t.Fatalf("com cartão do catálogo: %v", r.Avisos)
+	}
+
+	c = novaCenaNo(t, "windows")
+	c.fontes.ServicoDePropagacao = parado
+	c.leitoras.Leitoras[0] = pcsc.Leitora{Nome: "Leitora USB 00 00"}
+	c.provedores = semCertificados
+	r, _ = c.montar()
+	if strings.Contains(strings.Join(r.Avisos, "\n"), "Propagação") {
+		t.Fatalf("sem cartão: %v", r.Avisos)
+	}
+
+	// Rodando, ou fora do Windows, nada se diz do serviço.
+	for _, goos := range []string{"windows", "linux"} {
+		c = novaCenaNo(t, goos)
+		c.fontes.ServicoDePropagacao = func() string {
+			if goos == "windows" {
+				return ServicoRodando
+			}
+			return ServicoParado
+		}
+		c.provedores = semCertificados
+		r, _ = c.montar()
+		if strings.Contains(strings.Join(r.Avisos, "\n"), "Propagação") {
+			t.Fatalf("%s: %v", goos, r.Avisos)
+		}
+	}
+}
+
+// No Windows, o ATR do catálogo dá a sugestão, mas o "não está instalado" (que olha os módulos do
+// Linux) não se afirma: o provedor do fabricante no Windows ainda não foi medido.
+func TestSugestaoPeloATRNoWindows(t *testing.T) {
+	c := novaCenaNo(t, "windows")
+	c.provedores = []assinatura.RelatorioDoProvedor{{Nome: "Windows (repositório do usuário)", Estado: assinatura.EstadoCarregado}}
+	r, _ := c.montar()
+	avisos := strings.Join(r.Avisos, "\n")
+	if r.Leitoras[0].Sugestao != "SafeSign" || strings.Contains(avisos, "que não está instalado") || !strings.Contains(avisos, "instale o SafeSign para Windows") {
+		t.Fatalf("%+v %v", r.Leitoras, r.Avisos)
+	}
+}
+
+// O registro diz "Windows 10" também no Windows 11; a compilação decide.
+func TestNomeDoWindows(t *testing.T) {
+	casos := []struct{ produto, versao, compilacao, esperado string }{
+		{"Windows 10 Pro", "22H2", "19045", "Windows 10 Pro 22H2 (compilação 19045)"},
+		{"Windows 10 Pro", "23H2", "22631", "Windows 11 Pro 23H2 (compilação 22631)"},
+		{"Windows 10 Enterprise", "", "22000", "Windows 11 Enterprise (compilação 22000)"},
+		{"Windows 10 Home", "", "", "Windows 10 Home"},
+		{"", "23H2", "22631", ""},
+	}
+	for _, c := range casos {
+		if got := nomeDoWindows(c.produto, c.versao, c.compilacao); got != c.esperado {
+			t.Errorf("%q %q %q: %q, e não %q", c.produto, c.versao, c.compilacao, got, c.esperado)
+		}
 	}
 }
 

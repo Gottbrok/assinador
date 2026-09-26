@@ -17,6 +17,7 @@ import (
 	"errors"
 	"io"
 	"math/big"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -407,8 +408,13 @@ func TestDiagnostico(t *testing.T) {
 	}
 	r := c.host.atender(context.Background(), pedido(t, "diagnostico", origemDaPagina, nil))
 	d := r.Dados.(protocolo.DadosDoDiagnostico)
+	// A frase do serviço parado é a do sistema que roda o teste (o CI roda também no Windows).
+	servicoParado := "O serviço pcscd não está rodando"
+	if runtime.GOOS == "windows" {
+		servicoParado = "serviço Cartão Inteligente do Windows"
+	}
 	// O diagnóstico conta os certificados do módulo menos o da AC: dos 4 do provedor falso, 3.
-	if !r.OK || !strings.Contains(d.Texto, "Assinador 0.1.0-teste") || !strings.Contains(d.Texto, "Programa do cartão Falso: carregado, 3 certificado(s)") || !strings.Contains(d.Texto, "O serviço pcscd não está rodando") {
+	if !r.OK || !strings.Contains(d.Texto, "Assinador 0.1.0-teste") || !strings.Contains(d.Texto, "Programa do cartão Falso: carregado, 3 certificado(s)") || !strings.Contains(d.Texto, servicoParado) {
 		t.Fatalf("%+v", d)
 	}
 	if _, ok := d.Relatorio.(diagnostico.Relatorio); !ok {

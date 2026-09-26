@@ -8,12 +8,11 @@
 package diagnostico
 
 import (
-	"bufio"
 	"context"
 	"crypto/x509"
 	"fmt"
-	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -83,13 +82,25 @@ type Certificado struct {
 type Fontes struct {
 	Provedores []assinatura.Provedor
 	Leitoras   func() pcsc.Resultado
-	Agora      func() time.Time
-	Versao     string
-	Plataforma string
-	Sistema    string
-	ATRs       []catalogo.ATR
-	Modulos    []catalogo.Modulo
+	// ServicoDePropagacao diz o estado do serviço de Propagação de Certificados (`CertPropSvc`) do
+	// Windows, que põe o certificado do cartão no repositório do usuário (`Servico*`); nulo ou vazio
+	// fora dele.
+	ServicoDePropagacao func() string
+	Agora               func() time.Time
+	Versao              string
+	Plataforma          string
+	Sistema             string
+	ATRs                []catalogo.ATR
+	Modulos             []catalogo.Modulo
 }
+
+// Estados do serviço de Propagação de Certificados do Windows. `desconhecido` é o serviço que não
+// pôde ser consultado: não vira aviso.
+const (
+	ServicoRodando      = "rodando"
+	ServicoParado       = "parado"
+	ServicoDesconhecido = "desconhecido"
+)
 
 // PrazoDasLeitoras é quanto o diagnóstico espera o `pcscd`. Passado o prazo, o relatório diz que
 // ele não respondeu, e a consulta que ficou presa é abandonada.
@@ -120,7 +131,11 @@ func consultarComPrazo(ctx context.Context, consultar func() pcsc.Resultado) pcs
 	case r := <-pronto:
 		return r
 	case <-time.After(PrazoDasLeitoras):
-		return pcsc.Resultado{Estado: pcsc.EstadoFalhou, Detalhe: "o pcscd não respondeu no prazo", Leitoras: []pcsc.Leitora{}}
+		servico := "o pcscd"
+		if sistemaOperacional == "windows" {
+			servico = "o serviço Cartão Inteligente"
+		}
+		return pcsc.Resultado{Estado: pcsc.EstadoFalhou, Detalhe: servico + " não respondeu no prazo", Leitoras: []pcsc.Leitora{}}
 	case <-ctx.Done():
 		return pcsc.Resultado{Estado: pcsc.EstadoFalhou, Detalhe: "consulta cancelada", Leitoras: []pcsc.Leitora{}}
 	}
@@ -235,21 +250,36 @@ func Montar(f Fontes, leitoras pcsc.Resultado, provedores []assinatura.Relatorio
 	}
 
 	avisar := func(formato string, args ...any) { r.Avisos = append(r.Avisos, fmt.Sprintf(formato, args...)) }
+	windows := sistemaOperacional == "windows"
 	switch leitoras.Estado {
 	case pcsc.EstadoSemBiblioteca:
-		if sistemaOperacional == "linux" {
+		switch sistemaOperacional {
+		case "linux":
 			avisar("A biblioteca do PC/SC não está instalada, e sem ela nenhuma leitora aparece. Instale o pacote pcscd (no Fedora, pcsc-lite).")
-		} else {
+		case "windows":
+			avisar("O componente de cartão inteligente do Windows (winscard.dll) não abriu, e sem ele nenhuma leitora aparece.")
+		default:
 			avisar("O Assinador ainda não lê as leitoras de cartão neste sistema.")
 		}
 	case pcsc.EstadoSemServico:
-		avisar("O serviço pcscd não está rodando, e sem ele nenhuma leitora aparece. Para iniciar: sudo systemctl start pcscd.")
+		if windows {
+			// O Windows mantém o serviço Cartão Inteligente rodando só enquanto há leitora conectada:
+			// "sem serviço" ali é, quase sempre, "sem leitora".
+			avisar("Nenhuma leitora de cartão foi encontrada, ou o serviço Cartão Inteligente do Windows está parado. Confira o cabo USB da leitora ou do token.")
+		} else {
+			avisar("O serviço pcscd não está rodando, e sem ele nenhuma leitora aparece. Para iniciar: sudo systemctl start pcscd.")
+		}
 	case pcsc.EstadoSemLeitora:
 		avisar("Nenhuma leitora de cartão foi encontrada. Confira o cabo USB da leitora ou do token.")
 	case pcsc.EstadoFalhou:
 		avisar("O PC/SC não respondeu como devia (%s).", limpar(leitoras.Detalhe))
 	}
 	r.PCSC.Detalhe = limpar(r.PCSC.Detalhe)
+	// No Windows, o certificado do cartão chega ao repositório do usuário pelo serviço de Propagação
+	// de Certificados, que inicia por gatilho quando um cartão entra (parado sem cartão é normal).
+	// Cartão lido e certificado fora da lista, com ele parado, é o caso mais provável de "não
+	// aparece" (§3.5 do plano): o aviso dele substitui o de instalar o programa do fabricante.
+	propagacaoParada := windows && f.ServicoDePropagacao != nil && f.ServicoDePropagacao() == ServicoParado
 	algumCartao := false
 	for _, l := range leitoras.Leitoras {
 		nome := limpar(l.Nome)
@@ -260,12 +290,19 @@ func Montar(f Fontes, leitoras pcsc.Resultado, provedores []assinatura.Relatorio
 				item.Cartao, item.Sugestao = a.Cartao, m.Rotulo
 				carregou, certificados := modulo(m)
 				switch {
+				case windows:
+					// O catálogo de módulos é o do Linux. No Windows quem lê o cartão é o provedor do
+					// fabricante, cujo nome ainda não foi medido (regra 4): a sugestão vale, e o "não
+					// está instalado" não se afirma.
+					if len(r.Certificados) == 0 && !propagacaoParada {
+						avisar("O cartão na leitora %s (%s) usa o %s. Se o certificado não aparece na lista, instale o %s para Windows.", nome, a.Cartao, m.Rotulo, m.Rotulo)
+					}
 				case !carregou:
 					avisar("O cartão na leitora %s (%s) usa o %s, que não está instalado. Instale o %s.", nome, a.Cartao, m.Rotulo, m.Rotulo)
 				case certificados == 0:
 					avisar("O %s está instalado, mas não achou certificado no cartão da leitora %s.", m.Rotulo, nome)
 				}
-			} else if len(r.Certificados) == 0 {
+			} else if len(r.Certificados) == 0 && !propagacaoParada {
 				avisar("O cartão na leitora %s não foi lido por nenhum programa de cartão instalado. Ele precisa do programa do fabricante (por exemplo, o SafeSign ou o SafeNet).", nome)
 			}
 			if l.Mudo {
@@ -276,6 +313,9 @@ func Montar(f Fontes, leitoras pcsc.Resultado, provedores []assinatura.Relatorio
 	}
 	if leitoras.Estado == pcsc.EstadoOk && !algumCartao && len(r.Certificados) == 0 {
 		avisar("Nenhuma leitora tem cartão. Coloque o cartão na leitora (ou conecte o token).")
+	}
+	if propagacaoParada && algumCartao && len(r.Certificados) == 0 {
+		avisar("O serviço Propagação de Certificados do Windows está parado, e com ele parado o certificado do cartão não entra na lista. Para iniciar: abra Serviços (services.msc), Propagação de Certificados, Iniciar.")
 	}
 	algumModulo := false
 	for _, p := range r.Provedores {
@@ -345,7 +385,7 @@ var nomesDaSituacao = map[string]string{
 var nomesDoEstadoDoPCSC = map[string]string{
 	pcsc.EstadoOk:            "ok",
 	pcsc.EstadoSemBiblioteca: "biblioteca não instalada",
-	pcsc.EstadoSemServico:    "serviço pcscd parado",
+	pcsc.EstadoSemServico:    "serviço parado",
 	pcsc.EstadoSemLeitora:    "nenhuma leitora",
 	pcsc.EstadoFalhou:        "falhou",
 }
@@ -409,19 +449,25 @@ func texto(r Relatorio) string {
 	return strings.TrimRight(b.String(), "\n")
 }
 
-// SistemaOperacional é o nome do sistema para o relatório (o PRETTY_NAME do os-release, no
-// Linux), ou vazio.
-func SistemaOperacional() string {
-	f, err := os.Open("/etc/os-release")
-	if err != nil {
+// primeiraCompilacaoDoWindows11 é o número de compilação em que o Windows 11 começa. O registro
+// continua dizendo "Windows 10" no `ProductName` do Windows 11, e é a compilação que os distingue.
+const primeiraCompilacaoDoWindows11 = 22000
+
+// nomeDoWindows monta o nome do sistema a partir do registro (`ProductName`, `DisplayVersion` e
+// `CurrentBuild`), trocando o "Windows 10" pelo "Windows 11" quando a compilação é do 11.
+func nomeDoWindows(produto, versao, compilacao string) string {
+	if produto == "" {
 		return ""
 	}
-	defer f.Close()
-	s := bufio.NewScanner(f)
-	for s.Scan() {
-		if valor, ok := strings.CutPrefix(s.Text(), "PRETTY_NAME="); ok {
-			return strings.Trim(valor, `"'`)
-		}
+	if n, err := strconv.Atoi(compilacao); err == nil && n >= primeiraCompilacaoDoWindows11 {
+		produto = strings.Replace(produto, "Windows 10", "Windows 11", 1)
 	}
-	return ""
+	nome := produto
+	if versao != "" {
+		nome += " " + versao
+	}
+	if compilacao != "" {
+		nome += " (compilação " + compilacao + ")"
+	}
+	return nome
 }
