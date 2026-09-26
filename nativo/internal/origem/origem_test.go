@@ -116,10 +116,13 @@ func TestPermitido(t *testing.T) {
 	if (Chamador{Navegador: Firefox, Extensao: "outra@exemplo.com"}).Permitido() {
 		t.Error("aceitou outra extensão do Firefox")
 	}
-	// Sem os IDs das lojas (F7a) e sem os de desenvolvimento (F3), nenhuma extensão do Chrome passa.
-	if len(extensoesChromePublicadas) == 0 && len(extensoesChromeDev) == 0 {
-		if (Chamador{Navegador: Chromium, Extensao: "abcdefghijklmnopabcdefghijklmnop"}).Permitido() {
-			t.Error("aceitou extensão do Chrome sem ID conhecido")
+	// Extensão do Chrome fora da lista deste build não passa, e a lista é a que vai aos manifestos.
+	if (Chamador{Navegador: Chromium, Extensao: "abcdefghijklmnopabcdefghijklmnop"}).Permitido() {
+		t.Error("aceitou extensão do Chrome sem ID conhecido")
+	}
+	for _, id := range ExtensoesChrome() {
+		if !(Chamador{Navegador: Chromium, Extensao: id}).Permitido() {
+			t.Errorf("a lista dos manifestos tem %s, e o programa o recusa", id)
 		}
 	}
 	if (Chamador{}).Permitido() {

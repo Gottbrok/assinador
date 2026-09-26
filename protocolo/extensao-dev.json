@@ -1,0 +1,5 @@
+{
+  "comentario": "Chave PUBLICA da extensao de DESENVOLVIMENTO (o campo key do manifesto) e o ID que o Chrome e o Edge derivam dela. Provisoria: a F3 a troca pela chave do rascunho do item na Chrome Web Store, para o ID de desenvolvimento ser o da loja. A privada nao existe em lugar nenhum: extensao descompactada so precisa da publica. So o build dev aceita este ID.",
+  "chave": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAslgxVnSJR4BtwHRVVBqPmlmiz9L0jwee4YHwy21+l1m5v+6ktyttlQw53sGKeHE/+he0LzESWQhAXBI5iizErqsXEfBlOyZgWR0ThZ2c7jT1jVO5+3dXLlY6UL+ov+uiGPYx4SO+KnjQp/09od8OjP6NEUSfRUnG1szGjBOfUTWK54+9ZwCY5HOeEutvWD35T9pZgPop39exY0Kyqwb9S7PpV+d1CdB8GDoZVNj9wZzKyNOobauAaQ9KNJvRWaqWiyYdLw2r/f3PcF4JyqKcLHj8kjLt/XsCf8MTkGeONGOXYRrCWJ5OOUxjfxtqvO6zepF8sqCJAJSzPcNUpLyW1wIDAQAB",
+  "idChrome": "jmogljhnfdnhhoapijclifkpjfbhhppf"
+}

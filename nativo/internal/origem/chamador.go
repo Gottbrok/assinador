@@ -11,6 +11,17 @@ import (
 // Trocá-lo quebra instalações.
 const ExtensaoFirefox = "assinador@confidata.com.br"
 
+// NomeDoHost é o nome do host de native messaging nos manifestos dos navegadores. Trocá-lo quebra
+// instalações.
+const NomeDoHost = "br.com.confidata.assinador"
+
+// ExtensoesChrome são os IDs que ESTE build aceita do Chrome e do Edge: os publicados e, só no
+// build de desenvolvimento, os de desenvolvimento. É a mesma lista que vai para o `allowed_origins`
+// dos manifestos (`cmd/manifestos`): o manifesto e o programa não divergem.
+func ExtensoesChrome() []string {
+	return append(slices.Clone(extensoesChromePublicadas), extensoesChromeDev...)
+}
+
 // extensoesChromePublicadas são os IDs da extensão na Chrome Web Store e no Edge Add-ons. Eles só
 // existem a partir do rascunho do item na loja, e os DEFINITIVOS entram na F7a. Até lá a lista é
 // vazia, e o programa de release recusa chamada do Chrome e do Edge (falha fechada).

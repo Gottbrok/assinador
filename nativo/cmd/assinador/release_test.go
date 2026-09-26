@@ -57,6 +57,15 @@ func TestReleaseSemChaveDevNemTeste(t *testing.T) {
 	for _, c := range chaves {
 		proibidos = append(proibidos, c.Jwk.X, c.Jwk.Y)
 	}
+	// Nem o ID da extensão de desenvolvimento, que qualquer um reproduz com a chave pública.
+	var extensaoDev struct {
+		IDChrome string `json:"idChrome"`
+	}
+	brutoDaExtensao, err := os.ReadFile(filepath.Join("..", "..", "..", "protocolo", "extensao-dev.json"))
+	if err != nil || json.Unmarshal(brutoDaExtensao, &extensaoDev) != nil || extensaoDev.IDChrome == "" {
+		t.Fatalf("protocolo/extensao-dev.json ilegível: %v", err)
+	}
+	proibidos = append(proibidos, extensaoDev.IDChrome)
 
 	release, err := os.ReadFile(construir(t, ""))
 	if err != nil {
