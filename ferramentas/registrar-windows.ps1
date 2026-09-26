@@ -29,11 +29,23 @@ $ChavesChromium = @(
 )
 $ChaveFirefox = "HKCU:\Software\Mozilla\NativeMessagingHosts\$Nome"
 
+# Sobe apagando as chaves que ficaram VAZIAS (as que o registro criou para um navegador que não está
+# instalado), até HKCU:\Software, sem nunca apagar uma que tenha outra subchave ou valor.
+function Remover-ChavesVazias([string]$chave) {
+  while ($chave -and $chave -ne 'HKCU:\Software' -and (Test-Path -LiteralPath $chave)) {
+    $item = Get-Item -LiteralPath $chave
+    if ($item.SubKeyCount -gt 0 -or $item.ValueCount -gt 0) { break }
+    Remove-Item -LiteralPath $chave
+    $chave = Split-Path -Path $chave -Parent
+  }
+}
+
 if ($Remover) {
   foreach ($chave in $ChavesChromium + $ChaveFirefox) {
-    if (Test-Path $chave) { Remove-Item -Path $chave -Recurse }
+    if (Test-Path -LiteralPath $chave) { Remove-Item -LiteralPath $chave -Recurse }
+    Remover-ChavesVazias (Split-Path -Path $chave -Parent)
   }
-  if (Test-Path $Pasta) { Remove-Item -Path $Pasta -Recurse }
+  if (Test-Path -LiteralPath $Pasta) { Remove-Item -LiteralPath $Pasta -Recurse }
   Write-Output 'Assinador de desenvolvimento removido.'
   exit 0
 }
@@ -43,11 +55,12 @@ if (-not $Programa -or -not $Manifestos) {
 }
 New-Item -ItemType Directory -Force -Path $Pasta | Out-Null
 $Instalado = Join-Path $Pasta 'assinador.exe'
-Copy-Item -Path (Resolve-Path $Programa).Path -Destination $Instalado -Force
+# Caminhos LITERAIS: sem o -LiteralPath, um `[` ou `]` no nome da pasta vira curinga.
+Copy-Item -LiteralPath (Resolve-Path -LiteralPath $Programa).Path -Destination $Instalado -Force
 # A cópia leva a marca de "veio da internet" do original; sem ela, o navegador lança o programa sem
 # o aviso do SmartScreen no meio do native messaging.
-Unblock-File -Path $Instalado
-& (Resolve-Path $Manifestos).Path -saida $Pasta -programa $Instalado
+Unblock-File -LiteralPath $Instalado
+& (Resolve-Path -LiteralPath $Manifestos).Path -saida $Pasta -programa $Instalado
 if ($LASTEXITCODE -ne 0) { throw "O manifestos.exe saiu com $LASTEXITCODE." }
 
 foreach ($chave in $ChavesChromium) {

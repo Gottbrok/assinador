@@ -185,13 +185,18 @@ jobs:
           go test ./...
           go test -tags dev ./...
 
-      # O cgo só para estes testes, e só no x64 (o MinGW do executor é x64).
+      # O cgo só para estes testes, e só no x64. O MinGW vem na imagem do executor; se uma imagem nova
+      # vier sem ele, ele é instalado aqui, e não pulado.
       - name: As estruturas e os códigos são os dos cabeçalhos do SDK
         if: matrix.arquitetura == 'amd64'
         working-directory: nativo
         env:
           CGO_ENABLED: "1"
         run: |
+          if ! command -v gcc >/dev/null; then
+            choco install mingw -y --no-progress
+            export PATH="/c/ProgramData/mingw64/mingw64/bin:$PATH"
+          fi
           gcc --version
           go test -tags "pcsc_cabecalho windows_cabecalho" -run TestTiposBatemComOCabecalho -v ./internal/pcsc/ ./internal/windows/
 
@@ -226,7 +231,9 @@ jobs:
           & "$env:LOCALAPPDATA\ConfidataAssinadorDev\assinador.exe" versao
           if ($LASTEXITCODE -ne 0) { throw 'o programa registrado não abriu' }
           .\dist\registrar-windows.ps1 -Remover
-          if (Test-Path "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$nome") { throw 'a chave do Chrome ficou' }
+          foreach ($chave in "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$nome", "HKCU:\Software\Microsoft\Edge\NativeMessagingHosts\$nome", "HKCU:\Software\Chromium\NativeMessagingHosts\$nome", "HKCU:\Software\Mozilla\NativeMessagingHosts\$nome") {
+            if (Test-Path -LiteralPath $chave) { throw "a chave $chave ficou" }
+          }
           if (Test-Path "$env:LOCALAPPDATA\ConfidataAssinadorDev") { throw 'a pasta ficou' }
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
