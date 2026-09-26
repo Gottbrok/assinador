@@ -1,7 +1,7 @@
 package catalogo
 
 import (
-	"path/filepath"
+	"path"
 	"regexp"
 	"testing"
 	"time"
@@ -33,7 +33,9 @@ func TestTodaEntradaFoiMedida(t *testing.T) {
 		}
 		for plataforma, caminhos := range m.Caminhos {
 			for _, c := range caminhos {
-				if !filepath.IsAbs(c) {
+				// Os caminhos do catálogo são do Linux e do macOS, com `/`: o `filepath` do Windows,
+				// onde a suíte também roda, não os tomaria por absolutos (sem letra de unidade).
+				if !path.IsAbs(c) {
 					t.Errorf("%s/%s: caminho relativo %q", m.Nome, plataforma, c)
 				}
 			}

@@ -1,0 +1,8 @@
+# O repositório é LF, em qualquer sistema. O Git do Windows converte para CRLF no checkout por
+# padrão (core.autocrlf), e há teste que compara bytes exatos: o hash das fixtures do bilhete contra
+# o ORIGEM.md, o chaves.go gerado contra o do disco, e o pacote reproduzível da extensão.
+* text=auto eol=lf
+
+# As fixtures vêm da biblioteca por `git archive` da tag, com as somas conferidas (regra 13): nenhum
+# byte muda no checkout.
+protocolo/fixtures/** -text
