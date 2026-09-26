@@ -20,7 +20,7 @@ Em construção. Licença Apache-2.0.
 | `extensao/` | A extensão para Chrome, Edge e Firefox: a ponte da página, a permissão por endereço, a janela de confirmação e as opções. Ver [`extensao/README.md`](extensao/README.md) e [`extensao/PRIVACIDADE.md`](extensao/PRIVACIDADE.md) |
 | `protocolo/` | [`PROTOCOLO.md`](protocolo/PROTOCOLO.md), as chaves públicas de produção, a chave pública da extensão de desenvolvimento e as fixtures do bilhete |
 | `instaladores/linux/` | O `.deb` e o `.rpm` (`empacotar.sh`) e a prova deles em contêiner (`testar-pacotes.sh`) |
-| `ferramentas/` | Prova e medição (F0) e o `host-teste`, que fala com o programa como a extensão e serve a página de teste da extensão (`servir`). Nunca vai para release |
+| `ferramentas/` | Prova e medição (F0), o `host-teste`, que fala com o programa como a extensão e serve a página de teste da extensão (`servir`), e o `registrar-windows.ps1`, que registra o programa de desenvolvimento no Windows antes do MSI. Nunca vai para release |
 | `docs/medicoes/` | O que foi medido com cartão real, com data e equipamento |
 
 A segurança do programa está em [`SECURITY.md`](SECURITY.md).
@@ -65,6 +65,38 @@ instaladores/linux/testar-pacotes.sh dist          # instala, roda e remove em c
 
 São pacotes de DESENVOLVIMENTO: o programa com a tag `dev` e os manifestos com o ID provisório da
 extensão. Os de produção, assinados e com os IDs das lojas, vêm com a publicação.
+
+## Windows (desenvolvimento)
+
+No Windows o programa lê o repositório de certificados do usuário e assina pelo CNG ou pelo CSP do
+fabricante, sem PKCS#11 e sem cgo: ele compila cruzado de qualquer sistema. O PIN é pedido pelo
+diálogo do próprio Windows.
+
+```sh
+cd nativo
+GOOS=windows GOARCH=amd64 go build -tags dev -o ../bin/assinador-dev.exe ./cmd/assinador
+GOOS=windows GOARCH=amd64 go build -tags dev -o ../bin/manifestos-dev.exe ./cmd/manifestos
+```
+
+O CI publica os dois, com o `registrar-windows.ps1`, no artefato `assinador-dev-windows-amd64` (e
+`-arm64`). No Windows, sem administrador:
+
+```powershell
+.\registrar-windows.ps1 -Programa .\assinador-dev.exe -Manifestos .\manifestos-dev.exe
+& "$env:LOCALAPPDATA\ConfidataAssinadorDev\assinador.exe" diagnostico
+.\registrar-windows.ps1 -Remover
+```
+
+O registro copia o programa para `%LOCALAPPDATA%\ConfidataAssinadorDev`, gera os manifestos (os
+IDs de extensão que o programa aceita) e grava as chaves `HKCU` do Chrome, do Edge, do Chromium e
+do Firefox; `-Remover` desfaz tudo. A chave dev do bilhete fica em
+`%APPDATA%\confidata-assinador\chaves-dev.json`.
+
+Os testes do Windows rodam no CI (job `windows`, em x64 e arm64): certificados com chave de
+SOFTWARE criados pelo `New-SelfSignedCertificate` fazem o papel do cartão, um no caminho CNG e
+outro no CSP. Fora do Windows, `GOOS=windows go vet ./...` e o `staticcheck` com `GOOS=windows`
+(compilado para a máquina, e não por `go run`, que o compilaria para o Windows) pegam o que não
+compila.
 
 ## Testar com o cartão, sem navegador
 

@@ -209,8 +209,22 @@ O que o programa produz, e quando:
 | `modulo-falhou` | o módulo não carregou, falhou ou caiu (o filho morreu) |
 | `interno` | a assinatura devolvida não confere com o certificado; falha inesperada |
 
-`nativo-ausente`, `nativo-desatualizado`, `permissao-negada` e `bilhete-expirado` são da extensão ou
-da biblioteca; o programa não os produz.
+No Windows, os mesmos códigos saem da recusa do provedor (os códigos do Windows vão no `detalhe`,
+com a etapa):
+
+| Código | Quando, no Windows |
+|---|---|
+| `cancelado` | `SCARD_W_CANCELLED_BY_USER`, `SCARD_E_CANCELLED`, `NTE_USER_CANCELLED`, `ERROR_CANCELLED` (o diálogo do provedor fechado), ou o canal com a extensão fechado durante a assinatura |
+| `pin-incorreto` | `SCARD_W_WRONG_CHV`, sempre sem `tentativas` (o Windows não as informa) |
+| `token-bloqueado` | `SCARD_W_CHV_BLOCKED` |
+| `algoritmo-nao-suportado` | `NTE_BAD_ALGID`, `NTE_NOT_SUPPORTED` (o CSP legado sem SHA-256) |
+| `chave-ausente` | `SCARD_E_NO_SMARTCARD`, `SCARD_W_REMOVED_CARD`, `NTE_NO_KEY`, `NTE_BAD_KEYSET`, `NTE_KEYSET_NOT_DEF`, `CRYPT_E_NO_KEY_PROPERTY` (o certificado continua no repositório, e o cartão não está) |
+| `permissao-negada` | `NTE_PERM`, `ERROR_ACCESS_DENIED` |
+| `certificado-nao-encontrado` | o certificado saiu do repositório entre a lista e a assinatura |
+| `modulo-falhou` | qualquer outra recusa do provedor do fabricante |
+
+`nativo-ausente`, `nativo-desatualizado` e `bilhete-expirado` são da extensão ou da biblioteca; o
+programa não os produz (a `permissao-negada` o programa só produz no Windows).
 
 ## Módulos PKCS#11 (Linux e macOS)
 
@@ -244,6 +258,36 @@ processo derruba só o filho; a lista segue com os outros módulos e um aviso. P
 Certificados iguais vistos por dois módulos (o SafeSign e o OpenSC no mesmo cartão) são fundidos
 por `ref`, e fica o do fabricante.
 
+## Chaves no Windows (CNG e CSP)
+
+No Windows não há PKCS#11: o programa usa a API do próprio sistema, sem cgo
+(`nativo/internal/windows`).
+
+- **Lista:** o repositório pessoal do usuário (`CurrentUser\My`), cada certificado com
+  `CERT_KEY_PROV_INFO_PROP_ID`, lido SEM abrir a chave (listar nunca pede PIN). O certificado do
+  cartão chega ali pelo serviço de Propagação de Certificados; o A1 importado no Windows também
+  aparece, e assina. `provedor` é `windows:cng` (a chave num KSP) ou `windows:csp` (num CSP legado);
+  `rotuloDoProvedor` é "Certificado instalado no Windows" para os provedores de software da Microsoft
+  (e o do TPM), e o nome do provedor para o cartão ou token. `exigePin` é sempre falso: o PIN é
+  pedido pelo PROVEDOR, num diálogo do Windows, e a janela da extensão não mostra campo.
+- **Assinar:** o certificado é achado de novo no repositório pelo DER; a chave, por
+  `CryptAcquireCertificatePrivateKey` com `CRYPT_ACQUIRE_PREFER_NCRYPT_KEY_FLAG` e
+  `CRYPT_ACQUIRE_COMPARE_KEY_FLAG` (a chave tem de ser a do certificado). Chave CNG:
+  `NCryptSignHash` com `BCRYPT_PAD_PKCS1` e SHA-256 sobre o resumo (o CNG monta o DigestInfo). Chave
+  de CSP legado: `CryptCreateHash(CALG_SHA_256)`, `CryptSetHashParam(HP_HASHVAL)`,
+  `CryptSignHash` e a inversão dos bytes (o CSP devolve em little-endian). O host confere a
+  assinatura contra o certificado antes de ela sair, como no Linux.
+- **Janela-mãe:** o `--parent-window` que o Chrome e o Edge passam vai ao CSP (`PP_CLIENT_HWND`,
+  antes de adquirir a chave), à aquisição (`CRYPT_ACQUIRE_WINDOW_HANDLE_FLAG`) e à chave CNG
+  (`NCRYPT_WINDOW_HANDLE_PROPERTY`), para o diálogo de PIN abrir na frente do navegador. O Firefox
+  não passa janela.
+- **Prazo:** a chamada ao provedor bloqueia enquanto o diálogo está aberto e não se interrompe; ela
+  corre à parte, e quando a extensão fecha o canal (cada fluxo tem a sua conexão), o programa
+  responde `cancelado` e sai, levando o diálogo junto. Não há o prazo de 90 s do filho do PKCS#11.
+- **Processo:** o CSP e o KSP do fabricante são DLLs que rodam DENTRO do programa (não há filho, como
+  o plano decidiu para o Windows); a proteção do canal contra o que elas escrevem está em
+  "Diagnóstico".
+
 ## Diagnóstico
 
 A operação `diagnostico` e o modo `assinador diagnostico` do terminal (`--json` para o relatório)
@@ -261,9 +305,20 @@ devolvem o MESMO relatório (`nativo/internal/diagnostico`), para o suporte, sem
 - **PC/SC:** só estado. O programa lê as leitoras e o ATR de cada cartão (`SCardGetStatusChange`
   com prazo zero), nunca conecta ao cartão e nunca manda comando a ele. A biblioteca (o pcsc-lite,
   no Linux) é aberta com `dlopen` na hora da consulta: sem ela, o programa abre do mesmo jeito, e o
-  diagnóstico diz o que instalar. As leitoras são consultadas ao mesmo tempo que os módulos;
-  passados 5 s sem resposta do `pcscd`, o relatório diz que ele não respondeu. A lista de leitoras
-  que cresce entre o pedido do tamanho e o da lista é lida de novo.
+  diagnóstico diz o que instalar. No Windows é o `winscard.dll` do sistema, pelas funções `W`. As
+  leitoras são consultadas ao mesmo tempo que os módulos; passados 5 s sem resposta do `pcscd` (no
+  Windows, do serviço Cartão Inteligente), o relatório diz que ele não respondeu. A lista de
+  leitoras que cresce entre o pedido do tamanho e o da lista é lida de novo.
+- **Windows:** `sistema` vem do registro (o "Windows 10" que o registro ainda diz no Windows 11 é
+  corrigido pela compilação); cada provedor de chave com certificado no repositório é um item de
+  `provedores` (o nome do provedor, `detalhe` `cng` ou `csp`), e sem nenhum aparece o próprio
+  repositório. O serviço Cartão Inteligente só roda com leitora conectada, então "sem serviço" ali
+  vira "nenhuma leitora, ou o serviço parado". O estado do serviço de Propagação de Certificados
+  (`CertPropSvc`, só leitura) entra como aviso quando há cartão lido, nenhum certificado na lista e
+  o serviço parado: é o caso mais provável de "não aparece", e o aviso dele toma o lugar do de
+  instalar o programa do fabricante (sem cartão, o serviço parado é normal: ele inicia por gatilho).
+  Pelo ATR do catálogo, a sugestão vale, mas o "não está instalado" não se afirma no Windows até o
+  provedor do fabricante ser medido lá.
 - **Sugestão pelo ATR:** o ATR que está no catálogo medido diz qual programa do fabricante lê o
   cartão (`cartao` e `sugestao`); sem esse programa carregado, o aviso manda instalá-lo. O módulo do
   catálogo se reconhece pelo rótulo ou pelo fabricante que declara no `C_GetInfo` (`fabricante`),
@@ -283,7 +338,11 @@ devolvem o MESMO relatório (`nativo/internal/diagnostico`), para o suporte, sem
 
 O host protege o canal do que o C escreve: no modo host, o descritor 1 aponta para `/dev/null`
 desde o início, e só o canal com a extensão usa a cópia do descritor verdadeiro (que os filhos não
-herdam).
+herdam). No Windows, onde o CSP e o KSP do fabricante rodam dentro do programa, são três camadas: o
+`os.Stdout` do Go e a saída padrão do processo (`SetStdHandle`, que o C runtime de toda DLL
+carregada depois lê ao iniciar) apontam para `NUL`, e o descritor 1 dos C runtimes compartilhados
+que já estavam carregados (`msvcrt.dll`, `ucrtbase.dll`) é trocado por `_dup2`; o canal usa uma
+cópia não herdável do handle verdadeiro.
 
 ## Pacotes para Linux
 

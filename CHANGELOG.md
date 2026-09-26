@@ -150,3 +150,32 @@
   - Testes que não provavam o que diziam foram reescritos (o encurtamento da janela pelo orçamento,
     a permissão numa chave só); o exemplo de host nos textos da loja virou um neutro.
   - Fica como teste manual do gate: o Firefox (o ponta a ponta automático é só no Chromium).
+- F6a: o programa no Windows, sem cgo e sem PKCS#11.
+  - `windows`: o repositório pessoal do usuário pelo `CERT_KEY_PROV_INFO` (listar nunca abre a
+    chave), a assinatura pelo CNG (`NCryptSignHash`, PKCS#1 com SHA-256) ou pelo CSP legado
+    (`CryptSignHash` sobre o `HP_HASHVAL`, com a inversão de bytes), a chave conferida contra o
+    certificado na aquisição (`COMPARE_KEY`), a janela-mãe do Chrome no CSP, na aquisição e na chave
+    CNG, e o mapa dos códigos do Windows para o protocolo. O PIN é do provedor (`exigePin` falso). A
+    chamada que bloqueia no diálogo corre à parte, e o canal fechado responde na hora.
+  - `pcsc`: o `winscard.dll` pelas funções `W`. `diagnostico`: o nome do sistema pelo registro (o
+    Windows 11 pela compilação), as frases do Windows, e o serviço de Propagação de Certificados
+    (`CertPropSvc`), cujo aviso vale só com cartão lido e nenhum certificado na lista, porque ele
+    inicia por gatilho e parado sem cartão é normal.
+  - `main`: o canal separado da saída padrão também no Windows, onde o CSP e o KSP do fabricante
+    rodam dentro do programa (a F6a decidiu que sim): o handle do processo em `NUL` e o descritor 1
+    do `msvcrt` e do `ucrtbase` já carregados por `_dup2`.
+  - Testes no CI (`windows-latest` e `windows-11-arm`): o `windowsteste` cria certificados com chave
+    de software pelo `New-SelfSignedCertificate` (o papel do SoftHSM), o caminho CSP é forçado para
+    provar a inversão, o canal é provado com os dois C runtimes escrevendo, e a ponta a ponta roda o
+    programa `dev` lançado como o Chrome. As estruturas e os códigos são conferidos contra o SDK (o
+    MinGW), medidos também aqui (`docs/medicoes/F6a.md`). O job do Linux compila o Windows cruzado.
+  - `ferramentas/registrar-windows.ps1`: grava e remove o registro de desenvolvimento (a pasta do
+    usuário, os manifestos gerados, as chaves `HKCU`), provado no CI.
+  - A suíte diz o mesmo em qualquer executor: a descoberta PKCS#11 e o apoio do SoftHSM ficam fora
+    do Windows, e os testes do diagnóstico fixam o sistema.
+  - Divergências do plano, decididas na implementação: o Windows não tem o processo filho da regra
+    8 (o provedor do fabricante roda dentro do programa, como o §3.5 descreve), e por isso o canal
+    ganhou a proteção da regra 12; a assinatura no Windows não tem o prazo de 90 s do filho do
+    PKCS#11 (o diálogo do provedor não se interrompe, e o canal fechado encerra); a medição (d) e (e)
+    da F0 e o catálogo do Windows esperam a máquina Windows com o cartão; os testes rodam também no
+    arm64 (`windows-11-arm`), que o plano deixava para a F6b.

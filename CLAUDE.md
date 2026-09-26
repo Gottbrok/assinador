@@ -53,7 +53,9 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
    `nonRepudiation`; certificado vencido é LISTADO e nunca assinado. O programa não interpreta campo
    ICP-Brasil: quem lê nome, CPF e empresa do certificado é a biblioteca, no navegador.
 8. **Cada módulo PKCS#11 roda num processo filho.** Biblioteca de fabricante que derruba o processo
-   derruba só o filho.
+   derruba só o filho. No Windows não há PKCS#11: o CSP e o KSP do fabricante rodam DENTRO do
+   programa, pela API do sistema (`nativo/internal/windows`, §3.5 do plano), e por isso lá o canal
+   precisa da regra 12 inteira.
 9. **Diagnóstico sem CPF.** O CN ICP-Brasil é `NOME:CPF`; em relatório, log e saída de ferramenta os
    dígitos saem mascarados.
 10. **O PIN nunca vira `string`.** O pedido da extensão é lido por `nativo/internal/mensagens`
@@ -66,8 +68,12 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
 12. **A saída padrão é do canal.** No modo host, o `main` aponta o DESCRITOR 1 para `/dev/null`
     (`separarCanal`) e só o host escreve na cópia do descritor verdadeiro: o que o C escreve (o
     pcsc-lite roda no processo do host) cai no vazio. O filho de módulo fala pelos descritores 3 e 4,
-    com a saída padrão em `/dev/null`. 🚫 Carregar biblioteca PKCS#11 no processo do host; 🚫 mandar
-    comando ao cartão pelo PC/SC (ele serve só para ler o estado das leitoras e o ATR).
+    com a saída padrão em `/dev/null`. No Windows (`canal_windows.go`), a saída padrão do PROCESSO vai
+    para `NUL` (o C runtime de toda DLL carregada depois a lê ao iniciar) e o descritor 1 dos C
+    runtimes que já estavam carregados (`msvcrt`, `ucrtbase`) também, por `_dup2`: trocar só o
+    `os.Stdout` do Go não protege do `printf` de um CSP. 🚫 Carregar biblioteca PKCS#11 no processo
+    do host; 🚫 mandar comando ao cartão pelo PC/SC (ele serve só para ler o estado das leitoras e o
+    ATR).
 13. **Chaves, IDs e fixtures têm um só escritor.** `protocolo/chaves-publicas.json` lista só chave
     de produção, e `nativo/internal/bilhete/chaves.go` sai dele por `go generate ./internal/bilhete`
     (🚫 à mão). As fixtures do bilhete vêm da biblioteca por `git archive` da tag, com as somas em
@@ -111,6 +117,15 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
   `.github/workflows/nativo.yml`. Os testes com SoftHSM2 pulam sem ele: aponte o `.so` em
   `ASSINADOR_SOFTHSM` (sem root: `apt download softhsm2 libsofthsm2 softhsm2-common` e `dpkg -x`).
   `ASSINADOR_EXIGE_SOFTHSM=1` (o CI liga) faz a falta reprovar.
+- **O Windows se testa no CI** (job `windows`, x64 e arm64): os testes do provedor criam
+  certificados com chave de software pelo `New-SelfSignedCertificate` e os apagam no fim
+  (`internal/windowsteste`); `ASSINADOR_EXIGE_WINDOWS=1` faz a falta reprovar. Fora do Windows,
+  rode `GOOS=windows go vet ./...` (x64 e arm64, os dois builds) e o `staticcheck` com `GOOS=windows`
+  a partir do binário da máquina (`go install`, e não `go run`, que o compila para o Windows). Os
+  testes de cabeçalho do Windows (`pcsc_cabecalho`, `windows_cabecalho`) compilam aqui com o MinGW
+  extraído sem root (`gcc-mingw-w64-x86-64-win32`, `mingw-w64-x86-64-dev` e dependências) e o
+  `CC` apontando para ele; rodar, só no Windows. Teste que depende do sistema (a frase do diagnóstico,
+  um caminho absoluto) fixa o sistema ou usa a forma dele: a suíte diz o mesmo no Linux e no Windows.
 - **Na `extensao/`**: `npm run type-check`, `npm test`, `npm run reproduzivel` e `npm run
   lint:firefox`; o `npm run ponta-a-ponta` (Chromium do Playwright, programa dev e SoftHSM2) abre
   navegador, então pergunte ao Cairo antes de rodá-lo fora do CI.
