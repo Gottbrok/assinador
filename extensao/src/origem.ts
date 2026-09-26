@@ -34,10 +34,14 @@ export interface Remetente {
 /**
  * A origem de quem mandou a mensagem, dita pelo NAVEGADOR: `sender.origin` no Chrome e no Edge; no
  * Firefox, que não o preenche, a origem de `sender.url`. Nunca a origem que a própria mensagem
- * declara. `null` quando nenhum dos dois serve.
+ * declara. `null` quando nenhum dos dois serve. Origem PRESENTE e opaca (`"null"`, documento em
+ * sandbox) é recusa, e nunca recua à URL: a URL de um documento opaco pode dizer um host que a
+ * origem dele não tem.
  */
 export function origemDoRemetente(remetente: Remetente): string | null {
-  if (typeof remetente.origin === 'string' && remetente.origin !== 'null' && remetente.origin.length > 0) return remetente.origin;
+  if (remetente.origin !== undefined) {
+    return typeof remetente.origin === 'string' && remetente.origin !== 'null' && remetente.origin.length > 0 ? remetente.origin : null;
+  }
   if (typeof remetente.url === 'string') {
     try {
       const o = new URL(remetente.url).origin;

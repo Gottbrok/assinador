@@ -12,11 +12,12 @@ O que ela faz, pedido a pedido, e os prazos estão em [`../protocolo/PROTOCOLO.m
 | Arquivo | O que é |
 |---|---|
 | `manifest.base.ts` | O manifesto dos dois alvos, de uma fonte só (`chrome`: service worker; `firefox`: script de fundo e o ID `assinador@confidata.com.br`) |
-| `src/conteudo.ts` | A ponte entre a página e o fundo (mundo isolado, quadro de topo) |
-| `src/fundo.ts` | Os portões (remetente, origem, permissão, forma), o fluxo de `assinar` e o orçamento de prazos |
+| `src/conteudo.ts` | A ponte entre a página e o fundo (mundo isolado, quadro de topo, uma porta por pedido, o prazo da página cobrado ali) |
+| `src/fundo.ts` | Os portões (remetente, origem, permissão, forma), o fluxo de `assinar`, o orçamento de prazos e o que corta abuso (`ola` compartilhado, fila, embargo) |
 | `src/nativo.ts` | A porta de native messaging com o programa, um pedido por vez |
-| `src/janelas.ts` e `src/janela.ts` | As janelas de decisão: o lado do fundo e o lado da página da janela (com a trava de 600 ms dos botões) |
-| `src/permissoes.ts` | A lista de endereços permitidos, em `storage.local` |
+| `src/fila.ts` e `src/embargo.ts` | A fila do dispositivo (`listar` e `diagnostico` um por vez) e o embargo do endereço que recusa janela atrás de janela |
+| `src/janelas.ts` e `src/janela.ts` | As janelas de decisão: o lado do fundo e o lado da página da janela (com a trava dos botões: 600 ms visível e com foco, e trava de novo ao perder o foco) |
+| `src/permissoes.ts` | A lista de endereços permitidos, em `storage.local`, uma chave por endereço |
 | `src/confirmar.ts`, `src/permitir.ts`, `src/opcoes.ts` e `paginas/` | As três páginas da extensão |
 | `_locales/pt_BR` e `_locales/es` | Todo texto visível (o teste de paridade exige as mesmas chaves e marcadores) |
 | `icones/` | Ícones PROVISÓRIOS, de `scripts/gerar-icones-provisorios.mjs`; a marca vem com o nome definitivo |
@@ -41,12 +42,21 @@ Os scripts saem num arquivo cada, sem minificar. O pacote do Chrome sai SEM `key
 Store recusa o campo; o ID vem da loja). O de desenvolvimento leva a chave PÚBLICA de
 `../protocolo/extensao-dev.json`, e é ela que fixa o ID que o programa de desenvolvimento aceita.
 
-O pacote é reproduzível: mesmo SHA-256 em dois builds da mesma árvore, com qualquer fuso e qualquer
-`NODE_ENV` (o carimbo do zip é a data do commit, ou `SOURCE_DATE_EPOCH`).
+O pacote é reproduzível: mesmo SHA-256 em dois builds da mesma árvore, e o `npm run reproduzivel`
+prova com fuso e `NODE_ENV` diferentes entre os dois. O carimbo do zip é a data do último commit que
+tocou `extensao/` ou `protocolo/` (um commit só no `nativo/` não muda o pacote) ou, fora de um clone,
+o `SOURCE_DATE_EPOCH`, que o build imprime e que a publicação (F7a) registra junto da versão.
 
-O `web-ext lint` deixa um aviso, de propósito: o `data_collection_permissions` pede Firefox 142 no
-Android, e o mínimo é o 140 (o ESR que empresa e órgão público usam). No Android não há native
-messaging; a extensão é só para computador.
+**Firefox.** A declaração de dados (`data_collection_permissions`) é a do que a extensão entrega à
+página: o certificado, com nome e CPF, é `personallyIdentifyingInfo` obrigatório; o diagnóstico é
+`technicalAndInteraction` opcional, e sem o consentimento da pessoa (na instalação ou na caixa das
+opções) a página não o recebe. O que vai ao programa local, como o PIN, não conta como transmissão
+na política da loja. A loja do Firefox pede as FONTES de pacote gerado por build: na publicação vão
+o repositório na tag e o `SOURCE_DATE_EPOCH`. O `web-ext lint` deixa um aviso, de propósito: o
+`data_collection_permissions` pede Firefox 142 no Android, e o mínimo é o 140 (o ESR que empresa e
+órgão público usam). No Android não há native messaging; a extensão é só para computador. O ponta a
+ponta automático é só no Chromium; o Firefox é teste manual do gate (o fundo dele, que não é service
+worker, fica vivo com a porta do programa aberta desde o Firefox 104).
 
 ## Ponta a ponta
 

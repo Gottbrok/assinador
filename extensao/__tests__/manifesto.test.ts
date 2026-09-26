@@ -43,7 +43,10 @@ describe('manifesto', () => {
     const m = manifesto({ alvo: 'firefox', versao: '1.0.0', dev: true, chaveDev: extensaoDev.chave });
     expect(m).not.toHaveProperty('key');
     expect(m.background).toEqual({ scripts: ['fundo.js'] });
-    expect(m.browser_specific_settings).toMatchObject({ gecko: { id: 'assinador@confidata.com.br', data_collection_permissions: { required: ['none'] } } });
+    // O certificado entregue à página tem nome e CPF: declarar "none" seria falso.
+    expect(m.browser_specific_settings).toMatchObject({
+      gecko: { id: 'assinador@confidata.com.br', data_collection_permissions: { required: ['personallyIdentifyingInfo'], optional: ['technicalAndInteraction'] } },
+    });
   });
 
   it('a versão é X.Y.Z (a forma que a biblioteca compara com a versão mínima)', () => {

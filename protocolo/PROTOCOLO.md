@@ -32,19 +32,32 @@ O que a extensão (`extensao/`) faz com cada pedido, nesta ordem:
 
 1. O script de conteúdo, no mundo isolado e só no quadro de topo, aceita só a mensagem da própria
    janela (`event.source === window`), da origem da página, com `canal`, `v`, `id` com forma, sem
-   chave a mais e até 64 KiB. Todo o resto passa reto. A resposta vai com `targetOrigin` igual à
-   origem da página.
+   chave a mais e até 64 KiB (medidos na cópia JSON que ele faz antes de ler). Todo o resto passa
+   reto. Cada pedido vai ao fundo por uma PORTA própria, que cai quando a página fecha ou navega (e
+   o fundo então encerra o fluxo e fecha a janela aberta). A resposta vai com `targetOrigin` igual à
+   origem da página. O prazo da página é cobrado ali mesmo (`ola` 1,4 s, `listar` e `diagnostico`
+   29,6 s, `assinar` 238 s): vencido, `tempo-esgotado`; extensão atualizada com a página aberta,
+   `interno` mandando recarregar.
 2. O fundo confere o REMETENTE (esta extensão, quadro 0, uma aba) e a ORIGEM que o navegador diz
    dele (`sender.origin`; no Firefox, a de `sender.url`), que precisa ser a declarada e estar nos
    padrões de algum emissor (`localhost` só no build de desenvolvimento). Senão, `origem-recusada`.
 3. Tudo que não é `ola` exige a PERMISSÃO da pessoa para aquela origem: a janela `permitir.html`
-   pergunta na primeira vez, e a decisão fica em `storage.local` (nunca sincronizada), revogável nas
-   opções. Negada, fechada ou vencida, `permissao-negada`.
+   pergunta na primeira vez, e a decisão fica em `storage.local` (nunca sincronizada; uma chave por
+   origem), revogável nas opções. Negada ou fechada, `permissao-negada`; sem resposta no prazo,
+   `tempo-esgotado` (nada foi negado nem gravado).
 4. `assinar` é `conferir` no programa, a janela `confirmar.html` (com o que o PROGRAMA leu do
    bilhete e do certificado e o endereço que o NAVEGADOR diz; o PIN só quando o dispositivo o
    exige) e `assinar` na mesma porta. Janela fechada ou "Cancelar" é `cancelado`; sem decisão,
    `tempo-esgotado`; token que o `conferir` diz bloqueado é `token-bloqueado`, sem janela; uma
-   assinatura por vez (a segunda é `ocupado`).
+   assinatura por vez (a segunda é `ocupado`). O programa que cai com a janela aberta fecha a
+   janela na hora (`modulo-falhou` ou `nativo-ausente`).
+
+Contra a página que abusa (um script numa página permitida): o `ola` é um só em voo e vale por
+3 s; `listar` e `diagnostico` passam por uma fila do dispositivo (um por vez, até 4 esperando, o
+resto é `ocupado`); e três janelas recusadas seguidas em 10 minutos embargam o endereço (10 minutos
+para a de permissão, 2 para a de confirmação), com a recusa dizendo `embargo` no detalhe. No
+Firefox, o `diagnostico` pedido por uma página exige o consentimento opcional de dado técnico
+(`technicalAndInteraction`, na instalação ou nas opções); sem ele, `permissao-negada`.
 
 Cada operação tem um ORÇAMENTO dentro da extensão, abaixo do prazo da página (`ola` 1,2 s,
 `listar` e `diagnostico` 29 s, `assinar` 235 s), e cada passo usa o menor entre o teto dele e o que

@@ -12,10 +12,11 @@
 import type { Relogio } from './nativo';
 
 /**
- * Como a espera terminou: a decisão da janela, a janela fechada pela pessoa, o prazo, ou a janela
- * que nem abriu (`falhou`, que não é escolha da pessoa e por isso não vira `cancelado`).
+ * Como a espera terminou: a decisão da janela, a janela fechada pela pessoa, o prazo, a janela que
+ * nem abriu (`falhou`, que não é escolha da pessoa e por isso não vira `cancelado`), ou a espera
+ * INTERROMPIDA por quem a pediu (a página saiu, o programa caiu), e aí a janela fecha sozinha.
  */
-export type Desfecho<T> = { tipo: 'decisao'; valor: T } | { tipo: 'fechada' } | { tipo: 'prazo' } | { tipo: 'falhou' };
+export type Desfecho<T> = { tipo: 'decisao'; valor: T } | { tipo: 'fechada' } | { tipo: 'prazo' } | { tipo: 'falhou' } | { tipo: 'interrompida' };
 
 export type DadosDaJanela = { estado: 'pronto'; dados: unknown } | { estado: 'aguarde' } | { estado: 'ausente' };
 
@@ -37,9 +38,10 @@ interface Espera {
 export interface Janelas {
   /**
    * Abre `pagina?fluxo=<id>` e espera. `dados` é o que a página pede ao abrir (`dadosDaJanela`).
-   * Nunca rejeita: janela que não abre é `falhou`.
+   * Nunca rejeita: janela que não abre é `falhou`. `interromper`, quando resolve, encerra a espera
+   * como `interrompida` e fecha a janela (também se ela ainda estava abrindo).
    */
-  esperar<T>(pagina: string, largura: number, altura: number, dados: unknown, prazoMs: number): Promise<Desfecho<T>>;
+  esperar<T>(pagina: string, largura: number, altura: number, dados: unknown, prazoMs: number, interromper?: Promise<unknown>): Promise<Desfecho<T>>;
   /**
    * Os dados do fluxo, para a janela que os pede. `aguarde` enquanto o navegador ainda não disse
    * qual aba abriu (a página da janela pode carregar antes de `windows.create` devolver), e a janela
@@ -68,21 +70,36 @@ export function criarJanelas(controle: ControleDeJanelas, urlDaPagina: (pagina: 
   });
 
   return {
-    esperar<T>(pagina: string, largura: number, altura: number, dados: unknown, prazoMs: number) {
+    esperar<T>(pagina: string, largura: number, altura: number, dados: unknown, prazoMs: number, interromper?: Promise<unknown>) {
       return new Promise<Desfecho<T>>((resolver) => {
         const fluxo = novoId();
         const url = `${urlDaPagina(pagina)}?fluxo=${encodeURIComponent(fluxo)}`;
+        let interrompida = false;
         abrindo.add(fluxo);
         const aberta = () => {
           abrindo.delete(fluxo);
           if (abrindo.size === 0) fechadasEnquantoAbria.clear();
         };
+        void interromper?.then(() => {
+          interrompida = true;
+          const e = esperas.get(fluxo);
+          if (!e) return;
+          esperas.delete(fluxo);
+          e.cancelarPrazo();
+          resolver({ tipo: 'interrompida' });
+          void controle.fechar(e.janelaId).catch(() => undefined);
+        });
         controle.abrir(url, largura, altura).then(
           ({ janelaId, abaId }) => {
             const fechouAntes = fechadasEnquantoAbria.has(janelaId);
             aberta();
             if (fechouAntes) {
               resolver({ tipo: 'fechada' });
+              return;
+            }
+            if (interrompida) {
+              resolver({ tipo: 'interrompida' });
+              void controle.fechar(janelaId).catch(() => undefined);
               return;
             }
             const cancelarPrazo = relogio.agendar(prazoMs, () => {

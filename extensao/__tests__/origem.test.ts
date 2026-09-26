@@ -52,6 +52,9 @@ describe('origemDoRemetente', () => {
 
   it('origem opaca ou ausente é null', () => {
     expect(origemDoRemetente({ origin: 'null' })).toBeNull();
+    // Origem presente e opaca nunca recua à URL (documento em sandbox com URL de host permitido).
+    expect(origemDoRemetente({ origin: 'null', url: 'https://demot.confidata.app/x' })).toBeNull();
+    expect(origemDoRemetente({ origin: '', url: 'https://demot.confidata.app/x' })).toBeNull();
     expect(origemDoRemetente({ url: 'data:text/html,oi' })).toBeNull();
     expect(origemDoRemetente({ url: 'não é url' })).toBeNull();
     expect(origemDoRemetente({})).toBeNull();

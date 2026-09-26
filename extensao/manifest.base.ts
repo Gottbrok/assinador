@@ -36,6 +36,12 @@ export const ID_NO_FIREFOX = 'assinador@confidata.com.br';
 export const ENDERECOS_DOS_EMISSORES = ['https://*.confidata.app/*', 'https://ushield.app/*'] as const;
 export const ENDERECOS_DE_DESENVOLVIMENTO = ['http://localhost/*', 'http://*.localhost/*'] as const;
 
+/** Os tipos de dado que a extensão entrega à página, na declaração do Firefox. */
+export const DADOS_ENTREGUES_A_PAGINA = Object.freeze({
+  obrigatorios: ['personallyIdentifyingInfo'] as const,
+  opcionais: ['technicalAndInteraction'] as const,
+});
+
 /** Chrome 116: a porta de native messaging aberta mantém o service worker vivo. */
 export const CHROME_MINIMO = '116';
 /** Firefox 140 (ESR): `data_collection_permissions` no manifesto. */
@@ -71,8 +77,13 @@ export function manifesto(o: OpcoesDoManifesto): Record<string, unknown> {
       gecko: {
         id: ID_NO_FIREFOX,
         strict_min_version: FIREFOX_MINIMO,
-        // A extensão não coleta nem transmite dado nenhum (§3.6: sem acesso de rede).
-        data_collection_permissions: { required: ['none'] },
+        // O que a extensão ENTREGA à página autorizada conta como transmissão para a loja (medido na
+        // política do Firefox em 2026-09-26: dado entregue ao site conta; o que vai ao programa local,
+        // como o PIN, não). A lista de certificados leva nome e CPF (`personallyIdentifyingInfo`,
+        // obrigatório: é para isso que a extensão existe). O diagnóstico leva dado técnico
+        // (`technicalAndInteraction`), que só pode ser opcional: a pessoa consente na instalação ou
+        // nas opções, e sem o consentimento a página não recebe o diagnóstico.
+        data_collection_permissions: { required: [...DADOS_ENTREGUES_A_PAGINA.obrigatorios], optional: [...DADOS_ENTREGUES_A_PAGINA.opcionais] },
       },
     },
   };

@@ -9,7 +9,19 @@
 
 import { navegador } from './api';
 import { aplicarTextos, dataParaLer, idiomaDoNavegador, tradutorDoNavegador, type Traduzir } from './i18n';
-import { armazenamentoLocal, CHAVE_DAS_PERMISSOES, listarPermissoes, revogar, type Armazenamento } from './permissoes';
+import { armazenamentoLocal, ehChaveDePermissao, listarPermissoes, revogar, type Armazenamento } from './permissoes';
+
+/** O alvo do build (`chrome` ou `firefox`). */
+declare const __ASSINADOR_ALVO__: 'chrome' | 'firefox';
+
+/** A permissão opcional do Firefox que deixa o diagnóstico ir às páginas autorizadas. */
+const DIAGNOSTICO_PARA_PAGINAS = { data_collection: ['technicalAndInteraction'] };
+
+interface PermissoesDoFirefox {
+  contains(p: typeof DIAGNOSTICO_PARA_PAGINAS): Promise<boolean>;
+  request(p: typeof DIAGNOSTICO_PARA_PAGINAS): Promise<boolean>;
+  remove(p: typeof DIAGNOSTICO_PARA_PAGINAS): Promise<boolean>;
+}
 
 /** A linha do programa na seção de versões, a partir da resposta do `ola` (`versoes` no fundo). */
 export function linhaDoPrograma(versoes: unknown, t: Traduzir): string {
@@ -66,6 +78,32 @@ async function desenharPermissoes(armazenamento: Armazenamento, t: Traduzir, idi
   }
 }
 
+/**
+ * No Firefox, entregar o diagnóstico a uma página é transmissão de dado técnico, e a pessoa consente
+ * (na instalação ou aqui). A caixa reflete o consentimento e o pede ou retira no clique (o pedido de
+ * permissão exige o gesto da pessoa, e o clique na caixa é esse gesto).
+ */
+function ligarConsentimentoDoDiagnostico(permissoes: PermissoesDoFirefox): void {
+  const rotulo = el<HTMLLabelElement>('consentimento-diagnostico');
+  const caixa = el<HTMLInputElement>('consentir-diagnostico');
+  rotulo.hidden = false;
+  const atualizar = () =>
+    permissoes.contains(DIAGNOSTICO_PARA_PAGINAS).then(
+      (sim) => {
+        caixa.checked = sim;
+      },
+      () => {
+        caixa.checked = false;
+        caixa.disabled = true;
+      },
+    );
+  void atualizar();
+  caixa.addEventListener('change', () => {
+    const pedido = caixa.checked ? permissoes.request(DIAGNOSTICO_PARA_PAGINAS) : permissoes.remove(DIAGNOSTICO_PARA_PAGINAS);
+    pedido.then(atualizar, atualizar);
+  });
+}
+
 async function iniciar(api: typeof chrome): Promise<void> {
   const t = tradutorDoNavegador(api);
   const idioma = idiomaDoNavegador(api);
@@ -77,8 +115,9 @@ async function iniciar(api: typeof chrome): Promise<void> {
   await desenharPermissoes(armazenamento, t, idioma);
   // A pessoa pode permitir um endereço com as opções abertas noutra aba.
   api.storage.onChanged.addListener((mudancas, area) => {
-    if (area === 'local' && Object.hasOwn(mudancas, CHAVE_DAS_PERMISSOES)) void desenharPermissoes(armazenamento, t, idioma);
+    if (area === 'local' && Object.keys(mudancas).some(ehChaveDePermissao)) void desenharPermissoes(armazenamento, t, idioma);
   });
+  if (__ASSINADOR_ALVO__ === 'firefox') ligarConsentimentoDoDiagnostico(api.permissions as unknown as PermissoesDoFirefox);
 
   el('versao-extensao').textContent = t('extensaoVersao', api.runtime.getManifest().version);
   const programa = el('versao-programa');

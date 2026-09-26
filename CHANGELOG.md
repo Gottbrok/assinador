@@ -103,3 +103,27 @@
     protocolo à mão, e não pelo bundle da biblioteca, porque este repositório é público e a
     biblioteca é privada; a chave de desenvolvimento segue a provisória até existir o rascunho do
     item na Chrome Web Store (ato do Cairo).
+- Auditoria da F3 (uma revisão adversarial independente e a nossa): nenhum P0 nem P1; quatro P2 e
+  nove P3, todos corrigidos.
+  - Ponte: uma PORTA por pedido (`runtime.connect`), que cai quando a página sai, e o fundo então
+    encerra o fluxo e fecha a janela; o `connect` que lança na hora (extensão atualizada com a
+    página aberta) responde `interno` em vez de deixar a página esperar o prazo; o prazo da página é
+    cobrado no script de conteúdo, no relógio dela (antes, o orçamento contava da chegada ao fundo,
+    e um service worker frio fazia a página achar que a extensão não estava instalada); a mensagem
+    da página é lida de uma cópia JSON.
+  - Abuso: o `ola` é um só em voo e vale 3 s; `listar` e `diagnostico` passam pela fila do
+    dispositivo (um por vez, até 4 esperando); três janelas recusadas seguidas embargam o endereço.
+  - Janelas: a trava dos botões exige janela visível E com foco, trava de novo quando o foco sai e
+    recomeça a contagem, e ignora tecla segurada; o foco vai para o controle seguro só depois de
+    destravar (antes, focar botão desabilitado não fazia nada, e o plano mandava focar "Assinar");
+    a janela de permissão que vence é `tempo-esgotado`, e não `permissao-negada`; o programa que
+    cai com a janela aberta fecha a janela na hora.
+  - Permissões numa chave por origem (antes, o fundo e as opções regravavam o mesmo mapa e podiam
+    desfazer um ao outro); origem de remetente presente e opaca é recusa, sem recuar à URL.
+  - Firefox: a declaração de dados passou de `none` para o que a extensão entrega à página (o
+    certificado, com nome e CPF, obrigatório; o diagnóstico, opcional e com consentimento).
+  - Reprodução: o carimbo do zip é o do último commit que tocou `extensao/` ou `protocolo/`, o build
+    imprime o `SOURCE_DATE_EPOCH`, e a conferência muda fuso e `NODE_ENV` entre os dois builds.
+  - Testes que não provavam o que diziam foram reescritos (o encurtamento da janela pelo orçamento,
+    a permissão numa chave só); o exemplo de host nos textos da loja virou um neutro.
+  - Fica como teste manual do gate: o Firefox (o ponta a ponta automático é só no Chromium).

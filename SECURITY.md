@@ -36,6 +36,27 @@ pessoa.
   públicas) e o carregador de chaves de desenvolvimento não entram no binário de release; um teste
   confere os bytes do executável.
 
+## O que a extensão promete
+
+- **Só atende quem o navegador diz que pediu.** O script de conteúdo aceita só a mensagem da própria
+  janela, da origem dela, no quadro de topo; o fundo confere de novo o remetente e a origem pelo que
+  o NAVEGADOR diz (nunca pelo que a mensagem declara), contra os endereços dos emissores.
+- **Nada além de `ola` sem a permissão da pessoa para aquele endereço**, perguntada numa janela da
+  própria extensão e guardada só neste computador. Sem ela, nenhuma página lê os certificados.
+- **Nenhuma assinatura sem a janela de confirmação**, que mostra o que o PROGRAMA leu do bilhete
+  conferido (o documento, a organização) e o endereço que o navegador diz. A página não alcança a
+  janela. Os botões só respondem 600 ms depois de ela ficar visível e com foco, travam de novo
+  quando ela perde o foco, ignoram tecla segurada, e o foco nasce no controle seguro (o PIN, ou
+  "Cancelar"; nunca "Assinar"): contra clique, clique duplo ou Enter cronometrado pela página. Uma
+  assinatura por vez; a página que sai, ou o programa que cai, fecha a janela.
+- **Uma página não esgota o computador nem a pessoa.** O `ola` é um só em voo; os pedidos que tocam
+  o cartão fazem fila (um por vez, com teto); e três janelas recusadas seguidas embargam o endereço
+  por alguns minutos, sem janela nenhuma.
+- **Não acessa a internet e não guarda documento, assinatura nem PIN.** O PIN digitado na janela vai
+  direto ao programa. O build reprova qualquer acesso de rede no pacote, e o pacote publicado pode
+  ser refeito a partir do código da versão (com o `SOURCE_DATE_EPOCH` publicado) com o mesmo
+  SHA-256.
+
 ## O que está fora do alcance
 
 - Um programa malicioso rodando no computador da pessoa, com o usuário dela, já alcança o cartão
@@ -44,6 +65,10 @@ pessoa.
 - A página decide O QUE assinar junto com o servidor dela; o programa garante que só assina o que
   o servidor emissor autorizou, para aquela origem, aquele certificado e aquele resumo, e a janela
   da extensão mostra o documento verdadeiro.
+- Um script que já roda num endereço que a pessoa permitiu (por exemplo, por uma falha de XSS
+  nele) vê os certificados do computador, como a própria página veria. Ele não assina: sem o
+  bilhete do servidor emissor o programa recusa, e com ele a pessoa ainda vê a janela de
+  confirmação.
 
 ## Chaves de bilhete
 

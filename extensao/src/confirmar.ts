@@ -5,12 +5,13 @@
  * documento, finalidade; o certificado achado no dispositivo) e do NAVEGADOR (o endereço de quem
  * pediu). A página que pediu a assinatura não alcança esta janela. O PIN só aparece quando o
  * dispositivo o exige; sem ele (leitora com teclado, diálogo do fabricante) a janela avisa onde
- * digitar. Enter assina, Esc cancela, e fechar a janela é cancelar.
+ * digitar. Enter no campo do PIN assina, Esc cancela, e fechar a janela é cancelar. Os botões
+ * obedecem à trava de `janela.ts` (visível, com foco, 600 ms).
  */
 
 import { navegador } from './api';
 import { aplicarTextos, dataParaLer, idiomaDoNavegador, tradutorDoNavegador, type Traduzir } from './i18n';
-import { destravarDepoisDoAtraso, dormirDeVerdade, enviarDecisao, lerFluxo, pedirDados, type Enviar } from './janela';
+import { ambienteDoDocumento, dormirDeVerdade, enviarDecisao, ignorarTeclaRepetida, lerFluxo, pedirDados, travarAteVer, type Enviar } from './janela';
 
 /** O que a janela recebe do fundo (`DadosDaConfirmacao` em `fundo.ts`), conferido de novo aqui. */
 export interface Confirmacao {
@@ -113,13 +114,24 @@ async function iniciar(api: typeof chrome): Promise<void> {
   el('pin-no-leitor').hidden = dados.exigePin;
   estado.hidden = true;
   el('conteudo').hidden = false;
-  destravarDepoisDoAtraso(document, [assinar, cancelar]);
-  (dados.exigePin ? pin : assinar).focus();
+  ignorarTeclaRepetida(document);
+  // O foco nunca nasce em "Assinar": com o PIN na janela, vai ao campo; sem ele (leitora com
+  // teclado), vai a "Cancelar", e assinar exige um gesto da pessoa depois da trava.
+  const trava = travarAteVer(
+    ambienteDoDocumento(document, window),
+    (travado) => {
+      assinar.disabled = travado;
+      cancelar.disabled = travado;
+    },
+    () => (dados.exigePin ? pin : cancelar).focus(),
+  );
+  if (dados.exigePin) pin.focus();
 
   let decidido = false;
   const decidir = async (valor: { assinar: boolean; pin?: string }) => {
     if (decidido) return;
     decidido = true;
+    trava.encerrar();
     assinar.disabled = true;
     cancelar.disabled = true;
     pin.disabled = true;

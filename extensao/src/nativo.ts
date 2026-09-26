@@ -32,6 +32,11 @@ export interface Programa {
   pedir(op: OperacaoDoPrograma, origem: string, dados?: Record<string, unknown>, prazoMs?: number): Promise<Resultado>;
   /** Fecha a porta (o processo do programa sai quando a entrada fecha). */
   fechar(): void;
+  /**
+   * O programa saiu (ou nem abriu) SEM ninguém ter pedido: o ouvinte recebe a recusa que um pedido
+   * teria recebido. Quem espera a pessoa numa janela usa isto para não descobrir só depois do clique.
+   */
+  aoCair(ouvinte: (recusa: Resultado) => void): void;
 }
 
 function ehObjeto(valor: unknown): valor is Record<string, unknown> {
@@ -78,8 +83,9 @@ export const relogioReal: Relogio = {
  */
 export function abrirPrograma(conectar: () => PortaNativa, novoId: () => string, relogio: Relogio = relogioReal): Programa {
   let porta: PortaNativa | null = null;
-  let caiu: string | undefined | null = null;
+  let caiu: string | null = null;
   let pendente: { id: string; resolver: (r: Resultado) => void; cancelarPrazo: () => void } | null = null;
+  const ouvintesDaQueda: ((recusa: Resultado) => void)[] = [];
 
   const terminar = (r: Resultado) => {
     if (!pendente) return;
@@ -114,7 +120,9 @@ export function abrirPrograma(conectar: () => PortaNativa, novoId: () => string,
       if (porta !== p) return;
       caiu = erro ?? '';
       porta = null;
-      terminar(programaAusente(erro) ? { ok: false, erro: { codigo: 'nativo-ausente', detalhe: erro ?? '' } } : { ok: false, erro: { codigo: 'modulo-falhou', detalhe: erro || 'o programa saiu' } });
+      const recusa = recusaDaQueda(caiu);
+      terminar(recusa);
+      for (const ouvinte of ouvintesDaQueda.splice(0)) ouvinte(recusa);
     });
     porta = p;
     return p;
@@ -133,7 +141,7 @@ export function abrirPrograma(conectar: () => PortaNativa, novoId: () => string,
           return;
         }
         if (caiu !== null) {
-          resolver(programaAusente(caiu) ? { ok: false, erro: { codigo: 'nativo-ausente', detalhe: caiu } } : { ok: false, erro: { codigo: 'modulo-falhou', detalhe: caiu || 'o programa saiu' } });
+          resolver(recusaDaQueda(caiu));
           return;
         }
         const id = novoId();
@@ -152,10 +160,21 @@ export function abrirPrograma(conectar: () => PortaNativa, novoId: () => string,
       });
     },
     fechar() {
+      // Quem fecha não quer mais saber de queda: a porta que ele mesmo fechou não é queda.
+      ouvintesDaQueda.length = 0;
       terminar({ ok: false, erro: { codigo: 'cancelado', detalhe: 'fluxo encerrado' } });
       descartarPorta();
     },
+    aoCair(ouvinte) {
+      if (caiu !== null) ouvinte(recusaDaQueda(caiu));
+      else ouvintesDaQueda.push(ouvinte);
+    },
   };
+}
+
+/** A recusa de um programa que saiu: ausente (o navegador não o achou) ou falhou (o processo morreu). */
+function recusaDaQueda(erro: string): Resultado {
+  return programaAusente(erro) ? { ok: false, erro: { codigo: 'nativo-ausente', detalhe: erro } } : { ok: false, erro: { codigo: 'modulo-falhou', detalhe: erro || 'o programa saiu' } };
 }
 
 /** A porta de verdade (`runtime.connectNative`), com o erro que cada navegador dá quando ela cai. */

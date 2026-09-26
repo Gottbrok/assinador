@@ -47,10 +47,16 @@ export function armazenamentoEmMemoria(inicial: Record<string, unknown> = {}): A
   return {
     dados,
     async ler(chave) {
-      return structuredClone(dados[chave]);
+      return Object.hasOwn(dados, chave) ? structuredClone(dados[chave]) : undefined;
+    },
+    async lerTudo() {
+      return structuredClone(dados);
     },
     async gravar(chave, valor) {
       dados[chave] = structuredClone(valor);
+    },
+    async apagar(chave) {
+      delete dados[chave];
     },
   };
 }
@@ -129,11 +135,22 @@ export function erro(p: PedidoRecebido, codigo: string, detalhe?: unknown): unkn
 export class JanelasFalsas implements Janelas {
   abertas: { pagina: string; dados: unknown; prazoMs: number; resolver: (d: Desfecho<unknown>) => void }[] = [];
 
-  esperar<T>(pagina: string, _largura: number, _altura: number, dados: unknown, prazoMs: number): Promise<Desfecho<T>> {
+  esperar<T>(pagina: string, _largura: number, _altura: number, dados: unknown, prazoMs: number, interromper?: Promise<unknown>): Promise<Desfecho<T>> {
     return new Promise((resolver) => {
-      this.abertas.push({ pagina, dados, prazoMs, resolver: resolver as (d: Desfecho<unknown>) => void });
+      const aberta = { pagina, dados, prazoMs, resolver: resolver as (d: Desfecho<unknown>) => void };
+      this.abertas.push(aberta);
+      void interromper?.then(() => {
+        const i = this.abertas.indexOf(aberta);
+        if (i < 0) return;
+        this.abertas.splice(i, 1);
+        this.interrompidas.push(pagina);
+        resolver({ tipo: 'interrompida' });
+      });
     });
   }
+
+  /** As janelas que fecharam por interrupção (a página saiu, o programa caiu). */
+  interrompidas: string[] = [];
 
   dadosDaJanela(): DadosDaJanela {
     return { estado: 'ausente' };

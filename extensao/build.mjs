@@ -12,9 +12,10 @@
  * que um navegador carregaria e o outro não.
  *
  * O pacote é REPRODUZÍVEL (dois builds da mesma árvore, mesmo SHA-256; `npm run reproduzivel`
- * confere): `mode` fixo em `production` (o `NODE_ENV` de quem builda não entra no bundle), mtime
- * fixo (SOURCE_DATE_EPOCH, ou a data do commit), entradas em ordem, permissões 0644, sem atributos
- * extras (`zip -X`), e o horário do zip em UTC (o formato DOS guarda hora local).
+ * confere, com fuso e `NODE_ENV` diferentes entre os dois): `mode` fixo em `production` (o
+ * `NODE_ENV` de quem builda não entra no bundle), mtime fixo (`SOURCE_DATE_EPOCH`, ou a data do
+ * último commit que tocou `extensao/` ou `protocolo/`), entradas em ordem, permissões 0644, sem
+ * atributos extras (`zip -X`), e o horário do zip em UTC (o formato DOS guarda hora local).
  *
  * O pacote do Chrome sai SEM `key`: a Chrome Web Store recusa o campo (medido na extensão do
  * Datashield em 2026-09-12), e o ID do item vem da loja.
@@ -54,7 +55,7 @@ for (const alvo of ['chrome', 'firefox']) {
       mode: MODO,
       logLevel: 'warn',
       publicDir: false,
-      define: { __ASSINADOR_DEV__: JSON.stringify(dev) },
+      define: { __ASSINADOR_DEV__: JSON.stringify(dev), __ASSINADOR_ALVO__: JSON.stringify(alvo) },
       build: {
         outDir: saida,
         emptyOutDir: false,
@@ -105,12 +106,18 @@ function empacotar(pasta, destino) {
   }
   const entradas = arquivos.map((a) => relative(pasta, a)).sort();
   execFileSync('zip', ['-X', '-D', '-q', destino, ...entradas], { cwd: pasta, stdio: 'inherit', env: { ...process.env, TZ: 'UTC' } });
-  console.log(`  pacote ${relative(aqui, destino)} (mtime ${carimbo.toISOString()})`);
+  console.log(`  pacote ${relative(aqui, destino)} (SOURCE_DATE_EPOCH=${epoch}, ${carimbo.toISOString()})`);
 }
 
+/**
+ * A data do último commit que tocou o que entra no pacote (a extensão e o protocolo, de onde vêm a
+ * fixture e a chave de dev), e não o HEAD: um commit só no `nativo/` não muda o SHA-256 da extensão.
+ * Fora de um clone (o arquivo de fontes que a loja do Firefox pede), o build usa o
+ * `SOURCE_DATE_EPOCH` publicado com a versão, e este é o número que ele imprime.
+ */
 function dataDoCommit() {
   try {
-    return execFileSync('git', ['log', '-1', '--format=%ct'], { cwd: aqui, encoding: 'utf8' }).trim();
+    return execFileSync('git', ['log', '-1', '--format=%ct', '--', 'extensao', 'protocolo'], { cwd: resolve(aqui, '..'), encoding: 'utf8' }).trim();
   } catch {
     return '';
   }

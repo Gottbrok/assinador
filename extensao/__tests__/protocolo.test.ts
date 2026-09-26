@@ -8,6 +8,7 @@ import {
   PRAZO_DA_PERMISSAO_MS,
   PRAZOS_DO_FLUXO_MS,
   PRAZOS_DO_PROGRAMA_MS,
+  PRAZOS_NA_PONTE_MS,
   PROTOCOLO,
   RESERVA_DEPOIS_DA_CONFIRMACAO_MS,
   TAMANHO_MAXIMO_DO_BILHETE,
@@ -16,7 +17,9 @@ import {
 
 /**
  * `PRAZOS_MS` da biblioteca (`assinadorProtocolo.ts`), o prazo com que a PÁGINA desiste. A extensão
- * tem de responder antes, sempre.
+ * tem de responder antes, sempre. É ESPELHO escrito à mão: a biblioteca é privada e a fixture não
+ * traz os prazos, então este teste não enxerga mudança lá. Mudar o prazo na biblioteca é mudar o
+ * protocolo (regra 6 do CLAUDE.md), e a mudança passa por aqui.
  */
 const PRAZOS_DA_PAGINA_MS = { ola: 1_500, listar: 30_000, diagnostico: 30_000, assinar: 240_000 };
 
@@ -57,9 +60,10 @@ describe('vocabulário do protocolo', () => {
     expect(TAMANHO_MAXIMO_DO_BILHETE).toBe(fixture.tamanhoMaximoDoBilhete);
   });
 
-  it('o orçamento de cada operação fica abaixo do prazo da página', () => {
+  it('o orçamento do fundo fica abaixo do prazo da ponte, que fica abaixo do prazo da página', () => {
     for (const op of ['ola', 'listar', 'diagnostico', 'assinar'] as const) {
-      expect(PRAZOS_DO_FLUXO_MS[op]).toBeLessThan(PRAZOS_DA_PAGINA_MS[op]);
+      expect(PRAZOS_DO_FLUXO_MS[op]).toBeLessThan(PRAZOS_NA_PONTE_MS[op]);
+      expect(PRAZOS_NA_PONTE_MS[op]).toBeLessThan(PRAZOS_DA_PAGINA_MS[op]);
     }
     // Um pedido só ao programa cabe inteiro no orçamento das operações de um passo.
     expect(PRAZOS_DO_PROGRAMA_MS.listar).toBeLessThanOrEqual(PRAZOS_DO_FLUXO_MS.listar);

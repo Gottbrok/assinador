@@ -17,7 +17,8 @@ o certificado digital do seu cartão ou token, e mostrar a você, antes, o que v
 
 ## O que ela não faz
 
-- Não acessa a internet. Não envia nada a servidor nenhum, nosso ou de terceiros.
+- Não acessa a internet: não abre conexão com servidor nenhum, nosso ou de terceiros. O que ela
+  entrega à página que você autorizou (abaixo), é a página que decide enviar ao servidor dela.
 - Não coleta estatística, histórico de navegação nem dado de uso.
 - Não guarda documentos, assinaturas, certificados nem PIN.
 - Não deixa um endereço pedir assinatura sem você: cada endereço precisa da sua permissão uma vez,
@@ -26,9 +27,13 @@ o certificado digital do seu cartão ou token, e mostrar a você, antes, o que v
 
 ## O que a página que pediu recebe
 
-A lista dos certificados do computador (depois da sua permissão para aquele endereço), a assinatura
-do resumo do documento (depois da sua confirmação) e, se você pedir, o diagnóstico para o suporte,
-que não tem número de documento.
+A lista dos certificados do computador, que traz o nome e o CPF (ou o CNPJ) de cada titular, depois
+da sua permissão para aquele endereço; a assinatura do resumo do documento, depois da sua
+confirmação; e, se a página pedir, o diagnóstico para o suporte (versões, sistema e leitoras, sem
+número de documento). No Firefox isso está declarado à loja: o dado de identificação do certificado
+é obrigatório (é para isso que a extensão existe), e o diagnóstico é opcional, só vai à página com o
+seu consentimento, na instalação ou nas opções da extensão.
 
 O código da extensão e do programa é aberto, em `https://github.com/Gottbrok/assinador`, e o pacote
-publicado pode ser refeito a partir do código e conferido byte a byte.
+publicado pode ser refeito a partir do código da versão, com o `SOURCE_DATE_EPOCH` publicado junto
+dela, e conferido byte a byte.

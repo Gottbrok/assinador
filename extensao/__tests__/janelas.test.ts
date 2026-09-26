@@ -106,6 +106,27 @@ describe('janelas de decisão', () => {
     expect(await j.esperar('confirmar.html', 420, 560, {}, 180_000)).toEqual({ tipo: 'falhou' });
   });
 
+  it('interromper fecha a janela aberta, e também a que ainda estava abrindo', async () => {
+    const c = controleFalso();
+    const j = criarJanelas(c.controle, url, novoId, new RelogioManual());
+    let interromper: () => void = () => undefined;
+    const aberta = j.esperar('confirmar.html', 420, 560, {}, 180_000, new Promise<void>((r) => (interromper = r)));
+    await drenar();
+    interromper();
+    expect(await aberta).toEqual({ tipo: 'interrompida' });
+    expect(c.fechadas).toEqual([c.abertas[0]?.janelaId]);
+
+    c.atrasarAbertura();
+    let interromperCedo: () => void = () => undefined;
+    const abrindo = j.esperar('permitir.html', 420, 320, {}, 25_000, new Promise<void>((r) => (interromperCedo = r)));
+    await drenar();
+    interromperCedo();
+    await drenar();
+    c.concluirAbertura();
+    expect(await abrindo).toEqual({ tipo: 'interrompida' });
+    expect(c.fechadas).toHaveLength(2);
+  });
+
   it('janela fechada antes de o navegador dizer que abriu conta como fechada', async () => {
     const c = controleFalso();
     c.atrasarAbertura();

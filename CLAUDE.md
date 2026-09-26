@@ -80,11 +80,18 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
 15. **A extensão só LIGA; quem decide é o programa e a pessoa.** Ela nunca confere o bilhete (só a
     forma) e as janelas mostram só o que veio do PROGRAMA (o bilhete conferido, o certificado) e do
     NAVEGADOR (a origem de quem pediu), nunca o que a página declara. A permissão é por ORIGEM, em
-    `storage.local` (🚫 `storage.sync`). Cada operação tem um orçamento abaixo do prazo da página, e
-    passo novo num fluxo usa o que RESTA dele, nunca um teto próprio somado. 🚫 Permissão nova no
-    manifesto, `host_permissions` ou qualquer `fetch` (o build reprova rede no bundle). Texto
-    visível só em `_locales/`, nos dois idiomas (o teste de paridade reprova chave faltando ou
-    sobrando).
+    `storage.local`, uma chave por origem (🚫 `storage.sync`; 🚫 mapa numa chave só, que o fundo e as
+    opções reescreviam um por cima do outro). Cada operação tem um orçamento abaixo do prazo da
+    página, e passo novo num fluxo usa o que RESTA dele (`prazoDoPasso`), nunca um teto próprio
+    somado. Cada pedido da página tem a PORTA dele, e quem espera a pessoa corre contra a saída da
+    página e a queda do programa. Pedido que toca o cartão passa pela fila, e janela nova passa pelo
+    embargo. Botão de janela de decisão só pela trava de `janela.ts`, e o foco nunca nasce em
+    "Assinar" nem em "Permitir". 🚫 Permissão nova no manifesto, `host_permissions` ou qualquer
+    `fetch` (o build reprova rede no bundle). O que a extensão entrega à PÁGINA está declarado no
+    `data_collection_permissions` do Firefox: dado novo entregue à página muda a declaração no mesmo
+    commit. Texto visível só em `_locales/`, nos dois idiomas (o teste de paridade reprova chave
+    faltando ou sobrando); a exceção é o texto do diagnóstico, artefato do suporte que sai em
+    português como o do programa.
 
 ## Como se trabalha aqui
 

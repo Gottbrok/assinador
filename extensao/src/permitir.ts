@@ -6,7 +6,7 @@
 
 import { navegador } from './api';
 import { aplicarTextos, idiomaDoNavegador, tradutorDoNavegador } from './i18n';
-import { destravarDepoisDoAtraso, dormirDeVerdade, enviarDecisao, lerFluxo, pedirDados, type Enviar } from './janela';
+import { ambienteDoDocumento, dormirDeVerdade, enviarDecisao, ignorarTeclaRepetida, lerFluxo, pedirDados, travarAteVer, type Enviar } from './janela';
 
 /** O host que a janela mostra, ou `null` se os dados não têm forma. */
 export function lerHost(valor: unknown): string | null {
@@ -40,14 +40,22 @@ async function iniciar(api: typeof chrome): Promise<void> {
 
   const permitir = el<HTMLButtonElement>('permitir');
   const negar = el<HTMLButtonElement>('negar');
-  destravarDepoisDoAtraso(document, [permitir, negar]);
-  // O foco nasce em "Não permitir": um Enter que chegue junto com a janela nega, nunca autoriza.
-  negar.focus();
+  ignorarTeclaRepetida(document);
+  // O foco vai para "Não permitir" quando os botões destravam: um Enter perdido nega, nunca autoriza.
+  const trava = travarAteVer(
+    ambienteDoDocumento(document, window),
+    (travado) => {
+      permitir.disabled = travado;
+      negar.disabled = travado;
+    },
+    () => negar.focus(),
+  );
 
   let decidido = false;
   const decidir = async (valor: boolean) => {
     if (decidido) return;
     decidido = true;
+    trava.encerrar();
     permitir.disabled = true;
     negar.disabled = true;
     if (!(await enviarDecisao(enviar, fluxo, { permitir: valor }))) {

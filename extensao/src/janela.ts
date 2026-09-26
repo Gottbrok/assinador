@@ -4,8 +4,10 @@
  * mandar a decisão, e a trava de segurança dos botões.
  *
  * A trava existe porque a janela abre por pedido de uma página web, e essa página pode cronometrar
- * um Enter ou um clique para o instante em que a janela ganha o foco. Por isso os botões só
- * respondem depois de `ATRASO_DE_SEGURANCA_MS` com a janela visível, o mesmo cuidado que os
+ * um Enter ou um clique para o instante em que a janela ganha o foco, ou pôr uma janela dela por
+ * cima e sumir com ela no primeiro clique de um clique duplo. Por isso os botões só respondem depois
+ * de `ATRASO_DE_SEGURANCA_MS` com a janela VISÍVEL e COM FOCO; perder um dos dois trava de novo e
+ * recomeça a contagem, e a tecla repetida (Enter segurado) não conta. É o mesmo cuidado que os
  * navegadores têm nos diálogos de permissão deles.
  */
 
@@ -63,25 +65,96 @@ export async function enviarDecisao(enviar: Enviar, fluxo: string, valor: unknow
 
 export const dormirDeVerdade = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
+/** O que a trava precisa saber da janela; a de verdade é `ambienteDoDocumento`, os testes passam uma falsa. */
+export interface AmbienteDaTrava {
+  visivelEComFoco(): boolean;
+  /** Chama o ouvinte a cada ganho ou perda de foco e de visibilidade. */
+  aoMudar(ouvinte: () => void): void;
+  agendar(ms: number, f: () => void): () => void;
+}
+
+export interface Trava {
+  /** Para de vigiar (a decisão foi tomada): quem chamou cuida dos botões dali em diante. */
+  encerrar(): void;
+}
+
 /**
- * Destrava os botões depois do atraso de segurança contado a partir de a janela estar VISÍVEL (uma
- * janela que abre atrás de outra não conta o atraso enquanto a pessoa não a vê).
+ * Trava os botões (`aplicar(true)`) e destrava `ATRASO_DE_SEGURANCA_MS` depois de a janela estar
+ * visível e com foco. Perder um dos dois trava de novo e recomeça a contagem. `aoPrimeiroDestrave`
+ * roda uma vez, quando os botões respondem pela primeira vez: é ali que o foco vai para o controle
+ * seguro (focar botão desabilitado não faz nada).
  */
-export function destravarDepoisDoAtraso(doc: Document, botoes: readonly HTMLButtonElement[]): void {
-  for (const b of botoes) b.disabled = true;
-  const contar = () => {
-    setTimeout(() => {
-      for (const b of botoes) b.disabled = false;
-    }, ATRASO_DE_SEGURANCA_MS);
+export function travarAteVer(amb: AmbienteDaTrava, aplicar: (travado: boolean) => void, aoPrimeiroDestrave?: () => void): Trava {
+  let travado = true;
+  let encerrada = false;
+  let jaDestravou = false;
+  let cancelarContagem: (() => void) | null = null;
+
+  const travar = () => {
+    cancelarContagem?.();
+    cancelarContagem = null;
+    if (travado) return;
+    travado = true;
+    aplicar(true);
   };
-  if (doc.visibilityState === 'visible') {
-    contar();
-    return;
-  }
-  const quandoVisivel = () => {
-    if (doc.visibilityState !== 'visible') return;
-    doc.removeEventListener('visibilitychange', quandoVisivel);
-    contar();
+
+  const avaliar = () => {
+    if (encerrada) return;
+    if (!amb.visivelEComFoco()) {
+      travar();
+      return;
+    }
+    if (!travado || cancelarContagem) return;
+    cancelarContagem = amb.agendar(ATRASO_DE_SEGURANCA_MS, () => {
+      cancelarContagem = null;
+      if (encerrada || !amb.visivelEComFoco()) return;
+      travado = false;
+      aplicar(false);
+      if (!jaDestravou) {
+        jaDestravou = true;
+        aoPrimeiroDestrave?.();
+      }
+    });
   };
-  doc.addEventListener('visibilitychange', quandoVisivel);
+
+  aplicar(true);
+  amb.aoMudar(avaliar);
+  avaliar();
+  return {
+    encerrar() {
+      encerrada = true;
+      cancelarContagem?.();
+      cancelarContagem = null;
+    },
+  };
+}
+
+/** A janela de verdade: visível pelo `visibilityState`, com foco pelo `hasFocus()`. */
+export function ambienteDoDocumento(doc: Document, win: Window): AmbienteDaTrava {
+  return {
+    visivelEComFoco: () => doc.visibilityState === 'visible' && doc.hasFocus(),
+    aoMudar(ouvinte) {
+      win.addEventListener('focus', ouvinte);
+      win.addEventListener('blur', ouvinte);
+      doc.addEventListener('visibilitychange', ouvinte);
+    },
+    agendar(ms, f) {
+      const t = setTimeout(f, ms);
+      return () => clearTimeout(t);
+    },
+  };
+}
+
+/** Tecla repetida (Enter ou espaço segurados) não aciona nada: só o toque que a pessoa deu agora. */
+export function ignorarTeclaRepetida(doc: Document): void {
+  doc.addEventListener(
+    'keydown',
+    (evento) => {
+      if (evento.repeat && (evento.key === 'Enter' || evento.key === ' ')) {
+        evento.preventDefault();
+        evento.stopPropagation();
+      }
+    },
+    true,
+  );
 }

@@ -76,6 +76,41 @@ export const PRAZOS_DO_FLUXO_MS: Readonly<Record<OperacaoDaPagina, number>> = Ob
 });
 
 /**
+ * O prazo que o SCRIPT DE CONTEÚDO dá ao fundo, contado do instante em que a página pediu (o mesmo
+ * relógio da página): entre o orçamento do fundo e o prazo da página. O orçamento do fundo começa
+ * quando a mensagem CHEGA a ele, e um service worker frio mais um programa lento para abrir podem
+ * comer a folga; sem este prazo, a página desistiria sozinha e, no `ola`, mandaria a pessoa instalar
+ * a extensão que já está instalada. Vencido, a página recebe `tempo-esgotado`.
+ */
+export const PRAZOS_NA_PONTE_MS: Readonly<Record<OperacaoDaPagina, number>> = Object.freeze({
+  ola: 1_400,
+  listar: 29_600,
+  diagnostico: 29_600,
+  assinar: 238_000,
+});
+
+/** O nome da porta (`runtime.connect`) de cada pedido da página: ela cai quando a página sai. */
+export const PORTA_DO_PEDIDO = 'assinador:pedido';
+
+/**
+ * Quantos pedidos que tocam o dispositivo (`listar`, `diagnostico`) esperam na fila além do que está
+ * rodando; o que passar disso é `ocupado`. Um script numa página permitida não abre cem processos
+ * do programa contra o mesmo cartão.
+ */
+export const FILA_DO_DISPOSITIVO = 4;
+
+/** Por quanto tempo a resposta do `ola` vale para o próximo (a versão do programa não muda em segundos). */
+export const VALIDADE_DO_OLA_MS = 3_000;
+
+/**
+ * O EMBARGO de um endereço que insiste: depois de `recusas` janelas recusadas (negadas, fechadas ou
+ * vencidas) em `janelaMs`, o endereço não abre janela nenhuma por `duracaoMs`. Sem isso, uma página
+ * permitida e comprometida abre janela atrás de janela até a pessoa ceder.
+ */
+export const EMBARGO_DA_PERMISSAO = Object.freeze({ recusas: 3, janelaMs: 10 * 60_000, duracaoMs: 10 * 60_000 });
+export const EMBARGO_DA_CONFIRMACAO = Object.freeze({ recusas: 3, janelaMs: 10 * 60_000, duracaoMs: 2 * 60_000 });
+
+/**
  * O teto de cada pedido ao programa. O `assinar` leva o prazo do filho do módulo (90 s: com leitora
  * de teclado, a pessoa digita o PIN nele) e a folga. Pedido sem orçamento de página (as opções da
  * extensão) usa só o teto.
