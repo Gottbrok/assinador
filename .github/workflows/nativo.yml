@@ -1,9 +1,10 @@
 name: nativo
 
 # O programa nativo no Linux: formatação, vet, testes (com o SoftHSM2 fazendo o papel do cartão),
-# as catracas do build de release, staticcheck, govulncheck e o binário como artefato. As ações são
-# pinadas por commit (a tag vai no comentário): o repositório é público e o CI monta o que roda no
-# computador da pessoa.
+# as catracas do build de release, o desenho do PC/SC contra os cabeçalhos, staticcheck,
+# govulncheck, o binário, e os pacotes .deb e .rpm de desenvolvimento, provados em contêiner. As
+# ações são pinadas por commit (a tag vai no comentário): o repositório é público e o CI monta o que
+# roda no computador da pessoa.
 
 on:
   push:
@@ -11,12 +12,14 @@ on:
       - "nativo/**"
       - "protocolo/**"
       - "ferramentas/**"
+      - "instaladores/linux/**"
       - ".github/workflows/nativo.yml"
   pull_request:
     paths:
       - "nativo/**"
       - "protocolo/**"
       - "ferramentas/**"
+      - "instaladores/linux/**"
       - ".github/workflows/nativo.yml"
 
 permissions:
@@ -37,10 +40,10 @@ jobs:
             nativo/go.sum
             ferramentas/go.sum
 
-      - name: SoftHSM2, gcc e openssl
+      - name: SoftHSM2, gcc, openssl e os cabeçalhos do PC/SC
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends softhsm2 gcc openssl
+          sudo apt-get install -y --no-install-recommends softhsm2 gcc openssl libpcsclite-dev pkg-config
 
       - name: gofmt
         run: test -z "$(gofmt -l nativo ferramentas)"
@@ -58,6 +61,10 @@ jobs:
         run: |
           go test -race ./...
           go test -tags dev ./...
+
+      - name: O desenho do PC/SC é o dos cabeçalhos do pcsc-lite
+        working-directory: nativo
+        run: CGO_CFLAGS="$(pkg-config --cflags libpcsclite)" go test -tags pcsc_cabecalho ./internal/pcsc/
 
       - name: chaves.go em dia com protocolo/chaves-publicas.json
         working-directory: nativo
@@ -86,4 +93,39 @@ jobs:
         with:
           name: assinador-linux-amd64
           path: dist/assinador-linux-amd64
+          if-no-files-found: error
+
+  # Os pacotes de DESENVOLVIMENTO (o programa com a tag dev e os manifestos com os IDs provisórios),
+  # compilados nativos em cada arquitetura (o PKCS#11 é por cgo) e provados em contêiner: instala,
+  # roda, remove, e nada sobra. Sem assinatura até a F7a.
+  pacotes:
+    needs: linux
+    strategy:
+      matrix:
+        include:
+          - executor: ubuntu-24.04
+            arquitetura: amd64
+          - executor: ubuntu-24.04-arm
+            arquitetura: arm64
+    runs-on: ${{ matrix.executor }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: nativo/go.mod
+          cache-dependency-path: nativo/go.sum
+
+      - name: Montar os pacotes
+        run: instaladores/linux/empacotar.sh "0.1.0~dev.${{ github.run_number }}" dist
+
+      - name: Instalar e remover em contêiner
+        run: instaladores/linux/testar-pacotes.sh dist
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: assinador-dev-linux-${{ matrix.arquitetura }}
+          path: dist/*
           if-no-files-found: error

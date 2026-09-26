@@ -1,0 +1,98 @@
+# O pacote de DESENVOLVIMENTO do Assinador para Linux (F2b): o programa com a tag dev e os
+# manifestos dos navegadores com os IDs provisórios de extensão. O pacote de produção (os IDs das
+# lojas, o programa sem a tag dev, a assinatura) é da F7a.
+#
+# Não se roda este arquivo direto: `empacotar.sh` monta o programa e os manifestos numa pasta de
+# trabalho, roda o nfpm de DENTRO dela (os `src` são relativos a ela: o nfpm não expande variável
+# no `src`) e passa a arquitetura e a versão pelas variáveis NFPM_*.
+name: confidata-assinador
+arch: ${NFPM_ARQUITETURA}
+platform: linux
+version: ${NFPM_VERSAO}
+section: utils
+priority: optional
+maintainer: Confidata <suporte@confidata.com.br>
+vendor: Confidata
+homepage: https://github.com/Gottbrok/assinador
+license: Apache-2.0
+description: |-
+  Assinador, build de DESENVOLVIMENTO: assina com o certificado digital A3
+  (cartao ou token ICP-Brasil) a partir do navegador, sem que a chave saia do
+  dispositivo. Nao abre porta de rede e nao guarda o PIN.
+
+# Sem o pcscd a leitora nao aparece, mas o programa abre (o diagnostico diz o que falta).
+recommends:
+  - pcscd
+  - libccid
+overrides:
+  rpm:
+    recommends:
+      - pcsc-lite
+      - pcsc-lite-ccid
+
+contents:
+  - src: ./assinador
+    dst: /usr/lib/confidata-assinador/assinador
+    file_info:
+      mode: 0755
+
+  # Chrome, Chromium e Edge leem o mesmo manifesto, cada um na sua pasta.
+  - src: ./manifestos/chromium.json
+    dst: /etc/opt/chrome/native-messaging-hosts/br.com.confidata.assinador.json
+    file_info:
+      mode: 0644
+  - src: ./manifestos/chromium.json
+    dst: /etc/chromium/native-messaging-hosts/br.com.confidata.assinador.json
+    file_info:
+      mode: 0644
+  - src: ./manifestos/chromium.json
+    dst: /etc/opt/edge/native-messaging-hosts/br.com.confidata.assinador.json
+    file_info:
+      mode: 0644
+
+  # Firefox: /usr/lib no Debian e no Ubuntu; o Fedora le tambem /usr/lib64.
+  - src: ./manifestos/firefox.json
+    dst: /usr/lib/mozilla/native-messaging-hosts/br.com.confidata.assinador.json
+    file_info:
+      mode: 0644
+  - src: ./manifestos/firefox.json
+    dst: /usr/lib64/mozilla/native-messaging-hosts/br.com.confidata.assinador.json
+    packager: rpm
+    file_info:
+      mode: 0644
+
+  # O rpm só apaga, na remoção, a pasta que o pacote declara como dele (o .deb já leva as pastas).
+  # A posse pode ser dividida com o navegador: o rpm só a apaga vazia e sem outro dono.
+  - dst: /usr/lib/confidata-assinador
+    type: dir
+    packager: rpm
+  - dst: /etc/opt/chrome
+    type: dir
+    packager: rpm
+  - dst: /etc/opt/chrome/native-messaging-hosts
+    type: dir
+    packager: rpm
+  - dst: /etc/chromium
+    type: dir
+    packager: rpm
+  - dst: /etc/chromium/native-messaging-hosts
+    type: dir
+    packager: rpm
+  - dst: /etc/opt/edge
+    type: dir
+    packager: rpm
+  - dst: /etc/opt/edge/native-messaging-hosts
+    type: dir
+    packager: rpm
+  - dst: /usr/lib/mozilla
+    type: dir
+    packager: rpm
+  - dst: /usr/lib/mozilla/native-messaging-hosts
+    type: dir
+    packager: rpm
+  - dst: /usr/lib64/mozilla
+    type: dir
+    packager: rpm
+  - dst: /usr/lib64/mozilla/native-messaging-hosts
+    type: dir
+    packager: rpm
