@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"syscall"
 	"unsafe"
@@ -88,6 +89,10 @@ func desviarDescritorDoCRT(dll string) error {
 	if err != nil {
 		return err
 	}
+	handleDoDescritor, err := win.GetProcAddress(modulo, "_get_osfhandle")
+	if err != nil {
+		return err
+	}
 	caminho := []byte("NUL\x00")
 	const somenteEscrita = 1 // _O_WRONLY
 	fd, _, _ := syscall.SyscallN(abrir, uintptr(unsafe.Pointer(&caminho[0])), somenteEscrita)
@@ -98,6 +103,12 @@ func desviarDescritorDoCRT(dll string) error {
 	_, _, _ = syscall.SyscallN(fechar, fd)
 	if int32(r) != 0 {
 		return syscall.EINVAL
+	}
+	// Conferido depois, e não presumido: o descritor 1 desse C runtime tem de ser o NUL (dispositivo
+	// de caractere), e não o pipe do navegador. Se não for, o programa não abre o canal.
+	h, _, _ := syscall.SyscallN(handleDoDescritor, 1)
+	if tipo, err := win.GetFileType(win.Handle(h)); err != nil || tipo != win.FILE_TYPE_CHAR {
+		return fmt.Errorf("o descritor 1 do %s não foi para NUL", dll)
 	}
 	return nil
 }
