@@ -151,7 +151,11 @@ func TestPontaAPontaComSoftHSM(t *testing.T) {
 	for _, c := range r["dados"].(map[string]any)["certificados"].([]any) {
 		cm := c.(map[string]any)
 		if cm["ref"] == ref {
-			achou = cm["exigePin"] == true && cm["provedor"] == "pkcs11:libsofthsm2.so"
+			// O nome do provedor depende de quem achou o SoftHSM: o arquivo de configuração deste
+			// teste (`libsofthsm2.so`) ou, onde o pacote do sistema o registra, o p11-kit
+			// (`softhsm2`), que vem antes e fica com ele.
+			provedor, _ := cm["provedor"].(string)
+			achou = cm["exigePin"] == true && strings.HasPrefix(provedor, "pkcs11:")
 		}
 		if cm["ref"] == hex.EncodeToString(func() []byte { h := sha256.Sum256(tk.Certificados[softhsmteste.AC].Raw); return h[:] }()) {
 			t.Fatal("a AC entrou na lista")
@@ -240,7 +244,9 @@ func TestDiagnosticoNoTerminal(t *testing.T) {
 	if err := json.Unmarshal(comoJSON, &relatorio); err != nil {
 		t.Fatalf("o --json não é JSON: %v", err)
 	}
-	if !strings.Contains(string(texto), "Programa do cartão libsofthsm2.so: carregado, 5 certificado(s)") || !strings.Contains(string(texto), "Certificado: TITULAR DE TESTE:***********") {
+	// O SoftHSM aparece como `libsofthsm2.so` (o arquivo de configuração deste teste) ou como
+	// `softhsm2` (o p11-kit, onde o pacote do sistema o registra): vale o que ele leu.
+	if !strings.Contains(string(texto), ": carregado, 5 certificado(s) (SoftHSM") || !strings.Contains(string(texto), "Certificado: TITULAR DE TESTE:***********") {
 		t.Fatalf("texto:\n%s", texto)
 	}
 	if len(relatorio.Certificados) != 4 { // os 5 do token, menos o da AC
