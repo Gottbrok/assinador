@@ -56,6 +56,20 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
    derruba só o filho.
 9. **Diagnóstico sem CPF.** O CN ICP-Brasil é `NOME:CPF`; em relatório, log e saída de ferramenta os
    dígitos saem mascarados.
+10. **O PIN nunca vira `string`.** O pedido da extensão é lido por `nativo/internal/mensagens`
+    (leitor JSON estrito próprio), que entrega o PIN num `[]byte` de capacidade fixa. 🚫 Decodificar
+    pedido da extensão com `encoding/json` (v1 ou v2): os dois passam o texto por buffers e `string`
+    que ninguém zera. O PIN vai ao filho do módulo num quadro próprio, em bytes, nunca em JSON.
+11. **`C_Login` só por `entrarNoToken`** (`nativo/internal/pkcs11/login.go`, que copia o PIN para
+    memória do C e a zera antes do `free`). 🚫 O `Login` do `miekg/pkcs11` no programa: ele usa
+    `C.CString` e não zera (achado da F0). Só o apoio de teste do SoftHSM o usa, para montar o token.
+12. **A saída padrão é do canal.** No modo host, só o host escreve no descritor da saída padrão (o
+    `main` troca o `os.Stdout` por `/dev/null`); o filho de módulo fala pelos descritores 3 e 4, com
+    a saída padrão em `/dev/null`. 🚫 Carregar biblioteca PKCS#11 no processo do host.
+13. **Chaves e fixtures têm um só escritor.** `protocolo/chaves-publicas.json` lista só chave de
+    produção, e `nativo/internal/bilhete/chaves.go` sai dele por `go generate ./internal/bilhete`
+    (🚫 à mão). As fixtures do bilhete vêm da biblioteca por `git archive` da tag, com as somas em
+    `protocolo/fixtures/ORIGEM.md` (🚫 editar fixture aqui).
 
 ## Como se trabalha aqui
 
@@ -69,6 +83,11 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
   biblioteca (`conferirBilhete`, `resumoParaExibicao`).
 - Go na versão estável corrente, fixada em cada `go.mod`. Rode `go vet` e `go test ./...` no módulo
   tocado antes de commitar.
+- **No `nativo/`, os dois builds**: `go vet ./... && go vet -tags dev ./...`, `go test ./...` e
+  `go test -tags dev ./...`, e o `staticcheck` e o `govulncheck` nas versões do
+  `.github/workflows/nativo.yml`. Os testes com SoftHSM2 pulam sem ele: aponte o `.so` em
+  `ASSINADOR_SOFTHSM` (sem root: `apt download softhsm2 libsofthsm2 softhsm2-common` e `dpkg -x`).
+  `ASSINADOR_EXIGE_SOFTHSM=1` (o CI liga) faz a falta reprovar.
 
 ## Estado
 
