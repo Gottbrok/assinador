@@ -10,6 +10,7 @@
 //	bin/host-teste gerar-chave
 //	bin/host-teste listar
 //	bin/host-teste assinar --ref <ref do listar> --saida assinatura.bin --certificado certificado.pem
+//	bin/host-teste servir      # a página de teste da EXTENSÃO (F3), em http://localhost:8787
 //
 // `gerar-chave` cria o par ES256 de desenvolvimento: a privada fica em
 // `~/.config/confidata-assinador/host-teste-chave.pem` (0600, fora do repositório), e a pública
@@ -64,6 +65,8 @@ func main() {
 		err = simples(os.Args[1], os.Args[2:])
 	case "assinar":
 		err = assinar(os.Args[2:])
+	case "servir":
+		err = servir(os.Args[2:])
 	default:
 		uso()
 		os.Exit(2)
@@ -76,6 +79,7 @@ func main() {
 
 func uso() {
 	fmt.Fprintln(os.Stderr, "uso: host-teste gerar-chave | ola | listar | diagnostico | assinar --ref <hex> [--saida <arquivo>] [--certificado <arquivo.pem>]  (todas aceitam --programa e --origem)")
+	fmt.Fprintln(os.Stderr, "     host-teste servir [--porta 8787] [--pagina extensao/e2e/pagina]  (a página de teste da extensão, em http://localhost)")
 }
 
 func pastaDeConfiguracao() (string, error) {
@@ -343,11 +347,13 @@ func simples(op string, args []string) error {
 	return nil
 }
 
-func bilhete(chave *ecdsa.PrivateKey, origem, digest, cer string) (string, error) {
+// bilhete assina, com a chave dev local, o bilhete que o servidor emitiria para `doc` (o título que a
+// janela de confirmação mostra).
+func bilhete(chave *ecdsa.PrivateKey, origem, digest, cer, doc string) (string, error) {
 	agora := time.Now().Unix()
 	cab, _ := json.Marshal(map[string]any{"alg": "ES256", "typ": "assinador+jws", "kid": kidDev})
 	carga, _ := json.Marshal(map[string]any{"v": 1, "iss": "confidata", "aud": origem, "sid": "host-teste", "dig": digest, "cer": cer,
-		"fin": "assinatura", "doc": "Teste do Assinador pelo host-teste", "org": "Assinador (teste local)", "iat": agora, "exp": agora + 300})
+		"fin": "assinatura", "doc": doc, "org": "Assinador (teste local)", "iat": agora, "exp": agora + 300})
 	entrada := base64.RawURLEncoding.EncodeToString(cab) + "." + base64.RawURLEncoding.EncodeToString(carga)
 	h := sha256.Sum256([]byte(entrada))
 	r, s, err := ecdsa.Sign(rand.Reader, chave, h[:])
@@ -402,7 +408,7 @@ func assinar(args []string) error {
 
 	resumo := sha256.Sum256([]byte("host-teste " + time.Now().UTC().Format(time.RFC3339Nano)))
 	digest := hex.EncodeToString(resumo[:])
-	jws, err := bilhete(chave, *origem, digest, *ref)
+	jws, err := bilhete(chave, *origem, digest, *ref, "Teste do Assinador pelo host-teste")
 	if err != nil {
 		return err
 	}
