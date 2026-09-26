@@ -20,15 +20,24 @@ description: |-
   (cartao ou token ICP-Brasil) a partir do navegador, sem que a chave saia do
   dispositivo. Nao abre porta de rede e nao guarda o PIN.
 
+# O programa e cgo: precisa da glibc 2.34 (medido com objdump -T; o empacotar.sh reprova se o
+# binario passar a exigir mais do que isto).
+depends:
+  - libc6 (>= 2.34)
 # Sem o pcscd a leitora nao aparece, mas o programa abre (o diagnostico diz o que falta).
 recommends:
   - pcscd
   - libccid
 overrides:
   rpm:
+    depends:
+      - glibc >= 2.34
     recommends:
       - pcsc-lite
       - pcsc-lite-ccid
+  deb:
+    scripts:
+      postremove: ./pos-remocao.sh
 
 contents:
   - src: ./assinador

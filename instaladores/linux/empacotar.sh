@@ -34,6 +34,16 @@ trap 'rm -rf "$TRABALHO"' EXIT
 
 (cd "$RAIZ/nativo" && CGO_ENABLED=1 go build -trimpath -tags dev -ldflags "-X main.versao=$VERSAO" -o "$TRABALHO/assinador" ./cmd/assinador)
 (cd "$RAIZ/nativo" && go run -tags dev ./cmd/manifestos -saida "$TRABALHO/manifestos" -programa /usr/lib/confidata-assinador/assinador)
+cp "$RAIZ/instaladores/linux/pos-remocao.sh" "$TRABALHO/pos-remocao.sh"
+
+# O pacote declara a glibc 2.34 (nfpm.yaml). Binário que passe a exigir mais instalaria e
+# quebraria ao abrir num sistema mais antigo: aqui, reprova.
+GLIBC_DECLARADA=2.34
+GLIBC_EXIGIDA="$(objdump -T "$TRABALHO/assinador" | grep -o 'GLIBC_[0-9.]*' | cut -d_ -f2 | sort -uV | tail -1)"
+if [ -z "$GLIBC_EXIGIDA" ] || [ "$(printf '%s\n%s\n' "$GLIBC_EXIGIDA" "$GLIBC_DECLARADA" | sort -V | tail -1)" != "$GLIBC_DECLARADA" ]; then
+  echo "o programa exige a glibc $GLIBC_EXIGIDA, e o pacote declara $GLIBC_DECLARADA: atualize o nfpm.yaml e este script" >&2
+  exit 1
+fi
 
 export NFPM_ARQUITETURA="$ARQUITETURA" NFPM_VERSAO="$VERSAO"
 # De dentro da pasta de trabalho: os `src` do nfpm.yaml são relativos a ela.
