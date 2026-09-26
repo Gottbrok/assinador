@@ -71,7 +71,7 @@ func novaCena(t *testing.T) *cena {
 }
 
 func (c *cena) montar() (Relatorio, string) {
-	return Montar(c.fontes, c.leitoras, c.provedores)
+	return Montar(c.fontes, c.leitoras, c.provedores, estadoDaPropagacao(c.fontes))
 }
 
 var onzeDigitos = regexp.MustCompile(`\d{11}`)
@@ -108,7 +108,7 @@ func TestPcscdParadoViraAviso(t *testing.T) {
 	c := novaCena(t)
 	c.leitoras = pcsc.Resultado{Estado: pcsc.EstadoSemServico, Detalhe: "0x8010001D", Leitoras: []pcsc.Leitora{}}
 	r, texto := c.montar()
-	if !strings.Contains(strings.Join(r.Avisos, "\n"), "O serviço pcscd não está rodando") || !strings.Contains(texto, "sudo systemctl start pcscd") {
+	if !strings.Contains(strings.Join(r.Avisos, "\n"), "O serviço pcscd não está rodando") || !strings.Contains(texto, "sudo systemctl start pcscd") || !strings.Contains(texto, "PC/SC: serviço pcscd parado") {
 		t.Fatalf("avisos: %v\n%s", r.Avisos, texto)
 	}
 	c.leitoras = pcsc.Resultado{Estado: pcsc.EstadoSemBiblioteca, Leitoras: []pcsc.Leitora{}}
@@ -240,6 +240,20 @@ func TestAvisosDoPCSCNoWindows(t *testing.T) {
 func TestServicoDePropagacaoParadoNoWindows(t *testing.T) {
 	parado := func() string { return ServicoParado }
 	semCertificados := []assinatura.RelatorioDoProvedor{{Nome: "Windows (repositório do usuário)", Estado: assinatura.EstadoCarregado}}
+
+	// Um certificado com a chave no próprio computador (o A1 instalado) não diz nada do cartão na
+	// leitora: com ele na lista, o aviso do serviço aparece do mesmo jeito.
+	c0 := novaCenaNo(t, "windows")
+	chave, _ := rsa.GenerateKey(rand.Reader, 2048)
+	instalado := certificadoDeTeste(t, "A1 INSTALADO:10987654321", &chave.PublicKey, false, agora.AddDate(1, 0, 0))
+	c0.fontes.ServicoDePropagacao = parado
+	c0.leitoras.Leitoras[0].ATR = "3B00"
+	c0.provedores = []assinatura.RelatorioDoProvedor{{Nome: "Microsoft Software Key Storage Provider", Estado: assinatura.EstadoCarregado,
+		Vistos: []assinatura.Certificado{{Ref: assinatura.Ref(instalado), DER: instalado, RotuloDoProvedor: assinatura.RotuloChaveNoComputador}}}}
+	r0, _ := c0.montar()
+	if len(r0.Certificados) != 1 || !strings.Contains(strings.Join(r0.Avisos, "\n"), "Propagação de Certificados do Windows está parado") {
+		t.Fatalf("com um certificado instalado: %+v %v", r0.Certificados, r0.Avisos)
+	}
 
 	c := novaCenaNo(t, "windows")
 	c.fontes.ServicoDePropagacao = parado

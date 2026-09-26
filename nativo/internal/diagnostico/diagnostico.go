@@ -116,7 +116,16 @@ func Coletar(ctx context.Context, f Fontes) (Relatorio, string) {
 	for _, p := range f.Provedores {
 		provedores = append(provedores, p.Diagnosticar(ctx)...)
 	}
-	return Montar(f, <-leituras, provedores)
+	return Montar(f, <-leituras, provedores, estadoDaPropagacao(f))
+}
+
+// estadoDaPropagacao consulta o serviço de Propagação de Certificados (vazio fora do Windows). A
+// consulta mora aqui, e não no `Montar`, que fica puro.
+func estadoDaPropagacao(f Fontes) string {
+	if f.ServicoDePropagacao == nil {
+		return ""
+	}
+	return f.ServicoDePropagacao()
 }
 
 // consultarComPrazo espera o pcscd até o prazo ou até o cancelamento. Passado o prazo, a consulta
@@ -197,9 +206,10 @@ func doCatalogo(p assinatura.RelatorioDoProvedor, m catalogo.Modulo) bool {
 	return p.Nome == m.Rotulo || (m.Fabricante != "" && p.Fabricante == m.Fabricante)
 }
 
-// Montar monta o relatório e o texto a partir do que foi lido. É pura: o teste a exercita com
-// leituras forjadas.
-func Montar(f Fontes, leitoras pcsc.Resultado, provedores []assinatura.RelatorioDoProvedor) (Relatorio, string) {
+// Montar monta o relatório e o texto a partir do que foi lido: as leitoras, os relatórios dos
+// provedores e o estado do serviço de Propagação de Certificados do Windows (`Servico*`, ou vazio).
+// É pura: o teste a exercita com leituras forjadas.
+func Montar(f Fontes, leitoras pcsc.Resultado, provedores []assinatura.RelatorioDoProvedor, propagacao string) (Relatorio, string) {
 	agora := time.Now()
 	if f.Agora != nil {
 		agora = f.Agora()
@@ -279,7 +289,16 @@ func Montar(f Fontes, leitoras pcsc.Resultado, provedores []assinatura.Relatorio
 	// de Certificados, que inicia por gatilho quando um cartão entra (parado sem cartão é normal).
 	// Cartão lido e certificado fora da lista, com ele parado, é o caso mais provável de "não
 	// aparece" (§3.5 do plano): o aviso dele substitui o de instalar o programa do fabricante.
-	propagacaoParada := windows && f.ServicoDePropagacao != nil && f.ServicoDePropagacao() == ServicoParado
+	propagacaoParada := windows && propagacao == ServicoParado
+	// Os avisos do cartão olham só os certificados de CARTÃO ou token: um certificado com a chave no
+	// próprio computador (o A1 instalado no Windows) não diz nada do cartão na leitora, e silenciaria
+	// o caso mais comum de "o certificado do cartão não aparece".
+	doCartao := 0
+	for _, c := range r.Certificados {
+		if c.Provedor != assinatura.RotuloChaveNoComputador {
+			doCartao++
+		}
+	}
 	algumCartao := false
 	for _, l := range leitoras.Leitoras {
 		nome := limpar(l.Nome)
@@ -294,7 +313,7 @@ func Montar(f Fontes, leitoras pcsc.Resultado, provedores []assinatura.Relatorio
 					// O catálogo de módulos é o do Linux. No Windows quem lê o cartão é o provedor do
 					// fabricante, cujo nome ainda não foi medido (regra 4): a sugestão vale, e o "não
 					// está instalado" não se afirma.
-					if len(r.Certificados) == 0 && !propagacaoParada {
+					if doCartao == 0 && !propagacaoParada {
 						avisar("O cartão na leitora %s (%s) usa o %s. Se o certificado não aparece na lista, instale o %s para Windows.", nome, a.Cartao, m.Rotulo, m.Rotulo)
 					}
 				case !carregou:
@@ -302,7 +321,7 @@ func Montar(f Fontes, leitoras pcsc.Resultado, provedores []assinatura.Relatorio
 				case certificados == 0:
 					avisar("O %s está instalado, mas não achou certificado no cartão da leitora %s.", m.Rotulo, nome)
 				}
-			} else if len(r.Certificados) == 0 && !propagacaoParada {
+			} else if doCartao == 0 && !propagacaoParada {
 				avisar("O cartão na leitora %s não foi lido por nenhum programa de cartão instalado. Ele precisa do programa do fabricante (por exemplo, o SafeSign ou o SafeNet).", nome)
 			}
 			if l.Mudo {
@@ -311,10 +330,10 @@ func Montar(f Fontes, leitoras pcsc.Resultado, provedores []assinatura.Relatorio
 		}
 		r.Leitoras = append(r.Leitoras, item)
 	}
-	if leitoras.Estado == pcsc.EstadoOk && !algumCartao && len(r.Certificados) == 0 {
+	if leitoras.Estado == pcsc.EstadoOk && !algumCartao && doCartao == 0 {
 		avisar("Nenhuma leitora tem cartão. Coloque o cartão na leitora (ou conecte o token).")
 	}
-	if propagacaoParada && algumCartao && len(r.Certificados) == 0 {
+	if propagacaoParada && algumCartao && doCartao == 0 {
 		avisar("O serviço Propagação de Certificados do Windows está parado, e com ele parado o certificado do cartão não entra na lista. Para iniciar: abra Serviços (services.msc), Propagação de Certificados, Iniciar.")
 	}
 	algumModulo := false
@@ -390,6 +409,19 @@ var nomesDoEstadoDoPCSC = map[string]string{
 	pcsc.EstadoFalhou:        "falhou",
 }
 
+// estadoDoPCSCNoTexto é o nome do estado das leitoras no texto, com o nome do serviço do sistema.
+func estadoDoPCSCNoTexto(estado string) string {
+	if estado == pcsc.EstadoSemServico {
+		switch sistemaOperacional {
+		case "linux":
+			return "serviço pcscd parado"
+		case "windows":
+			return "serviço Cartão Inteligente parado, ou nenhuma leitora"
+		}
+	}
+	return nomesDoEstadoDoPCSC[estado]
+}
+
 func texto(r Relatorio) string {
 	var b strings.Builder
 	linha := func(formato string, args ...any) { fmt.Fprintf(&b, formato+"\n", args...) }
@@ -397,7 +429,7 @@ func texto(r Relatorio) string {
 	if r.Sistema != "" {
 		linha("Sistema: %s", r.Sistema)
 	}
-	pcscTexto := nomesDoEstadoDoPCSC[r.PCSC.Estado]
+	pcscTexto := estadoDoPCSCNoTexto(r.PCSC.Estado)
 	if r.PCSC.Detalhe != "" {
 		pcscTexto += " (" + r.PCSC.Detalhe + ")"
 	}

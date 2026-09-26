@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"syscall"
 
+	"github.com/Gottbrok/assinador/nativo/internal/assinatura"
 	"github.com/Gottbrok/assinador/nativo/internal/protocolo"
 )
 
@@ -103,8 +104,9 @@ func inverter(b []byte) {
 // Rótulos que a lista mostra.
 const (
 	// RotuloInstalado é o certificado com a chave guardada no próprio Windows (o A1 importado, ou a
-	// chave no TPM): ele também aparece e assina (§3.5 do plano).
-	RotuloInstalado = "Certificado instalado no Windows"
+	// chave no TPM): ele também aparece e assina (§3.5 do plano). O texto mora em `assinatura`, porque
+	// o diagnóstico também o reconhece.
+	RotuloInstalado = assinatura.RotuloChaveNoComputador
 	// RotuloSemNome é o provedor que não disse o nome.
 	RotuloSemNome = "Cartão ou token"
 )

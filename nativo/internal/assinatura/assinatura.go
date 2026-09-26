@@ -75,6 +75,12 @@ const (
 	EstadoFalhou    = "falhou"
 )
 
+// RotuloChaveNoComputador é o `RotuloDoProvedor` do certificado cuja chave mora no próprio
+// computador (o A1 importado no Windows, a chave no TPM), e não num cartão ou token. Hoje só o
+// provedor do Windows o produz; o diagnóstico o usa para não confundir esse certificado com o do
+// cartão ("o cartão está na leitora, e o certificado dele não aparece").
+const RotuloChaveNoComputador = "Certificado instalado no Windows"
+
 // Provedor é quem alcança as chaves: um por sistema (PKCS#11, Windows).
 type Provedor interface {
 	// Listar nunca pede PIN. Os avisos são frases para a pessoa ("o programa do cartão falhou").
