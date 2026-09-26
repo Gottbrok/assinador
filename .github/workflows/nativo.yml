@@ -2,9 +2,10 @@ name: nativo
 
 # O programa nativo no Linux: formatação, vet, testes (com o SoftHSM2 fazendo o papel do cartão),
 # as catracas do build de release, o desenho do PC/SC contra os cabeçalhos, staticcheck,
-# govulncheck, o binário, e os pacotes .deb e .rpm de desenvolvimento, provados em contêiner. As
-# ações são pinadas por commit (a tag vai no comentário): o repositório é público e o CI monta o que
-# roda no computador da pessoa.
+# govulncheck, o binário, e os pacotes .deb e .rpm de desenvolvimento, provados em contêiner. E no
+# Windows (F6a): o provedor CNG e CSP com certificados de chave de software, o canal, a ponta a
+# ponta, as estruturas contra o SDK e o registro de desenvolvimento. As ações são pinadas por commit
+# (a tag vai no comentário): o repositório é público e o CI monta o que roda no computador da pessoa.
 
 on:
   push:
@@ -53,6 +54,19 @@ jobs:
         run: |
           go vet ./...
           go vet -tags dev ./...
+
+      # O programa do Windows é compilado cruzado (sem cgo): um erro de compilação ali aparece aqui,
+      # antes do executor do Windows.
+      - name: go vet para o Windows (x64 e arm64, release e dev)
+        working-directory: nativo
+        env:
+          GOOS: windows
+          CGO_ENABLED: "0"
+        run: |
+          GOARCH=amd64 go vet ./...
+          GOARCH=amd64 go vet -tags dev ./...
+          GOARCH=arm64 go vet ./...
+          GOARCH=arm64 go vet -tags dev ./...
 
       - name: Testes (release e dev), com o SoftHSM2 obrigatório
         working-directory: nativo
@@ -127,5 +141,96 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: assinador-dev-linux-${{ matrix.arquitetura }}
+          path: dist/*
+          if-no-files-found: error
+
+  # O programa no Windows (F6a), em x64 e arm64: os certificados com chave de SOFTWARE que o
+  # New-SelfSignedCertificate cria no repositório do usuário fazem o papel do cartão (o KSP é o
+  # caminho CNG; o "Enhanced RSA and AES" é o caminho CSP, com a inversão de bytes). O executor não
+  # tem leitora. Os passos de Go vão por bash: o pwsh das ações só olha a saída do ÚLTIMO comando.
+  windows:
+    needs: linux
+    strategy:
+      matrix:
+        include:
+          - executor: windows-latest
+            arquitetura: amd64
+          - executor: windows-11-arm
+            arquitetura: arm64
+    runs-on: ${{ matrix.executor }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: nativo/go.mod
+          cache-dependency-path: nativo/go.sum
+
+      - name: go vet (release e dev)
+        working-directory: nativo
+        run: |
+          go vet ./...
+          go vet -tags dev ./...
+
+      - name: Testes (release e dev), com os certificados de teste obrigatórios
+        working-directory: nativo
+        env:
+          ASSINADOR_EXIGE_WINDOWS: "1"
+        run: |
+          go test ./...
+          go test -tags dev ./...
+
+      # O cgo só para estes testes, e só no x64 (o MinGW do executor é x64).
+      - name: As estruturas e os códigos são os dos cabeçalhos do SDK
+        if: matrix.arquitetura == 'amd64'
+        working-directory: nativo
+        env:
+          CGO_ENABLED: "1"
+        run: |
+          gcc --version
+          go test -tags "pcsc_cabecalho windows_cabecalho" -run TestTiposBatemComOCabecalho -v ./internal/pcsc/ ./internal/windows/
+
+      - name: staticcheck e govulncheck
+        working-directory: nativo
+        run: |
+          go run honnef.co/go/tools/cmd/staticcheck@v0.8.1 ./...
+          go run honnef.co/go/tools/cmd/staticcheck@v0.8.1 -tags dev ./...
+          go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+
+      - name: Programa e gerador de manifestos de DESENVOLVIMENTO (sem assinatura até a F6b)
+        working-directory: nativo
+        run: |
+          go build -trimpath -tags dev -o ../dist/assinador-dev.exe ./cmd/assinador
+          go build -trimpath -tags dev -o ../dist/manifestos-dev.exe ./cmd/manifestos
+          cp ../ferramentas/registrar-windows.ps1 ../dist/
+
+      - name: O registro de desenvolvimento grava e apaga os manifestos e as chaves HKCU
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $nome = 'br.com.confidata.assinador'
+          .\dist\registrar-windows.ps1 -Programa .\dist\assinador-dev.exe -Manifestos .\dist\manifestos-dev.exe
+          $idDev = (Get-Content protocolo\extensao-dev.json -Raw | ConvertFrom-Json).idChrome
+          foreach ($chave in "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$nome", "HKCU:\Software\Microsoft\Edge\NativeMessagingHosts\$nome", "HKCU:\Software\Mozilla\NativeMessagingHosts\$nome") {
+            $manifesto = Get-Content (Get-Item $chave).GetValue('') -Raw | ConvertFrom-Json
+            if (-not (Test-Path $manifesto.path)) { throw "o manifesto de $chave aponta para $($manifesto.path), que não existe" }
+            if ($chave -like '*Mozilla*') {
+              if ($manifesto.allowed_extensions -notcontains 'assinador@confidata.com.br') { throw 'o manifesto do Firefox não traz a extensão' }
+            } elseif ($manifesto.allowed_origins -notcontains "chrome-extension://$idDev/") { throw "o manifesto de $chave não traz a extensão de desenvolvimento" }
+          }
+          & "$env:LOCALAPPDATA\ConfidataAssinadorDev\assinador.exe" versao
+          if ($LASTEXITCODE -ne 0) { throw 'o programa registrado não abriu' }
+          .\dist\registrar-windows.ps1 -Remover
+          if (Test-Path "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$nome") { throw 'a chave do Chrome ficou' }
+          if (Test-Path "$env:LOCALAPPDATA\ConfidataAssinadorDev") { throw 'a pasta ficou' }
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: assinador-dev-windows-${{ matrix.arquitetura }}
           path: dist/*
           if-no-files-found: error
