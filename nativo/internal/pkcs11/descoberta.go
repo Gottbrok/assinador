@@ -7,6 +7,7 @@ package pkcs11
 import (
 	"bufio"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -35,9 +36,15 @@ type Modulo struct {
 // OpcoesDeDescoberta dizem onde procurar. `OpcoesPadrao` é o que o programa usa.
 type OpcoesDeDescoberta struct {
 	Catalogo []catalogo.Modulo
-	// PastasDoP11Kit são as pastas de registro do p11-kit (`*.module`), da que MAIS vale para a
-	// que menos vale: o registro de mesmo nome numa pasta anterior esconde o das seguintes.
-	PastasDoP11Kit []string
+	// As pastas de registro do p11-kit (`*.module`): a do pacote, a do sistema e a da pessoa. Como
+	// no p11-kit (`pkcs11.conf(5)`), o registro de mesmo nome se JUNTA campo a campo, e o da pessoa
+	// vale sobre o do sistema, que vale sobre o do pacote; `module:` em branco desliga o módulo.
+	PastaDoP11KitDoPacote  string
+	PastaDoP11KitDoSistema string
+	PastaDoP11KitDaPessoa  string
+	// ConfiguracaoDoP11Kit é o `pkcs11.conf` do sistema, cujo `user-config` (`none`, `merge`, que é
+	// o padrão, ou `only`) diz se a pasta da pessoa conta.
+	ConfiguracaoDoP11Kit string
 	// PastasDeModulosDoP11Kit são onde o p11-kit procura o módulo registrado por NOME (sem
 	// caminho), como o `opensc-pkcs11.so`.
 	PastasDeModulosDoP11Kit []string
@@ -52,25 +59,29 @@ const nomeDoPrograma = "assinador"
 // `gnome-keyring` guarda senhas.
 var registrosIgnorados = []string{"p11-kit-trust", "gnome-keyring", "p11-kit-trust.so", "gnome-keyring-pkcs11.so"}
 
-// pastasDeModulosDoP11Kit: o `$(libdir)/pkcs11` do Debian e do Ubuntu (multiarch, medido na F2a e
-// na F2b) e do Fedora (medido na F2b, em contêiner).
+// pastasDeModulosDoP11Kit: o `$(libdir)/pkcs11`. Medidos: o do Ubuntu x86_64 (na F2a e na F2b) e o
+// do Fedora x86_64 (na F2b, em contêiner). O do arm64 segue a convenção multiarch do Debian e o
+// `lib64` do Fedora, e não foi medido.
 var pastasDeModulosDoP11Kit = map[string][]string{
 	"linux/amd64": {"/usr/lib/x86_64-linux-gnu/pkcs11", "/usr/lib64/pkcs11"},
 	"linux/arm64": {"/usr/lib/aarch64-linux-gnu/pkcs11", "/usr/lib64/pkcs11"},
 }
 
-// OpcoesPadrao: o catálogo medido; os registros do p11-kit (`~/.config/pkcs11/modules`,
-// `/etc/pkcs11/modules` e `/usr/share/p11-kit/modules`); `/etc/confidata-assinador/modulos.d/*.conf`;
-// e `~/.config/confidata-assinador/modulos` (um caminho absoluto por linha, `#` comenta).
+// OpcoesPadrao: o catálogo medido; os registros do p11-kit (`/usr/share/p11-kit/modules`,
+// `/etc/pkcs11/modules` e `~/.config/pkcs11/modules`, com o `user-config` de
+// `/etc/pkcs11/pkcs11.conf`); `/etc/confidata-assinador/modulos.d/*.conf`; e
+// `~/.config/confidata-assinador/modulos` (um caminho absoluto por linha, `#` comenta).
 func OpcoesPadrao() OpcoesDeDescoberta {
 	o := OpcoesDeDescoberta{
 		Catalogo:                catalogo.Modulos,
-		PastasDoP11Kit:          []string{"/etc/pkcs11/modules", "/usr/share/p11-kit/modules"},
+		PastaDoP11KitDoPacote:   "/usr/share/p11-kit/modules",
+		PastaDoP11KitDoSistema:  "/etc/pkcs11/modules",
+		ConfiguracaoDoP11Kit:    "/etc/pkcs11/pkcs11.conf",
 		PastasDeModulosDoP11Kit: pastasDeModulosDoP11Kit[runtime.GOOS+"/"+runtime.GOARCH],
 		PastaDoSistema:          "/etc/confidata-assinador/modulos.d",
 	}
 	if dir, err := os.UserConfigDir(); err == nil {
-		o.PastasDoP11Kit = append([]string{filepath.Join(dir, "pkcs11", "modules")}, o.PastasDoP11Kit...)
+		o.PastaDoP11KitDaPessoa = filepath.Join(dir, "pkcs11", "modules")
 		o.ArquivoDoUsuario = filepath.Join(dir, "confidata-assinador", "modulos")
 	}
 	return o
@@ -119,13 +130,23 @@ func Descobrir(o OpcoesDeDescoberta) (achados, ausentes []Modulo) {
 		}
 	}
 
-	for _, r := range registrosDoP11Kit(o.PastasDoP11Kit) {
+	// Módulo achado pelo p11-kit ou pela configuração cuja biblioteca tem o nome de uma do catálogo
+	// é aquele módulo (o rótulo e o `Generico` do catálogo): o OpenSC registrado continua genérico
+	// na fusão, e o SafeSign fora do caminho medido continua sendo o SafeSign no diagnóstico.
+	identificar := func(caminho, nome, origem string) Modulo {
+		if c, ok := catalogo.PeloArquivo(caminho, o.Catalogo); ok {
+			return Modulo{Caminho: caminho, Nome: c.Nome, Rotulo: c.Rotulo, Generico: c.Generico, Origem: origem}
+		}
+		return Modulo{Caminho: caminho, Nome: nome, Rotulo: nome, Origem: origem}
+	}
+
+	for _, r := range registrosDoP11Kit(o) {
 		caminho, ok := resolverNoP11Kit(r.modulo, o.PastasDeModulosDoP11Kit)
 		if !ok {
-			ausentes = append(ausentes, Modulo{Caminho: r.modulo, Nome: r.nome, Rotulo: r.nome, Origem: OrigemP11Kit})
+			ausentes = append(ausentes, identificar(r.modulo, r.nome, OrigemP11Kit))
 			continue
 		}
-		acrescentar(Modulo{Caminho: caminho, Nome: r.nome, Rotulo: r.nome, Origem: OrigemP11Kit})
+		acrescentar(identificar(caminho, r.nome, OrigemP11Kit))
 	}
 
 	var arquivos []string
@@ -140,8 +161,7 @@ func Descobrir(o OpcoesDeDescoberta) (achados, ausentes []Modulo) {
 	}
 	for _, arquivo := range arquivos {
 		for _, caminho := range caminhosDoArquivo(arquivo) {
-			base := filepath.Base(caminho)
-			acrescentar(Modulo{Caminho: caminho, Nome: base, Rotulo: base, Origem: OrigemConfiguracao})
+			acrescentar(identificar(caminho, filepath.Base(caminho), OrigemConfiguracao))
 		}
 	}
 	return achados, ausentes
@@ -153,42 +173,69 @@ type registroDoP11Kit struct {
 	modulo string
 }
 
-// registrosDoP11Kit lê os registros das pastas, na ordem de valor: o registro de mesmo nome numa
-// pasta anterior esconde os das seguintes (é a regra do p11-kit: o da pessoa sobre o de `/etc`, e
-// este sobre o do pacote). Ficam de fora os que não são de cartão (`registrosIgnorados`), os que
-// têm `enable-in` sem este programa e os que têm `disable-in` com ele.
-func registrosDoP11Kit(pastas []string) []registroDoP11Kit {
-	vistos := map[string]bool{}
-	var saida []registroDoP11Kit
+// registrosDoP11Kit lê os registros como o p11-kit (`pkcs11.conf(5)`): o de mesmo nome se JUNTA
+// campo a campo, com o do sistema sobre o do pacote e o da pessoa sobre os dois; a pasta da pessoa
+// só conta se o `user-config` do sistema não for `none` (e, com `only`, só ela conta); `module:` em
+// branco desliga o registro. Ficam de fora os que não são de cartão (`registrosIgnorados`), os que
+// têm `enable-in` sem este programa e os que têm `disable-in` com ele. A ordem é a do nome.
+func registrosDoP11Kit(o OpcoesDeDescoberta) []registroDoP11Kit {
+	var pastas []string
+	switch configuracaoDaPessoa(o.ConfiguracaoDoP11Kit) {
+	case "none":
+		pastas = []string{o.PastaDoP11KitDoPacote, o.PastaDoP11KitDoSistema}
+	case "only":
+		pastas = []string{o.PastaDoP11KitDaPessoa}
+	default:
+		pastas = []string{o.PastaDoP11KitDoPacote, o.PastaDoP11KitDoSistema, o.PastaDoP11KitDaPessoa}
+	}
+	juntos := map[string]map[string]string{}
 	for _, pasta := range pastas {
+		if pasta == "" {
+			continue
+		}
 		arquivos, err := filepath.Glob(filepath.Join(pasta, "*.module"))
 		if err != nil {
 			continue
 		}
-		slices.Sort(arquivos)
 		for _, arquivo := range arquivos {
 			nome := strings.TrimSuffix(filepath.Base(arquivo), ".module")
-			if vistos[nome] {
-				continue
+			if juntos[nome] == nil {
+				juntos[nome] = map[string]string{}
 			}
-			vistos[nome] = true
-			campos := camposDoRegistro(arquivo)
-			modulo := campos["module"]
-			if modulo == "" || slices.Contains(registrosIgnorados, nome) || slices.Contains(registrosIgnorados, filepath.Base(modulo)) {
-				continue
+			for chave, valor := range camposDoRegistro(arquivo) {
+				juntos[nome][chave] = valor
 			}
-			if habilitado, ok := campos["enable-in"]; ok && !slices.Contains(listaDoRegistro(habilitado), nomeDoPrograma) {
-				continue
-			}
-			if slices.Contains(listaDoRegistro(campos["disable-in"]), nomeDoPrograma) {
-				continue
-			}
-			saida = append(saida, registroDoP11Kit{nome: nome, modulo: modulo})
 		}
 	}
-	// A ordem é a do nome do registro, e não a da pasta onde ele mora.
-	slices.SortFunc(saida, func(a, b registroDoP11Kit) int { return strings.Compare(a.nome, b.nome) })
+	var saida []registroDoP11Kit
+	for _, nome := range slices.Sorted(maps.Keys(juntos)) {
+		campos := juntos[nome]
+		modulo := campos["module"]
+		if modulo == "" || slices.Contains(registrosIgnorados, nome) || slices.Contains(registrosIgnorados, filepath.Base(modulo)) {
+			continue
+		}
+		if habilitado, ok := campos["enable-in"]; ok && !slices.Contains(listaDoRegistro(habilitado), nomeDoPrograma) {
+			continue
+		}
+		if slices.Contains(listaDoRegistro(campos["disable-in"]), nomeDoPrograma) {
+			continue
+		}
+		saida = append(saida, registroDoP11Kit{nome: nome, modulo: modulo})
+	}
 	return saida
+}
+
+// configuracaoDaPessoa é o `user-config` do `pkcs11.conf` do sistema: `none`, `merge` (o padrão)
+// ou `only`.
+func configuracaoDaPessoa(arquivo string) string {
+	if arquivo == "" {
+		return "merge"
+	}
+	switch valor := camposDoRegistro(arquivo)["user-config"]; valor {
+	case "none", "only":
+		return valor
+	}
+	return "merge"
 }
 
 // camposDoRegistro lê as linhas `chave: valor` de um `*.module` (`#` comenta).
