@@ -119,7 +119,7 @@ jobs:
           cache-dependency-path: nativo/go.sum
 
       - name: Montar os pacotes
-        run: instaladores/linux/empacotar.sh "0.1.0~dev.${{ github.run_number }}" dist
+        run: instaladores/linux/empacotar.sh "1.0.0~dev.${{ github.run_number }}" dist
 
       - name: Instalar e remover em contêiner
         run: instaladores/linux/testar-pacotes.sh dist

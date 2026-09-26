@@ -74,7 +74,13 @@ quando a entrada fecha, e os filhos dos módulos morrem com ele.
 - `assinatura`: RSA PKCS#1 v1.5 sobre o DigestInfo SHA-256 do `digest`. O programa a confere
   contra a chave pública do certificado antes de devolver.
 - `listar` e `diagnostico` só atendem origem dos padrões de algum emissor (e `localhost` no build
-  de desenvolvimento). `ola` responde a qualquer origem, porque só diz versões.
+  de desenvolvimento). `ola` responde a qualquer origem, porque só diz versões. A exceção é o
+  `diagnostico` com a origem `https://extensao.invalid` (`origem.DaExtensao`), que a extensão informa
+  só para pedido da página de OPÇÕES dela, conferida pelo remetente: o relatório não tem CPF, e o
+  suporte o pede antes de a pessoa ter qualquer página autorizada. O `listar` nunca a aceita.
+- `versao` do `ola` é `X.Y.Z` (a forma que a biblioteca compara com a versão mínima). O build de
+  desenvolvimento informa a versão da PRÓXIMA publicação, e o sufixo de desenvolvimento fica só no
+  nome do pacote (`1.0.0~dev.N`).
 - `conferir` devolve o que a janela de confirmação mostra: o `doc`, a `org`, a `fin` e o `exp` do
   bilhete (este em RFC 3339, UTC), e o certificado escolhido. O `assunto` sai com os dígitos
   trocados por `*`: o CN ICP-Brasil é `NOME:CPF`, e o programa não interpreta campo ICP-Brasil (a

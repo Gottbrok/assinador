@@ -58,7 +58,7 @@ rodando", "este cartão usa o SafeSign, que não está instalado").
 ## Pacotes para Linux
 
 ```sh
-instaladores/linux/empacotar.sh 0.1.0~dev.1 dist   # o .deb desta arquitetura e, no amd64, o .rpm
+instaladores/linux/empacotar.sh 1.0.0~dev.1 dist   # o .deb desta arquitetura e, no amd64, o .rpm
 instaladores/linux/testar-pacotes.sh dist          # instala, roda e remove em contêiner (Docker)
 ```
 

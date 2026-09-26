@@ -139,8 +139,11 @@ func (h *Host) atender(ctx context.Context, p mensagens.Pedido) (r protocolo.Res
 		return protocolo.Sucesso(p.ID, protocolo.DadosDoOla{Versao: h.Versao, Protocolo: protocolo.Versao, Plataforma: h.Plataforma})
 	}
 	// `listar` e `diagnostico` não têm bilhete; `conferir` e `assinar` passam também pela
-	// conferência do bilhete, que exige a origem exata e o padrão do emissor.
-	if !origem.PermitidaSemBilhete(p.Origem) {
+	// conferência do bilhete, que exige a origem exata e o padrão do emissor. A única exceção é o
+	// `diagnostico` pedido pela página de OPÇÕES da própria extensão (F3): o relatório não tem CPF, e a
+	// extensão só informa `origem.DaExtensao` para pedido de página dela, conferida pelo remetente.
+	diagnosticoDaExtensao := p.Op == protocolo.OpDiagnostico && p.Origem == origem.DaExtensao
+	if !diagnosticoDaExtensao && !origem.PermitidaSemBilhete(p.Origem) {
 		return protocolo.Falha(p.ID, protocolo.Novo(protocolo.OrigemRecusada, "origem fora dos padrões"))
 	}
 	var dados any

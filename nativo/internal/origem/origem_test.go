@@ -77,6 +77,18 @@ func TestPermitidaSemBilhete(t *testing.T) {
 	if got := PermitidaSemBilhete("http://localhost:3000"); got != localhostSemBilhete {
 		t.Errorf("localhost sem bilhete = %v, o build diz %v", got, localhostSemBilhete)
 	}
+	// A origem das páginas da extensão não é de emissor nenhum: nem lista sem bilhete, nem casa
+	// bilhete de ambiente algum. Quem a admite, só para o diagnóstico, é o host.
+	if PermitidaSemBilhete(DaExtensao) {
+		t.Errorf("a origem da extensão passou como origem de emissor")
+	}
+	for emissor := range Padroes {
+		for _, ambiente := range []string{AmbienteProducao, AmbienteDev, AmbienteTeste} {
+			if Aceita(DaExtensao, emissor, ambiente) {
+				t.Errorf("a origem da extensão casou o emissor %s (%s)", emissor, ambiente)
+			}
+		}
+	}
 }
 
 func TestLerChamador(t *testing.T) {

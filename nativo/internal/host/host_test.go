@@ -221,6 +221,15 @@ func TestListarFiltraEAvisa(t *testing.T) {
 	if r.OK || r.Erro.Codigo != protocolo.OrigemRecusada || c.provedor.listou != 0 {
 		t.Fatalf("origem estranha: %+v", r)
 	}
+	// A origem das páginas da extensão pede o diagnóstico (F3), e NADA mais: nem a lista, que tem CPF.
+	r = c.host.atender(context.Background(), pedido(t, "listar", origem.DaExtensao, nil))
+	if r.OK || r.Erro.Codigo != protocolo.OrigemRecusada || c.provedor.listou != 0 {
+		t.Fatalf("a origem da extensão listou: %+v", r)
+	}
+	r = c.host.atender(context.Background(), pedido(t, "diagnostico", origem.DaExtensao, nil))
+	if _, ok := r.Dados.(protocolo.DadosDoDiagnostico); !r.OK || !ok {
+		t.Fatalf("o diagnóstico das opções da extensão foi recusado: %+v", r)
+	}
 }
 
 // O bilhete é conferido ANTES de o provedor ser consultado: pedido forjado não carrega biblioteca

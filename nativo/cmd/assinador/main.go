@@ -31,8 +31,10 @@ import (
 	"github.com/Gottbrok/assinador/nativo/internal/pcsc"
 )
 
-// versao é trocada no build de release (`-ldflags "-X main.versao=1.0.0"`).
-var versao = "0.1.0-dev"
+// versao é trocada no build (`-ldflags "-X main.versao=1.0.0"`). Sempre `X.Y.Z`: é a forma que a
+// biblioteca compara com a versão mínima, e qualquer outra a faz declarar o programa desatualizado.
+// Em desenvolvimento, é a versão da PRÓXIMA publicação (o sufixo `~dev.N` fica só no pacote).
+var versao = "1.0.0"
 
 func main() {
 	args := os.Args[1:]

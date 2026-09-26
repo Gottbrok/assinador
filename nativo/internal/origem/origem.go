@@ -36,6 +36,12 @@ var Padroes = map[string][]string{
 // PadroesDev são acrescentados aos do emissor SÓ para chave de ambiente `dev`.
 var PadroesDev = []string{`^http://([a-z0-9-]+\.)?localhost(:[0-9]+)?$`}
 
+// DaExtensao é a origem que a extensão informa quando quem pergunta é uma página DELA (a de
+// opções pede as versões e o diagnóstico). `.invalid` é reservado: nunca é página de verdade, e
+// nenhum padrão de emissor a aceita (bilhete para ela é recusado). A extensão a informa só depois
+// de conferir, pelo remetente, que o pedido veio de página dela (`ORIGEM_DA_EXTENSAO` na extensão).
+const DaExtensao = "https://extensao.invalid"
+
 var (
 	regexDoEmissor = map[string][]*regexp.Regexp{}
 	regexDev       []*regexp.Regexp

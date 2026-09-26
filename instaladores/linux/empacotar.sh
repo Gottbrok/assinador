@@ -6,7 +6,7 @@
 #
 #   instaladores/linux/empacotar.sh <versão> <pasta de saída>
 #
-# Exemplo: instaladores/linux/empacotar.sh 0.1.0~dev.1 dist
+# Exemplo: instaladores/linux/empacotar.sh 1.0.0~dev.1 dist
 set -euo pipefail
 
 if [ "$#" -ne 2 ]; then
@@ -20,7 +20,7 @@ NFPM="github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.47.0"
 
 case "$VERSAO" in
   [0-9]*) ;;
-  *) echo "a versão começa por dígito (0.1.0~dev.1)" >&2; exit 2 ;;
+  *) echo "a versão começa por dígito (1.0.0~dev.1)" >&2; exit 2 ;;
 esac
 
 ARQUITETURA="$(cd "$RAIZ/nativo" && go env GOARCH)"
@@ -32,7 +32,11 @@ esac
 TRABALHO="$(mktemp -d)"
 trap 'rm -rf "$TRABALHO"' EXIT
 
-(cd "$RAIZ/nativo" && CGO_ENABLED=1 go build -trimpath -tags dev -ldflags "-X main.versao=$VERSAO" -o "$TRABALHO/assinador" ./cmd/assinador)
+# O programa informa só o `X.Y.Z` (a forma que a biblioteca compara com a versão mínima); o sufixo
+# de desenvolvimento (`~dev.N`) fica no nome do pacote, que o gerenciador de pacotes ordena ANTES da
+# versão publicada.
+VERSAO_DO_PROGRAMA="${VERSAO%%[~-]*}"
+(cd "$RAIZ/nativo" && CGO_ENABLED=1 go build -trimpath -tags dev -ldflags "-X main.versao=$VERSAO_DO_PROGRAMA" -o "$TRABALHO/assinador" ./cmd/assinador)
 (cd "$RAIZ/nativo" && go run -tags dev ./cmd/manifestos -saida "$TRABALHO/manifestos" -programa /usr/lib/confidata-assinador/assinador)
 
 export NFPM_ARQUITETURA="$ARQUITETURA" NFPM_VERSAO="$VERSAO"
