@@ -4,7 +4,10 @@
 // alheia.
 package catalogo
 
-import "runtime"
+import (
+	"path/filepath"
+	"runtime"
+)
 
 // Medicao é a prova de que a entrada foi vista funcionando.
 type Medicao struct {
@@ -21,6 +24,10 @@ type Modulo struct {
 	Nome string
 	// Rotulo é o que a pessoa lê na lista e no diagnóstico.
 	Rotulo string
+	// Fabricante é o `manufacturerID` que o módulo declara no C_GetInfo, como foi medido. É o que
+	// reconhece o módulo no diagnóstico mesmo quando ele foi achado por outro caminho (o p11-kit, a
+	// configuração da pessoa) e com outro nome.
+	Fabricante string
 	// Generico marca o módulo que fala com muitos cartões (o OpenSC). Quando o do fabricante e um
 	// genérico veem o mesmo certificado, a fusão por `ref` fica com o do fabricante.
 	Generico bool
@@ -32,6 +39,23 @@ type Modulo struct {
 // CaminhosAqui são os caminhos desta plataforma.
 func (m Modulo) CaminhosAqui() []string {
 	return m.Caminhos[runtime.GOOS+"/"+runtime.GOARCH]
+}
+
+// PeloArquivo acha no catálogo o módulo cuja biblioteca tem este NOME de arquivo, em qualquer
+// plataforma: o SafeSign instalado fora do caminho medido, ou o OpenSC que o p11-kit registra,
+// continuam sendo o SafeSign e o OpenSC (com o rótulo e o `Generico` do catálogo).
+func PeloArquivo(caminho string, modulos []Modulo) (Modulo, bool) {
+	nome := filepath.Base(caminho)
+	for _, m := range modulos {
+		for _, caminhos := range m.Caminhos {
+			for _, c := range caminhos {
+				if filepath.Base(c) == nome {
+					return m, true
+				}
+			}
+		}
+	}
+	return Modulo{}, false
 }
 
 var medicaoDaF0 = Medicao{
@@ -53,17 +77,19 @@ var medicaoDoOpenscNoFedora = Medicao{
 // Modulos são os medidos. O arm64 entra quando for medido.
 var Modulos = []Modulo{
 	{
-		Nome:   "safesign",
-		Rotulo: "SafeSign",
+		Nome:       "safesign",
+		Rotulo:     "SafeSign",
+		Fabricante: "A.E.T. Europe B.V.",
 		Caminhos: map[string][]string{
 			"linux/amd64": {"/usr/lib/libaetpkss.so.3"},
 		},
 		Medicoes: []Medicao{medicaoDaF0},
 	},
 	{
-		Nome:     "opensc",
-		Rotulo:   "OpenSC",
-		Generico: true,
+		Nome:       "opensc",
+		Rotulo:     "OpenSC",
+		Fabricante: "OpenSC Project",
+		Generico:   true,
 		Caminhos: map[string][]string{
 			"linux/amd64": {"/usr/lib/x86_64-linux-gnu/opensc-pkcs11.so", "/usr/lib64/opensc-pkcs11.so"},
 		},

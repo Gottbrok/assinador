@@ -76,7 +76,7 @@ func (p *provedorFalso) Assinar(_ context.Context, _ assinatura.Certificado, dig
 }
 
 func (p *provedorFalso) Diagnosticar(context.Context) []assinatura.RelatorioDoProvedor {
-	return []assinatura.RelatorioDoProvedor{{Nome: "Falso", Estado: assinatura.EstadoCarregado, Certificados: len(p.certs), Detalhe: "teste"}}
+	return []assinatura.RelatorioDoProvedor{{Nome: "Falso", Estado: assinatura.EstadoCarregado, Certificados: len(p.certs), Detalhe: "teste", Vistos: p.certs}}
 }
 
 type cenario struct {
@@ -407,7 +407,8 @@ func TestDiagnostico(t *testing.T) {
 	}
 	r := c.host.atender(context.Background(), pedido(t, "diagnostico", origemDaPagina, nil))
 	d := r.Dados.(protocolo.DadosDoDiagnostico)
-	if !r.OK || !strings.Contains(d.Texto, "Assinador 0.1.0-teste") || !strings.Contains(d.Texto, "Programa do cartão Falso: carregado, 4 certificado(s)") || !strings.Contains(d.Texto, "O serviço pcscd não está rodando") {
+	// O diagnóstico conta os certificados do módulo menos o da AC: dos 4 do provedor falso, 3.
+	if !r.OK || !strings.Contains(d.Texto, "Assinador 0.1.0-teste") || !strings.Contains(d.Texto, "Programa do cartão Falso: carregado, 3 certificado(s)") || !strings.Contains(d.Texto, "O serviço pcscd não está rodando") {
 		t.Fatalf("%+v", d)
 	}
 	if _, ok := d.Relatorio.(diagnostico.Relatorio); !ok {

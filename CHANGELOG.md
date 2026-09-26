@@ -74,7 +74,30 @@
   - Divergências do plano: os pacotes da F2b levam o build `dev` (é o que o teste manual das F4b e
     F5 precisa, e o release não aceita bilhete nenhum até a F7a); o ATR do Cairo, que o plano punha
     no escopo, espera o gate, porque não havia leitora nesta máquina; os avisos e o texto do
-    diagnóstico são frases em português, como os `avisos` do `listar` (a mesma decisão da F3).
+    diagnóstico são frases em português, como os `avisos` do `listar` (a mesma decisão da F3); o
+    PC/SC é aberto por `dlopen` próprio, e não pelo `github.com/ebfe/scard` que a §3.5 do plano
+    nomeava (o `scard` liga a biblioteca na compilação, e o programa não abriria sem o pcsc-lite
+    instalado); e o p11-kit lê também a pasta da pessoa (`~/.config/pkcs11/modules`), que o p11-kit
+    lê, além das duas que o plano listava.
+- Auditoria da F2b (uma revisão adversarial independente e a nossa): nenhum P0; um P1 corrigido, o
+  CI vermelho no primeiro push (no executor do GitHub o SoftHSM vem registrado no p11-kit, e os
+  testes de ponta a ponta esperavam o nome que ele tem só onde não está instalado no sistema). Os
+  quatro lotes que o Cairo escolheu, todos corrigidos:
+  - diagnóstico: a sugestão pelo ATR reconhece o módulo do catálogo pelo rótulo OU pelo fabricante
+    que ele declara (antes, o SafeSign achado pela configuração virava "não está instalado"), e cada
+    módulo conta os PRÓPRIOS certificados, menos os de AC; o texto de fora sai sem controle (o
+    aparelho malicioso não forja linha nem escape no terminal); o emissor mascara 11 ou mais
+    dígitos; a frase do PC/SC ausente não fala em pcscd fora do Linux; as leitoras são consultadas
+    ao mesmo tempo que os módulos, e o cancelamento não espera o prazo do pcscd;
+  - PC/SC e p11-kit: a lista de leitoras que cresce no meio é relida; o pcsc-lite FALSO dá teste ao
+    caminho com leitora e cartão; o registro do p11-kit de mesmo nome se junta campo a campo, com o
+    `user-config`, como no `pkcs11.conf(5)`; o módulo com o nome de arquivo de um do catálogo é
+    aquele módulo (o OpenSC registrado continua genérico);
+  - testes e docs: o teste do `gnome-keyring` prova a exclusão de verdade; o host de verdade prova
+    o canal com o C escrevendo na saída padrão; o registro de medição tinha números que não foram
+    medidos (64 bytes e deslocamento 28; o certo é 80 e 40);
+  - pacotes: declaram a glibc 2.34 (e o empacotamento reprova se o binário exigir mais); o `.deb`
+    devolve o `/etc/opt` que o `dpkg` apagava; o teste compara o sistema inteiro antes e depois.
 - F3: a extensão (`extensao/`), Manifest V3 para Chrome, Edge e Firefox, TypeScript e Vite sem
   framework, um arquivo por script e sem minificar.
   - A ponte da página (mundo isolado, quadro de topo), o fundo com os quatro portões (remetente,

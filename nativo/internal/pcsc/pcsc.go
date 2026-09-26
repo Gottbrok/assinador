@@ -38,6 +38,7 @@ const (
 	codigoServicoParou   = 0x8010001E // SCARD_E_SERVICE_STOPPED
 	codigoSemLeitora     = 0x8010002E // SCARD_E_NO_READERS_AVAILABLE
 	codigoTempoEsgotado  = 0x8010000A // SCARD_E_TIMEOUT
+	codigoBufferPequeno  = 0x80100008 // SCARD_E_INSUFFICIENT_BUFFER
 	estadoPresente       = 0x0020     // SCARD_STATE_PRESENT
 	estadoMudo           = 0x0200     // SCARD_STATE_MUTE
 	maximoDeLeitoras     = 16

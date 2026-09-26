@@ -18,8 +18,11 @@ nunca presumido.
   a consulta responde `SCARD_E_NO_SERVICE` (`0x8010001D`), e o diagnóstico diz, em frase, que o
   serviço não está rodando e como iniciá-lo.
 - **Os tipos do pcsc-lite** (`libpcsclite-dev` 2.0.3 do Ubuntu 24.04, cabeçalhos extraídos sem
-  instalar): `DWORD` e `LONG` de 8 bytes, `SCARD_READERSTATE` de 64 bytes, `rgbAtr` no deslocamento
-  28 e `MAX_ATR_SIZE` 33. O teste `pcsc_cabecalho` compara as 18 medidas com as nossas.
+  instalar, medidos compilando `sizeof` e `offsetof` contra eles): `DWORD` e `LONG` de 8 bytes,
+  `SCARD_READERSTATE` de 80 bytes, `cbAtr` no deslocamento 32, `rgbAtr` no 40 e `MAX_ATR_SIZE` 33.
+  O teste `pcsc_cabecalho` compara estas medidas e as constantes com as nossas. (A primeira versão
+  deste registro dizia 64 bytes e deslocamento 28, números que não tinham sido medidos: a auditoria
+  da F2b pegou, e o código sempre esteve certo.)
 - **Fedora 43 x86_64 em contêiner** (OpenSC 0.27.1 e p11-kit 0.26.5 do `dnf`): o OpenSC fica em
   `/usr/lib64/opensc-pkcs11.so` (e `/usr/lib64/pkcs11/opensc-pkcs11.so` aponta para ele), o p11-kit
   o registra em `opensc.module` por nome, e ele responde a `C_GetInfo` (Cryptoki 3.0). Entrou no
@@ -30,6 +33,15 @@ nunca presumido.
   mínimas não o têm), o programa abre do mesmo jeito e o diagnóstico diz que a biblioteca do PC/SC
   falta. No Fedora, a primeira versão deixava as pastas para trás (o `rpm` só apaga a pasta que o
   pacote declara); o `nfpm.yaml` passou a declará-las. Roteiro em `instaladores/linux/testar-pacotes.sh`.
+- **Depois da auditoria da F2b** (2026-09-26): o roteiro fotografa `/etc`, `/usr` e `/opt` antes de
+  instalar e depois de remover, e as duas fotos são iguais nos dois sistemas. Antes da correção, o
+  `.deb` apagava o `/etc/opt` (pasta do sistema, sem dono no Ubuntu, que o `dpkg` tratava como do
+  pacote); o `pos-remocao.sh` o devolve. O binário exige a glibc 2.34 (`objdump -T`, maior versão de
+  símbolo `GLIBC_2.34`), e os pacotes a declaram.
+- **Com leitora e cartão, pelo pcsc-lite FALSO** (`nativo/testes/pcsc-falso`, não é medição de
+  aparelho): a consulta traz as leitoras, o cartão e o ATR; relê a lista que cresce no meio; não lê
+  ATR acima de 33 bytes; marca o cartão mudo. E o host de verdade, com a biblioteca falsa escrevendo
+  na saída padrão, entrega o diagnóstico inteiro pelo canal.
 
 ## Pendente (o gate de saída da F2b, com o cartão e o Cairo)
 

@@ -248,8 +248,9 @@ func TestDiagnosticoNoTerminal(t *testing.T) {
 		t.Fatalf("o --json não é JSON: %v", err)
 	}
 	// O SoftHSM aparece como `libsofthsm2.so` (o arquivo de configuração deste teste) ou como
-	// `softhsm2` (o p11-kit, onde o pacote do sistema o registra): vale o que ele leu.
-	if !strings.Contains(string(texto), ": carregado, 5 certificado(s) (SoftHSM") || !strings.Contains(string(texto), "Certificado: TITULAR DE TESTE:***********") {
+	// `softhsm2` (o p11-kit, onde o pacote do sistema o registra): vale o que ele leu, e ele conta os
+	// 5 certificados do token menos o da AC.
+	if !strings.Contains(string(texto), ": carregado, 4 certificado(s) (SoftHSM") || !strings.Contains(string(texto), "Certificado: TITULAR DE TESTE:***********") {
 		t.Fatalf("texto:\n%s", texto)
 	}
 	if len(relatorio.Certificados) != 4 { // os 5 do token, menos o da AC

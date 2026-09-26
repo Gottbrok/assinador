@@ -70,10 +70,11 @@ func TestDescobrirNaOrdemESemRepetir(t *testing.T) {
 	}
 }
 
-// O p11-kit como segunda fonte: o registro da pessoa esconde o de `/etc`, que esconde o do pacote;
-// o `p11-kit-trust` e o `gnome-keyring` ficam de fora; `enable-in` e `disable-in` valem para este
-// programa; nome sem caminho se resolve nas pastas de módulos; o OpenSC registrado é o mesmo arquivo
-// do catálogo e não se repete.
+// O p11-kit como segunda fonte, com as regras dele: o registro de mesmo nome se junta campo a campo
+// (a pessoa sobre o sistema, o sistema sobre o pacote), e `module:` em branco desliga; o
+// `p11-kit-trust` e o `gnome-keyring` ficam de fora pelo nome do registro E pelo da biblioteca;
+// `enable-in` e `disable-in` valem para este programa; nome sem caminho se resolve nas pastas de
+// módulos; o OpenSC registrado é o mesmo arquivo do catálogo e não se repete.
 func TestDescobrirPeloP11Kit(t *testing.T) {
 	dir := t.TempDir()
 	plataforma := runtime.GOOS + "/" + runtime.GOARCH
@@ -91,38 +92,55 @@ func TestDescobrirPeloP11Kit(t *testing.T) {
 	fabricanteDoAdmin := arquivo(t, filepath.Join(dir, "opt", "fab-admin.so"), "x")
 	convidado := arquivo(t, filepath.Join(dir, "opt", "convidado.so"), "x")
 	proibido := arquivo(t, filepath.Join(dir, "opt", "proibido.so"), "x")
+	liberado := arquivo(t, filepath.Join(dir, "opt", "liberado.so"), "x")
+	desligado := arquivo(t, filepath.Join(dir, "opt", "desligado.so"), "x")
 
 	pessoa := filepath.Join(dir, "pessoa")
 	etc := filepath.Join(dir, "etc")
 	share := filepath.Join(dir, "share")
 	arquivo(t, filepath.Join(share, "opensc-pkcs11.module"), "# comentário\nmodule: opensc-pkcs11.so\n")
 	arquivo(t, filepath.Join(share, "p11-kit-trust.module"), "module: p11-kit-trust.so\ntrust-policy: yes\n")
-	arquivo(t, filepath.Join(share, "gnome-keyring.module"), "module: gnome-keyring-pkcs11.so\nenable-in: geary, midori\n")
+	// Sem `enable-in`: só a regra do nome o tira; e um registro de outro nome para a mesma biblioteca.
+	arquivo(t, filepath.Join(share, "gnome-keyring.module"), "module: gnome-keyring-pkcs11.so\n")
+	arquivo(t, filepath.Join(share, "chaveiro.module"), "module: gnome-keyring-pkcs11.so\n")
 	arquivo(t, filepath.Join(share, "fabricante.module"), "module: "+fabricanteDoPacote+"\n")
 	arquivo(t, filepath.Join(etc, "fabricante.module"), "module: "+fabricanteDoAdmin+"\n")
 	arquivo(t, filepath.Join(share, "convidado.module"), "module: "+convidado+"\nenable-in: firefox assinador\n")
 	arquivo(t, filepath.Join(pessoa, "proibido.module"), "module: "+proibido+"\ndisable-in: firefox,assinador\n")
+	// O sistema só habilita no Firefox; a pessoa acrescenta este programa, e o `module:` vem do sistema.
+	arquivo(t, filepath.Join(etc, "liberado.module"), "module: "+liberado+"\nenable-in: firefox\n")
+	arquivo(t, filepath.Join(pessoa, "liberado.module"), "enable-in: assinador\n")
+	// O pacote registra; a pessoa desliga com `module:` em branco.
+	arquivo(t, filepath.Join(share, "desligado.module"), "module: "+desligado+"\n")
+	arquivo(t, filepath.Join(pessoa, "desligado.module"), "module:\n")
 	arquivo(t, filepath.Join(share, "relativo.module"), "module: sub/x.so\n")
 	arquivo(t, filepath.Join(share, "sumiu.module"), "module: sumiu.so\n")
 	arquivo(t, filepath.Join(share, "sem-modulo.module"), "priority: 1\n")
 
 	cat := []catalogo.Modulo{{Nome: "opensc", Rotulo: "OpenSC", Generico: true, Caminhos: map[string][]string{plataforma: {opensc}}}}
-	achados, ausentes := Descobrir(OpcoesDeDescoberta{
+	opcoes := OpcoesDeDescoberta{
 		Catalogo:                cat,
-		PastasDoP11Kit:          []string{pessoa, etc, share},
+		PastaDoP11KitDoPacote:   share,
+		PastaDoP11KitDoSistema:  etc,
+		PastaDoP11KitDaPessoa:   pessoa,
 		PastasDeModulosDoP11Kit: []string{pastaDeModulos},
-	})
-	var obtidos []string
-	for _, m := range achados {
-		obtidos = append(obtidos, m.Origem+":"+m.Caminho)
 	}
-	quer := []string{
+	caminhosDe := func(achados []Modulo) string {
+		var obtidos []string
+		for _, m := range achados {
+			obtidos = append(obtidos, m.Origem+":"+m.Caminho)
+		}
+		return strings.Join(obtidos, "\n")
+	}
+	achados, ausentes := Descobrir(opcoes)
+	quer := strings.Join([]string{
 		OrigemCatalogo + ":" + opensc,
 		OrigemP11Kit + ":" + convidado,
 		OrigemP11Kit + ":" + fabricanteDoAdmin,
-	}
-	if strings.Join(obtidos, "\n") != strings.Join(quer, "\n") {
-		t.Fatalf("achados:\n%s\nesperado:\n%s", strings.Join(obtidos, "\n"), strings.Join(quer, "\n"))
+		OrigemP11Kit + ":" + liberado,
+	}, "\n")
+	if caminhosDe(achados) != quer {
+		t.Fatalf("achados:\n%s\nesperado:\n%s", caminhosDe(achados), quer)
 	}
 	var nomesAusentes []string
 	for _, m := range ausentes {
@@ -130,6 +148,54 @@ func TestDescobrirPeloP11Kit(t *testing.T) {
 	}
 	if strings.Join(nomesAusentes, ",") != "relativo,sumiu" {
 		t.Fatalf("ausentes: %v", nomesAusentes)
+	}
+
+	// `user-config: none` no sistema: a pasta da pessoa não conta (o `proibido` volta, o
+	// `liberado` sai, o `desligado` volta a valer). `only`: só a da pessoa conta.
+	opcoes.ConfiguracaoDoP11Kit = arquivo(t, filepath.Join(dir, "etc-global", "pkcs11.conf"), "# global\nuser-config: none\n")
+	achados, _ = Descobrir(opcoes)
+	quer = strings.Join([]string{
+		OrigemCatalogo + ":" + opensc,
+		OrigemP11Kit + ":" + convidado,
+		OrigemP11Kit + ":" + desligado,
+		OrigemP11Kit + ":" + fabricanteDoAdmin,
+	}, "\n")
+	if caminhosDe(achados) != quer {
+		t.Fatalf("user-config none:\n%s", caminhosDe(achados))
+	}
+	arquivo(t, opcoes.ConfiguracaoDoP11Kit, "user-config: only\n")
+	achados, _ = Descobrir(opcoes)
+	if caminhosDe(achados) != OrigemCatalogo+":"+opensc {
+		t.Fatalf("user-config only:\n%s", caminhosDe(achados))
+	}
+}
+
+// O módulo achado pelo p11-kit ou pela configuração com o nome de arquivo de um do catálogo é
+// aquele módulo: o OpenSC registrado fora do caminho medido continua genérico, e o SafeSign num
+// caminho que o catálogo não mediu continua sendo o SafeSign.
+func TestModuloForaDoCaminhoMedidoEhOCatalogo(t *testing.T) {
+	dir := t.TempDir()
+	opensc := arquivo(t, filepath.Join(dir, "pkcs11", "opensc-pkcs11.so"), "x")
+	safesign := arquivo(t, filepath.Join(dir, "lib64", "libaetpkss.so.3"), "x")
+	arquivo(t, filepath.Join(dir, "share", "opensc.module"), "module: opensc-pkcs11.so\n")
+	usuario := arquivo(t, filepath.Join(dir, "home", "modulos"), safesign+"\n")
+	achados, _ := Descobrir(OpcoesDeDescoberta{
+		Catalogo:                catalogo.Modulos,
+		PastaDoP11KitDoPacote:   filepath.Join(dir, "share"),
+		PastasDeModulosDoP11Kit: []string{filepath.Join(dir, "pkcs11")},
+		ArquivoDoUsuario:        usuario,
+	})
+	var vistos []string
+	for _, m := range achados {
+		if m.Caminho == opensc || m.Caminho == safesign {
+			vistos = append(vistos, m.Nome+"/"+m.Rotulo+"/"+m.Origem)
+			if (m.Nome == "opensc") != m.Generico {
+				t.Errorf("%s: genérico = %v", m.Nome, m.Generico)
+			}
+		}
+	}
+	if strings.Join(vistos, ",") != "opensc/OpenSC/"+OrigemP11Kit+",safesign/SafeSign/"+OrigemConfiguracao {
+		t.Fatalf("identificados: %v", vistos)
 	}
 }
 
@@ -143,7 +209,7 @@ func TestOpcoesPadraoUsamOCatalogoMedido(t *testing.T) {
 	if o.ArquivoDoUsuario != "/tmp/cfg/confidata-assinador/modulos" {
 		t.Fatalf("arquivo da pessoa: %s", o.ArquivoDoUsuario)
 	}
-	if strings.Join(o.PastasDoP11Kit, ",") != "/tmp/cfg/pkcs11/modules,/etc/pkcs11/modules,/usr/share/p11-kit/modules" {
-		t.Fatalf("pastas do p11-kit: %v", o.PastasDoP11Kit)
+	if o.PastaDoP11KitDoPacote != "/usr/share/p11-kit/modules" || o.PastaDoP11KitDoSistema != "/etc/pkcs11/modules" || o.PastaDoP11KitDaPessoa != "/tmp/cfg/pkcs11/modules" || o.ConfiguracaoDoP11Kit != "/etc/pkcs11/pkcs11.conf" {
+		t.Fatalf("pastas do p11-kit: %+v", o)
 	}
 }

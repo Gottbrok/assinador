@@ -78,6 +78,46 @@ func falha(codigo C.assinador_long) Resultado {
 	return Resultado{Estado: estadoDoCodigo(c), Detalhe: fmt.Sprintf("0x%08X", c), Leitoras: []Leitora{}}
 }
 
+// tentativasDeListar: a lista pode mudar entre o pedido do tamanho e o da lista (uma leitora
+// conectada no meio), e aí o PC/SC responde que o espaço não bastou.
+const tentativasDeListar = 3
+
+// listarNomes pede o tamanho da lista, aloca e lê; se a lista cresceu no meio
+// (SCARD_E_INSUFFICIENT_BUFFER), tenta de novo. Lista acima do teto é falha, e não "nenhuma
+// leitora". O que o PC/SC diz que escreveu nunca é lido além do que foi alocado.
+func listarNomes(p *C.assinador_pcsc, ctx C.assinador_contexto) ([]string, *Resultado) {
+	for i := 0; i < tentativasDeListar; i++ {
+		var tamanho C.assinador_dword
+		if rv := C.assinador_pcsc_listar(p, ctx, nil, &tamanho); rv != 0 {
+			r := falha(rv)
+			return nil, &r
+		}
+		if tamanho == 0 {
+			return nil, nil
+		}
+		if tamanho > tamanhoMaximoDaLista {
+			return nil, &Resultado{Estado: EstadoFalhou, Detalhe: "lista de leitoras acima do teto", Leitoras: []Leitora{}}
+		}
+		alocado := tamanho
+		buf := (*C.char)(C.calloc(C.size_t(alocado)+1, 1))
+		rv := C.assinador_pcsc_listar(p, ctx, buf, &tamanho)
+		if uint32(rv) == codigoBufferPequeno {
+			C.free(unsafe.Pointer(buf))
+			continue
+		}
+		if rv != 0 {
+			C.free(unsafe.Pointer(buf))
+			r := falha(rv)
+			return nil, &r
+		}
+		lido := min(tamanho, alocado)
+		nomes := nomesDaLista(C.GoBytes(unsafe.Pointer(buf), C.int(lido)))
+		C.free(unsafe.Pointer(buf))
+		return nomes, nil
+	}
+	return nil, &Resultado{Estado: EstadoFalhou, Detalhe: "a lista de leitoras não parou de mudar", Leitoras: []Leitora{}}
+}
+
 // Consultar lê as leitoras e o estado de cada uma. Pode bloquear enquanto o `pcscd` responde: quem
 // chama põe prazo.
 func Consultar() Resultado {
@@ -95,19 +135,10 @@ func Consultar() Resultado {
 	}
 	defer C.assinador_pcsc_liberar(&p, ctx)
 
-	var tamanho C.assinador_dword
-	if rv := C.assinador_pcsc_listar(&p, ctx, nil, &tamanho); rv != 0 {
-		return falha(rv)
+	nomes, recusa := listarNomes(&p, ctx)
+	if recusa != nil {
+		return *recusa
 	}
-	if tamanho == 0 || tamanho > tamanhoMaximoDaLista {
-		return Resultado{Estado: EstadoSemLeitora, Leitoras: []Leitora{}}
-	}
-	buf := (*C.char)(C.calloc(C.size_t(tamanho)+1, 1))
-	defer C.free(unsafe.Pointer(buf))
-	if rv := C.assinador_pcsc_listar(&p, ctx, buf, &tamanho); rv != 0 {
-		return falha(rv)
-	}
-	nomes := nomesDaLista(C.GoBytes(unsafe.Pointer(buf), C.int(tamanho)))
 	if len(nomes) == 0 {
 		return Resultado{Estado: EstadoSemLeitora, Leitoras: []Leitora{}}
 	}

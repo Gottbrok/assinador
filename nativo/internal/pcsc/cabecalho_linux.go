@@ -22,6 +22,7 @@ static unsigned long real_sem_servico(void) { return (unsigned long)(unsigned in
 static unsigned long real_servico_parou(void) { return (unsigned long)(unsigned int)SCARD_E_SERVICE_STOPPED; }
 static unsigned long real_sem_leitora(void) { return (unsigned long)(unsigned int)SCARD_E_NO_READERS_AVAILABLE; }
 static unsigned long real_tempo(void) { return (unsigned long)(unsigned int)SCARD_E_TIMEOUT; }
+static unsigned long real_buffer_pequeno(void) { return (unsigned long)(unsigned int)SCARD_E_INSUFFICIENT_BUFFER; }
 static unsigned long real_presente(void) { return SCARD_STATE_PRESENT; }
 static unsigned long real_mudo(void) { return SCARD_STATE_MUTE; }
 static size_t real_max_nome(void) { return MAX_READERNAME; }
@@ -58,6 +59,7 @@ func comparacaoComOCabecalho() map[string][2]uint64 {
 		"SCARD_E_SERVICE_STOPPED":      {uint64(C.real_servico_parou()), codigoServicoParou},
 		"SCARD_E_NO_READERS_AVAILABLE": {uint64(C.real_sem_leitora()), codigoSemLeitora},
 		"SCARD_E_TIMEOUT":              {uint64(C.real_tempo()), codigoTempoEsgotado},
+		"SCARD_E_INSUFFICIENT_BUFFER":  {uint64(C.real_buffer_pequeno()), codigoBufferPequeno},
 		"SCARD_STATE_PRESENT":          {uint64(C.real_presente()), estadoPresente},
 		"SCARD_STATE_MUTE":             {uint64(C.real_mudo()), estadoMudo},
 		"MAX_READERNAME":               {uint64(C.real_max_nome()), tamanhoMaximoDoNome},
