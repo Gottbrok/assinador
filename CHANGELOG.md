@@ -25,3 +25,25 @@
     chave visível também é listado (a chave pode estar escondida até o PIN), e a AC sai pela regra
     de uso; o `assunto` do `conferir` sai com os dígitos mascarados; o programa aceita certificado com
     número de série negativo (`x509negativeserial=1`), porque só o lê.
+- Auditoria da F2a (uma revisão adversarial independente e a nossa): um P1 corrigido, o filho do
+  módulo responde ANTES de encerrar (logout, sessões, `C_Finalize` e `dlclose` de fabricante que
+  travam não custam mais a resposta de um cartão que já assinou), e o logout é só do login que o
+  próprio filho fez. Do lote de robustez que o Cairo escolheu: o SIGTERM encerra; filho morto com o
+  canal herdado por um auxiliar da biblioteca não prende o pai até o prazo; o código de erro do
+  filho é conferido contra o vocabulário; o `CKA_ID` só vale se a chave não desmentir o certificado;
+  o host recalcula a `ref` do DER. `go.mod` sem o `// indirect` errado.
+  - Ficaram para decisão (P2 e P3): um teste que CONTE os `C_Login` (hoje nada prova, por contagem,
+    que o PIN errado não se repete: o SoftHSM nunca bloqueia) e o do fim da entrada no meio da
+    operação; a checagem vazia do emissor em `TestConferirMostraOBilheteEOCertificadoSemCpf`, e o
+    emissor de certificado AUTOASSINADO sai sem máscara no `conferir` (o de AC real não tem CPF);
+    o chamador conferido antes da forma do bilhete (hoje a forma vem antes, sem vazar nada); o PIN
+    aceita controles C1; o `PROTOCOLO.md` diz que o vocabulário da ponte extensão e programa nasce
+    na biblioteca, e ele nasce aqui (regra 6); o `internal/softhsmteste` quebra o `go vet` do
+    Windows (falta a tag); no `host-teste`, o erro de `ref` não encontrada imprime o DER, que tem o
+    CPF (regra 9), e o PIN do terminal passa pelo `term.ReadPassword`, que deixa cópias.
+  - Para medir com o cartão: certificado em mais de um slot do mesmo módulo e o SafeSign e o OpenSC
+    listando o mesmo cartão ao mesmo tempo (`docs/medicoes/F2a.md`). Para a F3: os `avisos` do
+    `listar` são frases em português, e a página ainda não os mostra; mostrá-los em espanhol pede
+    código no lugar da frase, o que muda o protocolo na biblioteca.
+  - Aceito por desenho: `CKR_USER_ALREADY_LOGGED_IN` (middleware que compartilha o login entre
+    aplicações) segue sem conferir o PIN digitado, como nos outros assinadores.

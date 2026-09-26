@@ -37,3 +37,10 @@ bin/host-teste assinar --ref <ref do certificado> --saida assinatura.bin --certi
       antes do login; se o cartão tem `CKA_ALWAYS_AUTHENTICATE`; e quanto tempo o `assinar` levou.
 - [ ] Um PIN errado de propósito (UMA vez, o cartão bloqueia depois de poucas): o código e as
       `tentativas` que voltam.
+- [ ] (da auditoria da F2a) O `listar` do OpenSC mostra o certificado em MAIS de um slot (o OpenSC
+      cria um slot por PIN em alguns cartões)? O programa fica com o primeiro slot de cada módulo, e
+      se a chave estiver no segundo, o PIN iria ao PIN errado do cartão. Anotar os slots que cada
+      módulo mostra.
+- [ ] (da auditoria da F2a) O SafeSign e o OpenSC listam o mesmo cartão AO MESMO TEMPO (um filho
+      cada). Anotar se algum dos dois falha, demora ou devolve lista vazia quando o outro está
+      lendo; se sim, a listagem passa a ser em sequência.
