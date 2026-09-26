@@ -49,7 +49,11 @@ func (p *Provedor) abrirRepositorio() (win.Handle, error) {
 	if err != nil {
 		return 0, err
 	}
-	return win.CertOpenStore(win.CERT_STORE_PROV_SYSTEM, 0, 0, win.CERT_SYSTEM_STORE_CURRENT_USER|win.CERT_STORE_READONLY_FLAG|win.CERT_STORE_OPEN_EXISTING_FLAG, uintptr(unsafe.Pointer(nome)))
+	// O `CertOpenStore` do x/sys recebe o nome como `uintptr`, que não segura a string viva: sem o
+	// `KeepAlive`, o coletor poderia liberá-la antes da chamada.
+	repositorio, err := win.CertOpenStore(win.CERT_STORE_PROV_SYSTEM, 0, 0, win.CERT_SYSTEM_STORE_CURRENT_USER|win.CERT_STORE_READONLY_FLAG|win.CERT_STORE_OPEN_EXISTING_FLAG, uintptr(unsafe.Pointer(nome)))
+	runtime.KeepAlive(nome)
+	return repositorio, err
 }
 
 // percorrer chama `f` para cada certificado do repositório que tem chave privada associada, até `f`
@@ -123,16 +127,21 @@ type resultado struct {
 // pedido pelo provedor num diálogo do Windows, e o que veio da extensão (nada, com `exigePin` falso)
 // é zerado. A chamada ao provedor BLOQUEIA enquanto o diálogo está aberto e não se interrompe: ela
 // corre à parte, e o cancelamento (a extensão que fechou o canal) responde na hora; o processo sai e
-// leva o diálogo junto.
+// leva o diálogo junto, e a janela-mãe, que o diálogo modal desabilitou e que é de OUTRO processo (o
+// navegador), é reabilitada antes: sem isso ela ficaria desabilitada depois que o programa saísse.
 func (p *Provedor) Assinar(ctx context.Context, c assinatura.Certificado, digest [32]byte, pin []byte) ([]byte, error) {
 	assinatura.Zerar(pin)
+	if ctx.Err() != nil {
+		return nil, protocolo.Novo(protocolo.Cancelado, "o canal com a extensão fechou antes da assinatura")
+	}
+	janela := p.janelaDoDialogo()
 	pronto := make(chan resultado, 1)
 	go func() {
 		// A chave e o diálogo dela ficam numa thread só do começo ao fim: há CSP que guarda estado
 		// por thread.
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
-		a, e := p.assinarNoWindows(c.DER, digest)
+		a, e := p.assinarNoWindows(c.DER, digest, janela)
 		pronto <- resultado{assinatura: a, erro: e}
 	}()
 	select {
@@ -142,11 +151,26 @@ func (p *Provedor) Assinar(ctx context.Context, c assinatura.Certificado, digest
 		}
 		return r.assinatura, nil
 	case <-ctx.Done():
+		if janela != 0 {
+			reabilitarJanela(janela)
+		}
 		return nil, protocolo.Novo(protocolo.Cancelado, "o canal com a extensão fechou durante a assinatura")
 	}
 }
 
-func (p *Provedor) assinarNoWindows(der []byte, digest [32]byte) ([]byte, *protocolo.Erro) {
+// janelaDoDialogo é a mãe do diálogo de PIN, para ele abrir na frente: a que o navegador informou
+// (`--parent-window`) ou, quando ele informa zero, a janela em primeiro plano na hora de assinar,
+// que é a da confirmação da extensão onde a pessoa acabou de clicar "Assinar". O Chrome documenta o
+// zero quando quem conecta é um contexto de fundo, e no Manifest V3 quem conecta é o service worker
+// (medição (e) da F0).
+func (p *Provedor) janelaDoDialogo() uintptr {
+	if p.JanelaMae != 0 {
+		return uintptr(p.JanelaMae)
+	}
+	return uintptr(win.GetForegroundWindow())
+}
+
+func (p *Provedor) assinarNoWindows(der []byte, digest [32]byte, janela uintptr) ([]byte, *protocolo.Erro) {
 	repositorio, err := p.abrirRepositorio()
 	if err != nil {
 		return nil, erroDoWindows("abrir o repositório", codigoDoErro(err))
@@ -157,16 +181,15 @@ func (p *Provedor) assinarNoWindows(der []byte, digest [32]byte) ([]byte, *proto
 		return nil, protocolo.Novo(protocolo.CertificadoNaoEncontrado, "o certificado saiu do repositório do Windows")
 	}
 	defer win.CertFreeCertificateContext(ctx)
-	assinada, _, e := p.assinarComContexto(ctx, digest, true)
+	assinada, _, e := assinarComContexto(ctx, digest, true, janela)
 	return assinada, e
 }
 
 // assinarComContexto abre a chave do certificado e assina, e diz por qual caminho (CaminhoCNG ou
 // CaminhoCSP). `preferirCNG` é o caminho do programa: o CNG quando o provedor o oferece (os KSP, e os
 // CSP da Microsoft, que o CNG também abre); o teste o desliga para exercitar o caminho do CSP
-// legado, que é o de muitos cartões.
-func (p *Provedor) assinarComContexto(ctx *win.CertContext, digest [32]byte, preferirCNG bool) ([]byte, string, *protocolo.Erro) {
-	janela := uintptr(p.JanelaMae)
+// legado, que é o de muitos cartões. `janela` é a mãe do diálogo de PIN, ou zero.
+func assinarComContexto(ctx *win.CertContext, digest [32]byte, preferirCNG bool, janela uintptr) ([]byte, string, *protocolo.Erro) {
 	// A chave tem de ser a do certificado (COMPARE_KEY): chave trocada no dispositivo produziria uma
 	// assinatura que ninguém confere (o host também a confere contra o certificado, depois).
 	flags := uint32(win.CRYPT_ACQUIRE_COMPARE_KEY_FLAG)
@@ -188,7 +211,6 @@ func (p *Provedor) assinarComContexto(ctx *win.CertContext, digest [32]byte, pre
 	if err := win.CryptAcquireCertificatePrivateKey(ctx, flags, parametros, &chave, &keySpec, &liberar); err != nil {
 		return nil, "", erroDoWindows("abrir a chave", codigoDoErro(err))
 	}
-	runtime.KeepAlive(janela)
 	if keySpec == win.CERT_NCRYPT_KEY_SPEC {
 		if liberar {
 			defer liberarChaveCNG(chave)

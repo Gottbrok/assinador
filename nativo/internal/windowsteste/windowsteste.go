@@ -43,7 +43,7 @@ var impressao = regexp.MustCompile(`^[0-9A-F]{40}$`)
 // Novo cria um certificado com chave no provedor pedido e o apaga (com a chave) no fim do teste.
 func Novo(t *testing.T, provedor string) Certificado {
 	t.Helper()
-	c, err := Tentar(t, provedor)
+	c, err := criar(t, provedor)
 	if err != nil {
 		if os.Getenv("ASSINADOR_EXIGE_WINDOWS") == "1" {
 			t.Fatal(err)
@@ -53,14 +53,21 @@ func Novo(t *testing.T, provedor string) Certificado {
 	return c
 }
 
-// Tentar é o `Novo` que devolve o erro, para o provedor que pode não existir na máquina.
-func Tentar(t *testing.T, provedor string) (Certificado, error) {
+// criar monta o certificado. O assunto leva um sufixo aleatório, e a limpeza é registrada por ELE,
+// antes de a saída ser lida: o certificado sai do repositório mesmo quando a saída não se lê.
+func criar(t *testing.T, provedor string) (Certificado, error) {
 	t.Helper()
 	sufixo := make([]byte, 4)
 	_, _ = rand.Read(sufixo)
+	assunto := "CN=ASSINADOR TESTE " + hex.EncodeToString(sufixo)
+	t.Cleanup(func() {
+		roteiro := fmt.Sprintf("Get-ChildItem -Path 'Cert:\\CurrentUser\\My' | Where-Object { $_.Subject -eq '%s' } | Remove-Item -DeleteKey", assunto)
+		if _, err := powershell(roteiro); err != nil {
+			t.Logf("o certificado de teste %q ficou no repositório: %v", assunto, err)
+		}
+	})
 	var roteiro strings.Builder
-	roteiro.WriteString("$ErrorActionPreference = 'Stop'\n")
-	fmt.Fprintf(&roteiro, "$p = @{ Subject = 'CN=ASSINADOR TESTE %s'; CertStoreLocation = 'Cert:\\CurrentUser\\My'; KeyAlgorithm = 'RSA'; KeyLength = 2048; KeyUsage = @('DigitalSignature','NonRepudiation'); Provider = '%s'; KeyExportPolicy = 'NonExportable'; NotAfter = (Get-Date).AddDays(2) }\n", hex.EncodeToString(sufixo), provedor)
+	fmt.Fprintf(&roteiro, "$p = @{ Subject = '%s'; CertStoreLocation = 'Cert:\\CurrentUser\\My'; KeyAlgorithm = 'RSA'; KeyLength = 2048; KeyUsage = @('DigitalSignature','NonRepudiation'); Provider = '%s'; KeyExportPolicy = 'NonExportable'; NotAfter = (Get-Date).AddDays(2) }\n", assunto, provedor)
 	if provedor != KSP {
 		// Chave de CSP legado assina pela chave de ASSINATURA (AT_SIGNATURE).
 		roteiro.WriteString("$p.KeySpec = 'Signature'\n")
@@ -72,23 +79,29 @@ func Tentar(t *testing.T, provedor string) (Certificado, error) {
 	roteiro.WriteString("$c = New-SelfSignedCertificate @p\n")
 	roteiro.WriteString("[Convert]::ToBase64String($c.RawData) + ' ' + $c.Thumbprint\n")
 	saida, err := powershell(roteiro.String())
-	campos := strings.Fields(saida)
+	// A última linha é a do certificado: o que o PowerShell escreveu antes (aviso, progresso) não conta.
+	linhas := strings.Split(saida, "\n")
+	campos := strings.Fields(linhas[len(linhas)-1])
 	if err != nil || len(campos) != 2 || !impressao.MatchString(campos[1]) {
 		return Certificado{}, fmt.Errorf("o New-SelfSignedCertificate não criou o certificado (%s): %v %q", provedor, err, saida)
 	}
 	c := Certificado{Impressao: campos[1]}
-	t.Cleanup(func() {
-		if _, err := powershell("Remove-Item -Path 'Cert:\\CurrentUser\\My\\" + c.Impressao + "' -DeleteKey"); err != nil {
-			t.Logf("o certificado de teste %s ficou no repositório: %v", c.Impressao, err)
-		}
-	})
 	if c.DER, err = base64.StdEncoding.DecodeString(campos[0]); err != nil {
 		return Certificado{}, fmt.Errorf("DER ilegível: %w", err)
 	}
 	return c, nil
 }
 
+// powershell roda o roteiro e devolve a SAÍDA PADRÃO, sem as linhas em branco nas pontas. O erro e o
+// progresso não entram nela: o progresso do PowerShell 5.1 (a preparação dos módulos na primeira
+// vez) sai em CLIXML no erro padrão, e aqui ele nem é gerado.
 func powershell(roteiro string) (string, error) {
-	out, err := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", roteiro).CombinedOutput()
-	return strings.TrimSpace(string(out)), err
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", "$ErrorActionPreference = 'Stop'\n$ProgressPreference = 'SilentlyContinue'\n"+roteiro)
+	var erro strings.Builder
+	cmd.Stderr = &erro
+	out, err := cmd.Output()
+	if err != nil {
+		err = fmt.Errorf("%w: %s", err, strings.TrimSpace(erro.String()))
+	}
+	return strings.TrimSpace(strings.ReplaceAll(string(out), "\r\n", "\n")), err
 }

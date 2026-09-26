@@ -25,14 +25,18 @@ func TestErroDoWindows(t *testing.T) {
 		{scardPinBloqueado, protocolo.TokenBloqueado},
 		{nteAlgoritmo, protocolo.AlgoritmoNaoSuportado},
 		{nteNaoSuportado, protocolo.AlgoritmoNaoSuportado},
-		{scardSemCartao, protocolo.ChaveAusente},
-		{scardCartaoRemovido, protocolo.ChaveAusente},
+		// Cartão fora da leitora: como o "cartão removido" do Linux.
+		{scardSemCartao, protocolo.CertificadoNaoEncontrado},
+		{scardCartaoRemovido, protocolo.CertificadoNaoEncontrado},
 		{nteSemChave, protocolo.ChaveAusente},
 		{nteConjuntoRuim, protocolo.ChaveAusente},
-		{nteConjuntoNaoDefinido, protocolo.ChaveAusente},
 		{cryptSemChave, protocolo.ChaveAusente},
-		{ntePermissao, protocolo.PermissaoNegada},
-		{5, protocolo.PermissaoNegada},       // ERROR_ACCESS_DENIED cru
+		{nteChavePublicaRuim, protocolo.ChaveAusente}, // a chave não é a do certificado
+		// O provedor que recusa o acesso, ou que não existe, é o programa do fabricante que falhou: a
+		// `permissao-negada` do protocolo é a do endereço na extensão, e o Windows nunca a produz.
+		{nteConjuntoNaoDefinido, protocolo.ModuloFalhou},
+		{ntePermissao, protocolo.ModuloFalhou},
+		{5, protocolo.ModuloFalhou},          // ERROR_ACCESS_DENIED cru
 		{0x80090020, protocolo.ModuloFalhou}, // NTE_FAIL: o provedor do fabricante falhou
 		{0x12345678, protocolo.ModuloFalhou},
 	}
@@ -101,6 +105,7 @@ func TestRotuloDoProvedor(t *testing.T) {
 		"Microsoft Software Key Storage Provider":               RotuloInstalado,
 		"Microsoft Enhanced RSA and AES Cryptographic Provider": RotuloInstalado,
 		"Microsoft Platform Crypto Provider":                    RotuloInstalado,
+		"Microsoft Passport Key Storage Provider":               RotuloInstalado,
 		"Microsoft Smart Card Key Storage Provider":             "Microsoft Smart Card Key Storage Provider",
 		"":                                    RotuloSemNome,
 		"Provedor de um fabricante de cartão": "Provedor de um fabricante de cartão",

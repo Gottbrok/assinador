@@ -22,6 +22,7 @@ static unsigned long real_scard_cancelado_pelo_usuario(void) { return codigo(SCA
 static unsigned long real_nte_algoritmo(void) { return codigo(NTE_BAD_ALGID); }
 static unsigned long real_nte_sem_chave(void) { return codigo(NTE_NO_KEY); }
 static unsigned long real_nte_permissao(void) { return codigo(NTE_PERM); }
+static unsigned long real_nte_chave_publica(void) { return codigo(NTE_BAD_PUBLIC_KEY); }
 static unsigned long real_nte_conjunto(void) { return codigo(NTE_BAD_KEYSET); }
 static unsigned long real_nte_conjunto_nao_definido(void) { return codigo(NTE_KEYSET_NOT_DEF); }
 static unsigned long real_nte_nao_suportado(void) { return codigo(NTE_NOT_SUPPORTED); }
@@ -66,6 +67,7 @@ func comparacaoComOCabecalho() map[string][2]uint64 {
 		"NTE_BAD_ALGID":                               {uint64(C.real_nte_algoritmo()), nteAlgoritmo},
 		"NTE_NO_KEY":                                  {uint64(C.real_nte_sem_chave()), nteSemChave},
 		"NTE_PERM":                                    {uint64(C.real_nte_permissao()), ntePermissao},
+		"NTE_BAD_PUBLIC_KEY":                          {uint64(C.real_nte_chave_publica()), nteChavePublicaRuim},
 		"NTE_BAD_KEYSET":                              {uint64(C.real_nte_conjunto()), nteConjuntoRuim},
 		"NTE_KEYSET_NOT_DEF":                          {uint64(C.real_nte_conjunto_nao_definido()), nteConjuntoNaoDefinido},
 		"NTE_NOT_SUPPORTED":                           {uint64(C.real_nte_nao_suportado()), nteNaoSuportado},

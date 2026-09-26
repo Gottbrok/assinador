@@ -100,7 +100,7 @@ func TestAssinarPeloCSPComInversao(t *testing.T) {
 		t.Fatalf("certificado listado: %+v", cert)
 	}
 	comContexto(t, c.DER, func(ctx *win.CertContext) {
-		assinada, caminho, e := p.assinarComContexto(ctx, digestDoTeste, false)
+		assinada, caminho, e := assinarComContexto(ctx, digestDoTeste, false, 0)
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -116,7 +116,7 @@ func TestAssinarPeloCSPComInversao(t *testing.T) {
 			t.Fatal("a assinatura na ordem do CSP também conferiu: o teste não distingue a inversão")
 		}
 
-		assinada, _, e = p.assinarComContexto(ctx, digestDoTeste, true)
+		assinada, _, e = assinarComContexto(ctx, digestDoTeste, true, 0)
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -124,14 +124,13 @@ func TestAssinarPeloCSPComInversao(t *testing.T) {
 	})
 }
 
-// O CSP legado sem SHA-256 recusa o resumo: `algoritmo-nao-suportado`, e não `modulo-falhou`.
+// O CSP legado sem SHA-256 recusa o resumo: `algoritmo-nao-suportado`, e não `modulo-falhou`. No CI
+// (`ASSINADOR_EXIGE_WINDOWS=1`) ele é obrigatório, como os outros: pulado, o caminho do
+// NTE_BAD_ALGID nunca rodaria.
 func TestCSPSemSHA256(t *testing.T) {
-	c, err := windowsteste.Tentar(t, windowsteste.CSPSemSHA256)
-	if err != nil {
-		t.Skip("este Windows não cria certificado com o CSP básico:", err)
-	}
+	c := windowsteste.Novo(t, windowsteste.CSPSemSHA256)
 	comContexto(t, c.DER, func(ctx *win.CertContext) {
-		_, caminho, e := NovoProvedor(0).assinarComContexto(ctx, digestDoTeste, false)
+		_, caminho, e := assinarComContexto(ctx, digestDoTeste, false, 0)
 		if caminho != CaminhoCSP || e == nil || e.Codigo != protocolo.AlgoritmoNaoSuportado {
 			t.Fatalf("caminho %s, erro %v", caminho, e)
 		}

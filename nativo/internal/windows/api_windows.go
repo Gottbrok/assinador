@@ -16,6 +16,7 @@ var (
 	crypt32  = win.NewLazySystemDLL("crypt32.dll")
 	advapi32 = win.NewLazySystemDLL("advapi32.dll")
 	ncrypt   = win.NewLazySystemDLL("ncrypt.dll")
+	user32   = win.NewLazySystemDLL("user32.dll")
 
 	procCertGetCertificateContextProperty = crypt32.NewProc("CertGetCertificateContextProperty")
 	procCryptSetProvParam                 = advapi32.NewProc("CryptSetProvParam")
@@ -26,7 +27,14 @@ var (
 	procNCryptSetProperty                 = ncrypt.NewProc("NCryptSetProperty")
 	procNCryptSignHash                    = ncrypt.NewProc("NCryptSignHash")
 	procNCryptFreeObject                  = ncrypt.NewProc("NCryptFreeObject")
+	procEnableWindow                      = user32.NewProc("EnableWindow")
 )
+
+// reabilitarJanela devolve à janela-mãe a entrada do teclado e do mouse, que o diálogo modal do
+// provedor tirou dela.
+func reabilitarJanela(janela uintptr) {
+	_, _, _ = procEnableWindow.Call(janela, 1)
+}
 
 // Constantes da API (wincrypt.h, ncrypt.h, bcrypt.h).
 const (

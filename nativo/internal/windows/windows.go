@@ -28,6 +28,7 @@ const (
 	nteAlgoritmo              = 0x80090008 // NTE_BAD_ALGID
 	nteSemChave               = 0x8009000D // NTE_NO_KEY
 	ntePermissao              = 0x80090010 // NTE_PERM
+	nteChavePublicaRuim       = 0x80090015 // NTE_BAD_PUBLIC_KEY
 	nteConjuntoRuim           = 0x80090016 // NTE_BAD_KEYSET
 	nteConjuntoNaoDefinido    = 0x80090019 // NTE_KEYSET_NOT_DEF
 	nteNaoSuportado           = 0x80090029 // NTE_NOT_SUPPORTED
@@ -75,10 +76,18 @@ func erroDoWindows(etapa string, codigo uint32) *protocolo.Erro {
 		return protocolo.Novo(protocolo.TokenBloqueado, detalhe)
 	case nteAlgoritmo, nteNaoSuportado:
 		return protocolo.Novo(protocolo.AlgoritmoNaoSuportado, detalhe+" (o provedor não assina SHA-256)")
-	case scardSemCartao, scardCartaoRemovido, nteSemChave, nteConjuntoRuim, nteConjuntoNaoDefinido, cryptSemChave:
+	case scardSemCartao, scardCartaoRemovido:
+		// O certificado continua no repositório, e o cartão dele não está: é o "cartão removido" que no
+		// Linux sai como certificado não encontrado.
+		return protocolo.Novo(protocolo.CertificadoNaoEncontrado, detalhe+" (o cartão não está na leitora)")
+	case nteSemChave, nteConjuntoRuim, cryptSemChave, nteChavePublicaRuim:
+		// Sem a chave, ou com uma chave que não é a do certificado (a conferência COMPARE_KEY).
 		return protocolo.Novo(protocolo.ChaveAusente, detalhe)
-	case ntePermissao, erroAcessoNegado:
-		return protocolo.Novo(protocolo.PermissaoNegada, detalhe)
+	case ntePermissao, erroAcessoNegado, nteConjuntoNaoDefinido:
+		// O provedor recusou o acesso, ou não existe (NTE_KEYSET_NOT_DEF: o programa do fabricante não
+		// está instalado). Não é a `permissao-negada` do protocolo, que a biblioteca explica como a
+		// permissão do ENDEREÇO nas opções da extensão.
+		return protocolo.Novo(protocolo.ModuloFalhou, detalhe)
 	}
 	return protocolo.Novo(protocolo.ModuloFalhou, detalhe)
 }
@@ -107,6 +116,7 @@ const (
 var provedoresDoWindows = map[string]bool{
 	"Microsoft Software Key Storage Provider":               true,
 	"Microsoft Platform Crypto Provider":                    true,
+	"Microsoft Passport Key Storage Provider":               true, // o Windows Hello
 	"Microsoft Enhanced RSA and AES Cryptographic Provider": true,
 	"Microsoft Enhanced Cryptographic Provider v1.0":        true,
 	"Microsoft Strong Cryptographic Provider":               true,
@@ -126,7 +136,10 @@ func rotuloDoProvedor(nome string) string {
 	return nome
 }
 
-// Caminhos do provedor: `dwProvType` zero é chave CNG (KSP); qualquer outro é CSP legado.
+// Caminhos do provedor: `dwProvType` zero é chave CNG (KSP); qualquer outro é CSP legado. É onde a
+// chave está REGISTRADA no certificado: na hora de assinar, o CNG pode abrir por um KSP a chave
+// registrada num CSP (o certificado de cartão propagado pelo Windows, com o PREFER_NCRYPT), e o
+// caminho de fato é o que `assinarComContexto` devolve.
 const (
 	CaminhoCNG = "cng"
 	CaminhoCSP = "csp"
