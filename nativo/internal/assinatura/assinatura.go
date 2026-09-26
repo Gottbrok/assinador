@@ -61,6 +61,7 @@ type RelatorioDoProvedor struct {
 	Nome         string        `json:"nome"`
 	Caminho      string        `json:"caminho,omitempty"`
 	Origem       string        `json:"origem,omitempty"`
+	Fabricante   string        `json:"fabricante,omitempty"`
 	Estado       string        `json:"estado"`
 	Certificados int           `json:"certificados"`
 	Detalhe      string        `json:"detalhe,omitempty"`

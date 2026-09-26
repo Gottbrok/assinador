@@ -267,6 +267,7 @@ func (p *Provedor) Diagnosticar(ctx context.Context) []assinatura.RelatorioDoPro
 			rel.Estado = assinatura.EstadoCarregado
 			rel.Certificados = len(r.resposta.Certificados)
 			if i := r.resposta.Info; i != nil {
+				rel.Fabricante = i.Fabricante
 				rel.Detalhe = fmt.Sprintf("%s, Cryptoki %s, biblioteca %s", i.Fabricante, i.Cryptoki, i.Biblioteca)
 			}
 			for _, c := range r.resposta.Certificados {

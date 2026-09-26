@@ -13,8 +13,10 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/Gottbrok/assinador/nativo/internal/assinatura"
 	"github.com/Gottbrok/assinador/nativo/internal/catalogo"
@@ -95,14 +97,20 @@ var PrazoDasLeitoras = 5 * time.Second
 
 // Coletar consulta as leitoras e os provedores e monta o relatório e o texto.
 func Coletar(ctx context.Context, f Fontes) (Relatorio, string) {
+	// As leitoras são consultadas AO MESMO TEMPO que os módulos: em série, o prazo dos filhos e o do
+	// pcscd se somavam perto do prazo da página.
+	leituras := make(chan pcsc.Resultado, 1)
+	go func() { leituras <- consultarComPrazo(ctx, f.Leitoras) }()
 	var provedores []assinatura.RelatorioDoProvedor
 	for _, p := range f.Provedores {
 		provedores = append(provedores, p.Diagnosticar(ctx)...)
 	}
-	return Montar(f, consultarComPrazo(f.Leitoras), provedores)
+	return Montar(f, <-leituras, provedores)
 }
 
-func consultarComPrazo(consultar func() pcsc.Resultado) pcsc.Resultado {
+// consultarComPrazo espera o pcscd até o prazo ou até o cancelamento. Passado o prazo, a consulta
+// que ficou presa no C é abandonada: não há como interrompê-la, e o processo segue.
+func consultarComPrazo(ctx context.Context, consultar func() pcsc.Resultado) pcsc.Resultado {
 	if consultar == nil {
 		return pcsc.Resultado{Estado: pcsc.EstadoSemBiblioteca, Leitoras: []pcsc.Leitora{}}
 	}
@@ -113,7 +121,65 @@ func consultarComPrazo(consultar func() pcsc.Resultado) pcsc.Resultado {
 		return r
 	case <-time.After(PrazoDasLeitoras):
 		return pcsc.Resultado{Estado: pcsc.EstadoFalhou, Detalhe: "o pcscd não respondeu no prazo", Leitoras: []pcsc.Leitora{}}
+	case <-ctx.Done():
+		return pcsc.Resultado{Estado: pcsc.EstadoFalhou, Detalhe: "consulta cancelada", Leitoras: []pcsc.Leitora{}}
 	}
+}
+
+// sistemaOperacional decide a frase da biblioteca do PC/SC ausente (variável para o teste).
+var sistemaOperacional = runtime.GOOS
+
+// limite de pontos de código de um texto que veio do aparelho ou do certificado.
+const tamanhoMaximoDoTexto = 256
+
+// limpar tira de um texto que veio de FORA (o nome da leitora, o CN do certificado, o que o módulo
+// declara) os caracteres de controle e os que reordenam o texto, e o corta: o texto do diagnóstico
+// vai ao terminal do suporte e à página, e um aparelho malicioso não pode forjar linha nem mandar
+// sequência de escape.
+func limpar(s string) string {
+	var b strings.Builder
+	n := 0
+	for _, r := range s {
+		if unicode.IsControl(r) || unicode.In(r, unicode.Bidi_Control) || r == 0x2028 || r == 0x2029 || r == 0xfeff {
+			continue
+		}
+		if n == tamanhoMaximoDoTexto {
+			break
+		}
+		b.WriteRune(r)
+		n++
+	}
+	return b.String()
+}
+
+// mascararDocumentos troca por `*` toda sequência de 11 ou mais dígitos (o CPF tem 11 e o CNPJ 14):
+// é o que vale para o emissor, que numa AC não tem documento, mas num certificado forjado pode ter.
+func mascararDocumentos(s string) string {
+	runas := []rune(s)
+	for i := 0; i < len(runas); {
+		if runas[i] < '0' || runas[i] > '9' {
+			i++
+			continue
+		}
+		j := i
+		for j < len(runas) && runas[j] >= '0' && runas[j] <= '9' {
+			j++
+		}
+		if j-i >= 11 {
+			for k := i; k < j; k++ {
+				runas[k] = '*'
+			}
+		}
+		i = j
+	}
+	return string(runas)
+}
+
+// doCatalogo diz se o relatório de um módulo é o do módulo `m` do catálogo: pelo rótulo (o módulo
+// achado no caminho medido, ou reconhecido pelo nome do arquivo) ou pelo fabricante que ele
+// declarou no C_GetInfo, que é medido.
+func doCatalogo(p assinatura.RelatorioDoProvedor, m catalogo.Modulo) bool {
+	return p.Nome == m.Rotulo || (m.Fabricante != "" && p.Fabricante == m.Fabricante)
 }
 
 // Montar monta o relatório e o texto a partir do que foi lido. É pura: o teste a exercita com
@@ -132,57 +198,78 @@ func Montar(f Fontes, leitoras pcsc.Resultado, provedores []assinatura.Relatorio
 		Certificados: []Certificado{},
 		Avisos:       []string{},
 	}
-	carregados := map[string]bool{}
-	for _, p := range provedores {
-		r.Provedores = append(r.Provedores, p)
-		if p.Estado == assinatura.EstadoCarregado {
-			carregados[p.Nome] = true
-		}
-	}
-	certificadosPorProvedor := map[string]int{}
+	// Cada módulo, com o que veio de fora limpo, e com a contagem dos SEUS certificados (menos os de
+	// AC, que são a cadeia guardada no cartão): é essa contagem que decide o "instalado, mas não
+	// achou certificado", e não a lista fundida, em que o certificado fica com o primeiro módulo
+	// que o viu.
 	vistos := map[string]bool{}
 	for _, p := range provedores {
-		for _, c := range p.Vistos {
-			if vistos[c.Ref] {
-				continue
-			}
-			vistos[c.Ref] = true
-			if resumo, ok := resumir(c, agora); ok {
-				r.Certificados = append(r.Certificados, resumo)
-				certificadosPorProvedor[c.RotuloDoProvedor]++
+		item := p
+		item.Nome, item.Caminho, item.Fabricante, item.Detalhe = limpar(p.Nome), limpar(p.Caminho), limpar(p.Fabricante), limpar(p.Detalhe)
+		if p.Estado == assinatura.EstadoCarregado {
+			item.Certificados = 0
+			for _, c := range p.Vistos {
+				resumo, ok := resumir(c, agora)
+				if !ok {
+					continue
+				}
+				item.Certificados++
+				if !vistos[c.Ref] {
+					vistos[c.Ref] = true
+					r.Certificados = append(r.Certificados, resumo)
+				}
 			}
 		}
+		item.Vistos = nil
+		r.Provedores = append(r.Provedores, item)
+	}
+	// modulo diz se o módulo `m` do catálogo carregou e quantos certificados ele mesmo leu.
+	modulo := func(m catalogo.Modulo) (carregou bool, certificados int) {
+		for _, p := range r.Provedores {
+			if p.Estado == assinatura.EstadoCarregado && doCatalogo(p, m) {
+				carregou = true
+				certificados += p.Certificados
+			}
+		}
+		return carregou, certificados
 	}
 
 	avisar := func(formato string, args ...any) { r.Avisos = append(r.Avisos, fmt.Sprintf(formato, args...)) }
 	switch leitoras.Estado {
 	case pcsc.EstadoSemBiblioteca:
-		avisar("A biblioteca do PC/SC não está instalada, e sem ela nenhuma leitora aparece. Instale o pacote pcscd (no Fedora, pcsc-lite).")
+		if sistemaOperacional == "linux" {
+			avisar("A biblioteca do PC/SC não está instalada, e sem ela nenhuma leitora aparece. Instale o pacote pcscd (no Fedora, pcsc-lite).")
+		} else {
+			avisar("O Assinador ainda não lê as leitoras de cartão neste sistema.")
+		}
 	case pcsc.EstadoSemServico:
 		avisar("O serviço pcscd não está rodando, e sem ele nenhuma leitora aparece. Para iniciar: sudo systemctl start pcscd.")
 	case pcsc.EstadoSemLeitora:
 		avisar("Nenhuma leitora de cartão foi encontrada. Confira o cabo USB da leitora ou do token.")
 	case pcsc.EstadoFalhou:
-		avisar("O PC/SC não respondeu como devia (%s).", leitoras.Detalhe)
+		avisar("O PC/SC não respondeu como devia (%s).", limpar(leitoras.Detalhe))
 	}
+	r.PCSC.Detalhe = limpar(r.PCSC.Detalhe)
 	algumCartao := false
 	for _, l := range leitoras.Leitoras {
-		item := Leitora{Nome: l.Nome, ComCartao: l.ComCartao, Mudo: l.Mudo, ATR: l.ATR}
+		nome := limpar(l.Nome)
+		item := Leitora{Nome: nome, ComCartao: l.ComCartao, Mudo: l.Mudo, ATR: limpar(l.ATR)}
 		if l.ComCartao {
 			algumCartao = true
 			if m, a, ok := catalogo.ModuloDoATR(l.ATR, f.ATRs, f.Modulos); ok {
 				item.Cartao, item.Sugestao = a.Cartao, m.Rotulo
+				carregou, certificados := modulo(m)
 				switch {
-				case !carregados[m.Rotulo]:
-					avisar("O cartão na leitora %s (%s) usa o %s, que não está instalado. Instale o %s.", l.Nome, a.Cartao, m.Rotulo, m.Rotulo)
-				case certificadosPorProvedor[m.Rotulo] == 0:
-					avisar("O %s está instalado, mas não achou certificado no cartão da leitora %s.", m.Rotulo, l.Nome)
+				case !carregou:
+					avisar("O cartão na leitora %s (%s) usa o %s, que não está instalado. Instale o %s.", nome, a.Cartao, m.Rotulo, m.Rotulo)
+				case certificados == 0:
+					avisar("O %s está instalado, mas não achou certificado no cartão da leitora %s.", m.Rotulo, nome)
 				}
 			} else if len(r.Certificados) == 0 {
-				avisar("O cartão na leitora %s não foi lido por nenhum programa de cartão instalado. Ele precisa do programa do fabricante (por exemplo, o SafeSign ou o SafeNet).", l.Nome)
+				avisar("O cartão na leitora %s não foi lido por nenhum programa de cartão instalado. Ele precisa do programa do fabricante (por exemplo, o SafeSign ou o SafeNet).", nome)
 			}
 			if l.Mudo {
-				avisar("O cartão na leitora %s não responde. Tire o cartão e coloque de novo.", l.Nome)
+				avisar("O cartão na leitora %s não responde. Tire o cartão e coloque de novo.", nome)
 			}
 		}
 		r.Leitoras = append(r.Leitoras, item)
@@ -191,7 +278,7 @@ func Montar(f Fontes, leitoras pcsc.Resultado, provedores []assinatura.Relatorio
 		avisar("Nenhuma leitora tem cartão. Coloque o cartão na leitora (ou conecte o token).")
 	}
 	algumModulo := false
-	for _, p := range provedores {
+	for _, p := range r.Provedores {
 		switch p.Estado {
 		case assinatura.EstadoCarregado:
 			algumModulo = true
@@ -214,7 +301,7 @@ func Montar(f Fontes, leitoras pcsc.Resultado, provedores []assinatura.Relatorio
 // resumir tira do DER o que o suporte precisa, com o titular mascarado. Certificado de AC não
 // entra (é a cadeia guardada no cartão, não o da pessoa).
 func resumir(c assinatura.Certificado, agora time.Time) (Certificado, bool) {
-	saida := Certificado{Provedor: c.RotuloDoProvedor, Leitor: c.Leitor}
+	saida := Certificado{Provedor: limpar(c.RotuloDoProvedor), Leitor: limpar(c.Leitor)}
 	x, err := x509.ParseCertificate(c.DER)
 	if err != nil {
 		saida.Titular, saida.Situacao = "(ilegível)", SituacaoIlegivel
@@ -223,8 +310,8 @@ func resumir(c assinatura.Certificado, agora time.Time) (Certificado, bool) {
 	if x.IsCA {
 		return Certificado{}, false
 	}
-	saida.Titular = assinatura.Mascarar(x.Subject.CommonName)
-	saida.Emissor = x.Issuer.CommonName
+	saida.Titular = limpar(assinatura.Mascarar(x.Subject.CommonName))
+	saida.Emissor = limpar(mascararDocumentos(x.Issuer.CommonName))
 	if x.Issuer.CommonName == x.Subject.CommonName {
 		// Autoassinado: o emissor é o próprio titular, e leva o documento dele.
 		saida.Emissor = saida.Titular

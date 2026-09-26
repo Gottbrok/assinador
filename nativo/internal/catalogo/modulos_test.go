@@ -28,8 +28,8 @@ func TestTodaEntradaFoiMedida(t *testing.T) {
 			t.Errorf("nome inválido ou repetido: %q", m.Nome)
 		}
 		nomes[m.Nome] = true
-		if m.Rotulo == "" || len(m.Caminhos) == 0 {
-			t.Errorf("%s: sem rótulo ou sem caminho", m.Nome)
+		if m.Rotulo == "" || m.Fabricante == "" || len(m.Caminhos) == 0 {
+			t.Errorf("%s: sem rótulo, sem fabricante ou sem caminho", m.Nome)
 		}
 		for plataforma, caminhos := range m.Caminhos {
 			for _, c := range caminhos {
@@ -51,6 +51,19 @@ func TestTodaEntradaFoiMedida(t *testing.T) {
 			t.Errorf("%s: módulo %q fora do catálogo, ou sem descrição do cartão", a.Valor, a.Modulo)
 		}
 		conferirMedicoes(t, a.Valor, a.Medicoes)
+	}
+}
+
+func TestPeloArquivo(t *testing.T) {
+	for caminho, quer := range map[string]string{
+		"/usr/lib64/libaetpkss.so.3":                         "safesign",
+		"/usr/lib/aarch64-linux-gnu/pkcs11/opensc-pkcs11.so": "opensc",
+		"/opt/outro/libfabricante.so":                        "",
+	} {
+		m, ok := PeloArquivo(caminho, Modulos)
+		if (quer == "") == ok || (ok && m.Nome != quer) {
+			t.Errorf("%s: %q %v", caminho, m.Nome, ok)
+		}
 	}
 }
 

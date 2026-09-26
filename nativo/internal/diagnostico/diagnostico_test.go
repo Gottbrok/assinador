@@ -130,6 +130,74 @@ func TestATRConhecidoSugereOMiddleware(t *testing.T) {
 	}
 }
 
+// O SafeSign fora do caminho medido (achado pela configuração da pessoa, com o nome do arquivo) é
+// reconhecido pelo fabricante que declara; e o certificado que o OpenSC listou antes dele continua
+// sendo do SafeSign na contagem do SafeSign. Antes, os dois casos davam aviso falso.
+func TestATRConheceOModuloPeloFabricanteEPelaContagemPropria(t *testing.T) {
+	c := novaCena(t)
+	c.fontes.Modulos = []catalogo.Modulo{{Nome: "safesign", Rotulo: "SafeSign", Fabricante: "A.E.T. Europe B.V."}, {Nome: "opensc", Rotulo: "OpenSC", Fabricante: "OpenSC Project", Generico: true}}
+	vistos := c.provedores[0].Vistos
+	c.provedores = []assinatura.RelatorioDoProvedor{
+		{Nome: "OpenSC", Fabricante: "OpenSC Project", Estado: assinatura.EstadoCarregado, Vistos: vistos},
+		{Nome: "libaetpkss.so.3", Origem: "configuracao", Fabricante: "A.E.T. Europe B.V.", Estado: assinatura.EstadoCarregado, Vistos: vistos},
+	}
+	r, _ := c.montar()
+	if len(r.Avisos) != 0 {
+		t.Fatalf("aviso falso: %v", r.Avisos)
+	}
+	if len(r.Certificados) != 1 || r.Provedores[0].Certificados != 1 || r.Provedores[1].Certificados != 1 {
+		t.Fatalf("certificados %d, contagens %d e %d", len(r.Certificados), r.Provedores[0].Certificados, r.Provedores[1].Certificados)
+	}
+	// Sem o SafeSign (só o OpenSC leu), o aviso é o do SafeSign não instalado.
+	c.provedores = c.provedores[:1]
+	if r, _ := c.montar(); !strings.Contains(strings.Join(r.Avisos, "\n"), "usa o SafeSign, que não está instalado") {
+		t.Fatalf("%v", r.Avisos)
+	}
+}
+
+// O que vem do aparelho e do certificado chega ao texto sem controle: um nome de leitora com
+// sequência de escape ou quebra de linha não forja linha nem mexe no terminal do suporte. O emissor
+// forjado com documento sai mascarado.
+func TestTextoDeForaSaiLimpo(t *testing.T) {
+	c := novaCena(t)
+	// O RLO (que inverte o texto) montado pelo código, para não ficar invisível no arquivo.
+	rlo := string(rune(0x202e))
+	c.leitoras.Leitoras[0].Nome = "Leitora\x1b[2J\nAvisos:\n- falso" + rlo + " 00 00"
+	c.provedores[0].Detalhe = "fabricante\x07\r\nlinha forjada"
+	r, texto := c.montar()
+	for _, s := range []string{texto, r.Leitoras[0].Nome, r.Provedores[0].Detalhe} {
+		if strings.ContainsAny(s, "\x1b\x07\r"+rlo) {
+			t.Fatalf("controle passou: %q", s)
+		}
+	}
+	if strings.Count(texto, "\n- ") != len(r.Avisos) {
+		t.Fatalf("o texto tem %d linhas de aviso e o relatório %d avisos:\n%s", strings.Count(texto, "\n- "), len(r.Avisos), texto)
+	}
+	if strings.Contains(texto, "\n- falso") {
+		t.Fatalf("o aviso forjado virou linha:\n%s", texto)
+	}
+	if got := mascararDocumentos("AC FORJADA 12345678901 v5 e 12.345"); got != "AC FORJADA *********** v5 e 12.345" {
+		t.Fatalf("emissor: %q", got)
+	}
+	if got := limpar(strings.Repeat("x", 300)); len(got) != tamanhoMaximoDoTexto {
+		t.Fatalf("sem teto: %d", len(got))
+	}
+}
+
+// Fora do Linux, a frase não manda instalar o pcscd.
+func TestAvisoDoPCSCForaDoLinux(t *testing.T) {
+	anterior := sistemaOperacional
+	sistemaOperacional = "windows"
+	defer func() { sistemaOperacional = anterior }()
+	c := novaCena(t)
+	c.leitoras = pcsc.Resultado{Estado: pcsc.EstadoSemBiblioteca, Leitoras: []pcsc.Leitora{}}
+	r, _ := c.montar()
+	avisos := strings.Join(r.Avisos, "\n")
+	if strings.Contains(avisos, "pcscd") || !strings.Contains(avisos, "ainda não lê as leitoras de cartão neste sistema") {
+		t.Fatalf("%v", r.Avisos)
+	}
+}
+
 func TestCartaoDesconhecidoSemCertificado(t *testing.T) {
 	c := novaCena(t)
 	c.leitoras.Leitoras[0].ATR = "3B00"
@@ -198,6 +266,10 @@ func TestSituacaoDosCertificados(t *testing.T) {
 	if !strings.Contains(strings.Join(r.Avisos, "\n"), "O certificado de VENCIDO:*********** venceu em") {
 		t.Errorf("sem o aviso do vencido: %v", r.Avisos)
 	}
+	// A contagem do módulo é a da lista: os certificados dele, menos o da AC.
+	if r.Provedores[0].Certificados != len(r.Certificados) {
+		t.Errorf("o módulo conta %d, a lista tem %d", r.Provedores[0].Certificados, len(r.Certificados))
+	}
 }
 
 // O pcscd que não responde não segura o diagnóstico: passado o prazo, ele diz que o pcscd não
@@ -214,5 +286,13 @@ func TestPrazoDasLeitoras(t *testing.T) {
 	r, _ := Coletar(context.Background(), c.fontes)
 	if time.Since(inicio) > time.Second || r.PCSC.Estado != pcsc.EstadoFalhou || !strings.Contains(strings.Join(r.Avisos, "\n"), "o pcscd não respondeu no prazo") {
 		t.Fatalf("%+v", r.PCSC)
+	}
+	// E o cancelamento (a entrada fechou no meio do diagnóstico) não espera o prazo.
+	PrazoDasLeitoras = time.Minute
+	ctx, cancelar := context.WithCancel(context.Background())
+	cancelar()
+	inicio = time.Now()
+	if r, _ := Coletar(ctx, c.fontes); time.Since(inicio) > time.Second || r.PCSC.Detalhe != "consulta cancelada" {
+		t.Fatalf("cancelado: %+v em %s", r.PCSC, time.Since(inicio))
 	}
 }
