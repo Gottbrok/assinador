@@ -3,7 +3,6 @@
 package windows
 
 import (
-	"errors"
 	"runtime"
 	"syscall"
 	"unsafe"
@@ -57,15 +56,6 @@ type infoDoProvedorDaChave struct {
 // DigestInfo.
 type bcryptPKCS1PaddingInfo struct {
 	algoritmo *uint16
-}
-
-// codigoDoErro tira o código numérico de um erro do syscall (`GetLastError`).
-func codigoDoErro(err error) uint32 {
-	var errno syscall.Errno
-	if errors.As(err, &errno) {
-		return uint32(errno)
-	}
-	return 0
 }
 
 // provedorDaChave lê o CERT_KEY_PROV_INFO do certificado, SEM abrir a chave (listar nunca pede PIN):

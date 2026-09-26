@@ -9,7 +9,9 @@
 package windows
 
 import (
+	"errors"
 	"fmt"
+	"syscall"
 
 	"github.com/Gottbrok/assinador/nativo/internal/protocolo"
 )
@@ -33,7 +35,21 @@ const (
 	cryptSemChave             = 0x8009200B // CRYPT_E_NO_KEY_PROPERTY
 	erroAcessoNegado          = 0x80070005 // HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED)
 	erroCancelado             = 0x800704C7 // HRESULT_FROM_WIN32(ERROR_CANCELLED)
+	// falhaSemCodigo é o E_FAIL: a chamada falhou e o Windows não disse por quê (`GetLastError` zero).
+	// Zero é o código de SUCESSO, e quem recebe um código só confere se ele é zero.
+	falhaSemCodigo = 0x80004005
 )
+
+// codigoDoErro tira o código numérico da recusa de uma chamada (o `GetLastError` que volta como
+// `syscall.Errno`). Recusa sem código vira `falhaSemCodigo`, nunca zero: zero seria lido como
+// sucesso, e a assinatura vazia seguiria adiante.
+func codigoDoErro(err error) uint32 {
+	var errno syscall.Errno
+	if errors.As(err, &errno) && errno != 0 {
+		return uint32(errno)
+	}
+	return falhaSemCodigo
+}
 
 // hresult põe o código no espaço do HRESULT: o `GetLastError` das funções da CryptoAPI devolve ora o
 // NTE_* (já HRESULT), ora um erro do Win32 cru (ERROR_CANCELLED é 1223), e o mapa compara um só.

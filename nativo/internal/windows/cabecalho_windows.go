@@ -29,6 +29,7 @@ static unsigned long real_nte_cancelado(void) { return codigo(NTE_USER_CANCELLED
 static unsigned long real_crypt_sem_chave(void) { return codigo(CRYPT_E_NO_KEY_PROPERTY); }
 static unsigned long real_acesso_negado(void) { return codigo(HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED)); }
 static unsigned long real_erro_cancelado(void) { return codigo(HRESULT_FROM_WIN32(ERROR_CANCELLED)); }
+static unsigned long real_falha(void) { return codigo(E_FAIL); }
 
 static unsigned long real_prop_info(void) { return CERT_KEY_PROV_INFO_PROP_ID; }
 static unsigned long real_pp_hwnd(void) { return PP_CLIENT_HWND; }
@@ -72,6 +73,7 @@ func comparacaoComOCabecalho() map[string][2]uint64 {
 		"CRYPT_E_NO_KEY_PROPERTY":                     {uint64(C.real_crypt_sem_chave()), cryptSemChave},
 		"HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED)":     {uint64(C.real_acesso_negado()), erroAcessoNegado},
 		"HRESULT_FROM_WIN32(ERROR_CANCELLED)":         {uint64(C.real_erro_cancelado()), erroCancelado},
+		"E_FAIL":                                      {uint64(C.real_falha()), falhaSemCodigo},
 		"CERT_KEY_PROV_INFO_PROP_ID":                  {uint64(C.real_prop_info()), certKeyProvInfoPropID},
 		"PP_CLIENT_HWND":                              {uint64(C.real_pp_hwnd()), ppClientHwnd},
 		"CALG_SHA_256":                                {uint64(C.real_calg_sha256()), calgSHA256},

@@ -2,6 +2,9 @@ package windows
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
+	"syscall"
 	"testing"
 
 	"github.com/Gottbrok/assinador/nativo/internal/protocolo"
@@ -49,6 +52,30 @@ func TestDetalheDoErroDoWindows(t *testing.T) {
 	}
 	if e := erroDoWindows("abrir a chave", 1223); e.Detalhe != "abrir a chave: 0x800704C7" {
 		t.Fatalf("detalhe: %q", e.Detalhe)
+	}
+}
+
+// A recusa que o Windows não explica (GetLastError zero, ou erro que não é do syscall) nunca vira o
+// zero do sucesso: vira E_FAIL, e a recusa segue como recusa.
+func TestCodigoDoErro(t *testing.T) {
+	casos := []struct {
+		err      error
+		esperado uint32
+	}{
+		{syscall.Errno(0), falhaSemCodigo},
+		{errors.New("sem código"), falhaSemCodigo},
+		{nil, falhaSemCodigo},
+		{syscall.Errno(1223), 1223},
+		{syscall.Errno(nteAlgoritmo), nteAlgoritmo},
+		{fmt.Errorf("embrulhado: %w", syscall.Errno(5)), 5},
+	}
+	for _, c := range casos {
+		if got := codigoDoErro(c.err); got != c.esperado {
+			t.Errorf("%v: 0x%08X, e não 0x%08X", c.err, got, c.esperado)
+		}
+	}
+	if e := erroDoWindows("assinar", falhaSemCodigo); e.Codigo != protocolo.ModuloFalhou {
+		t.Fatalf("%+v", e)
 	}
 }
 
