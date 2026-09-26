@@ -83,9 +83,16 @@ func ExecutarModulo(caminho string) int {
 			return 2
 		}
 	}
-	resposta := atender(caminho, p, pin)
+	resposta, limpar := atender(caminho, p, pin)
 	mensagens.Zerar(pin)
-	return responder(saida, resposta)
+	// A resposta sai ANTES da limpeza (logout, sessões, C_Finalize, dlclose): módulo de fabricante
+	// que trava ou cai ao encerrar não custa a resposta, e o pai mata o filho depois de
+	// `esperaDoFim`.
+	codigo := responder(saida, resposta)
+	if limpar != nil {
+		limpar()
+	}
+	return codigo
 }
 
 func responder(saida *os.File, r respostaDoModulo) int {
@@ -99,37 +106,37 @@ func responder(saida *os.File, r respostaDoModulo) int {
 	return 0
 }
 
-func atender(caminho string, p pedidoAoModulo, pin []byte) respostaDoModulo {
+// atender faz o trabalho e devolve a resposta e a limpeza, que quem chama roda DEPOIS de responder.
+func atender(caminho string, p pedidoAoModulo, pin []byte) (respostaDoModulo, func()) {
 	if p.Op != opListar && p.Op != opAssinar {
-		return falhaDoModulo(protocolo.Novo(protocolo.Interno, "operação desconhecida no módulo"))
+		return falhaDoModulo(protocolo.Novo(protocolo.Interno, "operação desconhecida no módulo")), nil
 	}
 	var digest [32]byte
 	if p.Op == opAssinar {
 		d, err := hex.DecodeString(p.Digest)
 		if err != nil || len(d) != len(digest) || len(p.Ref) != 64 {
-			return falhaDoModulo(protocolo.Novo(protocolo.Interno, "pedido de assinatura fora da forma"))
+			return falhaDoModulo(protocolo.Novo(protocolo.Interno, "pedido de assinatura fora da forma")), nil
 		}
 		copy(digest[:], d)
 	}
 	s, e := abrirModulo(caminho)
 	if e != nil {
-		return falhaDoModulo(e)
+		return falhaDoModulo(e), nil
 	}
-	defer s.fechar()
 	switch p.Op {
 	case opListar:
 		info := s.info()
 		certs, e := s.listar()
 		if e != nil {
-			return falhaDoModulo(e)
+			return falhaDoModulo(e), s.fechar
 		}
-		return respostaDoModulo{OK: true, Info: &info, Certificados: certs}
+		return respostaDoModulo{OK: true, Info: &info, Certificados: certs}, s.fechar
 	default:
 		assinada, e := s.assinar(p.Ref, digest, pin)
 		if e != nil {
-			return falhaDoModulo(e)
+			return falhaDoModulo(e), s.fechar
 		}
-		return respostaDoModulo{OK: true, Assinatura: assinada}
+		return respostaDoModulo{OK: true, Assinatura: assinada}, s.fechar
 	}
 }
 

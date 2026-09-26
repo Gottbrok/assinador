@@ -42,10 +42,15 @@ type certificadoDoModulo struct {
 	ChaveConfirmada bool   `json:"chaveConfirmada"`
 }
 
-// sessaoDeTrabalho é o módulo aberto neste processo (o filho).
+// sessaoDeTrabalho é o módulo aberto neste processo (o filho). As sessões abertas e os logins
+// feitos são anotados para `fechar`, que o filho só chama DEPOIS de responder: C_Logout,
+// C_CloseSession e C_Finalize de fabricante podem travar ou derrubar o processo, e isso não pode
+// custar uma resposta que já existe (o pai espera `esperaDoFim` e mata).
 type sessaoDeTrabalho struct {
 	caminho string
 	ctx     *p11.Ctx
+	abertas []p11.SessionHandle
+	logadas []p11.SessionHandle
 }
 
 func abrirModulo(caminho string) (*sessaoDeTrabalho, *protocolo.Erro) {
@@ -60,9 +65,26 @@ func abrirModulo(caminho string) (*sessaoDeTrabalho, *protocolo.Erro) {
 	return &sessaoDeTrabalho{caminho: caminho, ctx: ctx}, nil
 }
 
+// fechar encerra o que o trabalho abriu: o logout só do login que ESTE processo fez (o token que já
+// estava logado por outra aplicação continua como estava), as sessões, e o módulo.
 func (s *sessaoDeTrabalho) fechar() {
+	for _, sessao := range s.logadas {
+		_ = s.ctx.Logout(sessao)
+	}
+	for _, sessao := range s.abertas {
+		_ = s.ctx.CloseSession(sessao)
+	}
 	_ = s.ctx.Finalize()
 	s.ctx.Destroy()
+}
+
+// abrirSessao abre uma sessão só de leitura (o login de usuário não exige escrita) e a anota.
+func (s *sessaoDeTrabalho) abrirSessao(slot uint) (p11.SessionHandle, error) {
+	sessao, err := s.ctx.OpenSession(slot, p11.CKF_SERIAL_SESSION)
+	if err == nil {
+		s.abertas = append(s.abertas, sessao)
+	}
+	return sessao, err
 }
 
 func (s *sessaoDeTrabalho) info() infoDoModulo {
@@ -207,7 +229,7 @@ func (s *sessaoDeTrabalho) listar() ([]certificadoDoModulo, *protocolo.Erro) {
 		if err != nil {
 			continue
 		}
-		sessao, err := s.ctx.OpenSession(slot, p11.CKF_SERIAL_SESSION)
+		sessao, err := s.abrirSessao(slot)
 		if err != nil {
 			continue
 		}
@@ -227,12 +249,12 @@ func (s *sessaoDeTrabalho) listar() ([]certificadoDoModulo, *protocolo.Erro) {
 				ChaveConfirmada: confirmada,
 			})
 		}
-		_ = s.ctx.CloseSession(sessao)
 	}
 	return saida, nil
 }
 
-// acharPorRef acha o slot e o certificado de `ref` e deixa uma sessão aberta nele.
+// acharPorRef acha o slot e o certificado de `ref`, numa sessão aberta nele (as sessões são
+// fechadas por `fechar`, depois da resposta).
 func (s *sessaoDeTrabalho) acharPorRef(ref string) (uint, p11.SessionHandle, certificadoNoSlot, bool) {
 	slots, err := s.ctx.GetSlotList(true)
 	if err != nil {
@@ -242,7 +264,7 @@ func (s *sessaoDeTrabalho) acharPorRef(ref string) (uint, p11.SessionHandle, cer
 		if i >= maximoDeSlots {
 			break
 		}
-		sessao, err := s.ctx.OpenSession(slot, p11.CKF_SERIAL_SESSION)
+		sessao, err := s.abrirSessao(slot)
 		if err != nil {
 			continue
 		}
@@ -252,15 +274,19 @@ func (s *sessaoDeTrabalho) acharPorRef(ref string) (uint, p11.SessionHandle, cer
 				return slot, sessao, c, true
 			}
 		}
-		_ = s.ctx.CloseSession(sessao)
 	}
 	return 0, 0, certificadoNoSlot{}, false
 }
 
-// entrar faz um C_Login e traduz a falha, relendo as flags do token depois dela.
+// entrar faz um C_Login e traduz a falha, relendo as flags do token depois dela. O login de usuário
+// que ESTE processo fez é anotado para o logout em `fechar`; `CKR_USER_ALREADY_LOGGED_IN` (há
+// middleware que compartilha o login entre aplicações) segue sem logout nosso no fim.
 func (s *sessaoDeTrabalho) entrar(slot uint, sessao p11.SessionHandle, usuario uint, pin []byte) *protocolo.Erro {
 	_, err := entrarNoToken(s.caminho, sessao, usuario, pin)
 	if err == nil {
+		if usuario == usuarioComum {
+			s.logadas = append(s.logadas, sessao)
+		}
 		return nil
 	}
 	if e, ok := codigoCkr(err); ok && e == p11.CKR_USER_ALREADY_LOGGED_IN {
@@ -283,7 +309,6 @@ func (s *sessaoDeTrabalho) assinar(ref string, digest [32]byte, pin []byte) ([]b
 	if !ok {
 		return nil, protocolo.Novo(protocolo.CertificadoNaoEncontrado, "nenhum token presente tem o certificado")
 	}
-	defer func() { _ = s.ctx.CloseSession(sessao) }()
 	ti, err := s.ctx.GetTokenInfo(slot)
 	if err != nil {
 		return nil, protocolo.Novo(protocolo.ModuloFalhou, "C_GetTokenInfo: "+nomeDoErro(err))
@@ -303,7 +328,6 @@ func (s *sessaoDeTrabalho) assinar(ref string, digest [32]byte, pin []byte) ([]b
 		if e := s.entrar(slot, sessao, usuarioComum, pinDoLogin); e != nil {
 			return nil, e
 		}
-		defer func() { _ = s.ctx.Logout(sessao) }()
 	}
 
 	chave, ok := casar(cert, s.chavesPrivadas(sessao))

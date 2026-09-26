@@ -324,6 +324,25 @@ func TestModuloQueTravaRespeitaOPrazo(t *testing.T) {
 	}
 }
 
+// Um módulo que trava ao ENCERRAR (C_Logout, C_CloseSession, C_Finalize ou o dlclose) depois de ter
+// feito o trabalho não pode custar a resposta: o filho responde ANTES de limpar, e o pai o mata
+// depois de `esperaDoFim`. Sem isso, um cartão que já assinou virava `tempo-esgotado` em toda
+// tentativa.
+func TestModuloQueTravaNoFimNaoSeguraAResposta(t *testing.T) {
+	t.Setenv("ASSINADOR_MODULO_DE_TESTE", "trava-no-fim")
+	m := Modulo{Caminho: compilarModuloDeTeste(t), Nome: "trava-no-fim", Rotulo: "Módulo que trava no fim"}
+	p := provedorDe(t, m)
+	p.PrazoDeListar = 10 * time.Second
+	inicio := time.Now()
+	certs, avisos := p.Listar(context.Background())
+	if d := time.Since(inicio); d > esperaDoFim+2*time.Second {
+		t.Fatalf("a resposta esperou a limpeza travada: %s", d)
+	}
+	if len(certs) != 0 || len(avisos) != 0 {
+		t.Fatalf("o módulo respondeu e mesmo assim falhou: certs %d, avisos %v", len(certs), avisos)
+	}
+}
+
 // Dois módulos vendo o mesmo cartão (o SafeSign e o OpenSC): a lista funde por `ref` e fica com o
 // do fabricante, venha ele antes ou depois do genérico.
 func TestFusaoPorRefPrefereOFabricante(t *testing.T) {
