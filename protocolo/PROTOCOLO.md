@@ -26,7 +26,30 @@ resposta: { canal: 'assinador:resposta', v: 1, id, ok: true, dados }
 ```
 
 Prazos na página: `ola` 1,5 s; `listar` e `diagnostico` 30 s; `assinar` 240 s. Teto da mensagem:
-64 KiB. A extensão é da F3; o detalhe desta ponte está na biblioteca.
+64 KiB.
+
+O que a extensão (`extensao/`) faz com cada pedido, nesta ordem:
+
+1. O script de conteúdo, no mundo isolado e só no quadro de topo, aceita só a mensagem da própria
+   janela (`event.source === window`), da origem da página, com `canal`, `v`, `id` com forma, sem
+   chave a mais e até 64 KiB. Todo o resto passa reto. A resposta vai com `targetOrigin` igual à
+   origem da página.
+2. O fundo confere o REMETENTE (esta extensão, quadro 0, uma aba) e a ORIGEM que o navegador diz
+   dele (`sender.origin`; no Firefox, a de `sender.url`), que precisa ser a declarada e estar nos
+   padrões de algum emissor (`localhost` só no build de desenvolvimento). Senão, `origem-recusada`.
+3. Tudo que não é `ola` exige a PERMISSÃO da pessoa para aquela origem: a janela `permitir.html`
+   pergunta na primeira vez, e a decisão fica em `storage.local` (nunca sincronizada), revogável nas
+   opções. Negada, fechada ou vencida, `permissao-negada`.
+4. `assinar` é `conferir` no programa, a janela `confirmar.html` (com o que o PROGRAMA leu do
+   bilhete e do certificado e o endereço que o NAVEGADOR diz; o PIN só quando o dispositivo o
+   exige) e `assinar` na mesma porta. Janela fechada ou "Cancelar" é `cancelado`; sem decisão,
+   `tempo-esgotado`; token que o `conferir` diz bloqueado é `token-bloqueado`, sem janela; uma
+   assinatura por vez (a segunda é `ocupado`).
+
+Cada operação tem um ORÇAMENTO dentro da extensão, abaixo do prazo da página (`ola` 1,2 s,
+`listar` e `diagnostico` 29 s, `assinar` 235 s), e cada passo usa o menor entre o teto dele e o que
+resta: a página recebe o `tempo-esgotado` da extensão e nunca desiste com uma janela ainda aberta. A
+janela de confirmação fecha com 30 s de reserva para o cartão assinar; a de permissão, com 3 s.
 
 ## Extensão e programa (native messaging)
 

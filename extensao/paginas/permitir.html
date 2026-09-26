@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title data-i18n="permitirTitulo">Permitir endereço</title>
+    <link rel="stylesheet" href="paginas.css" />
+  </head>
+  <body>
+    <main class="janela" aria-labelledby="titulo">
+      <h1 id="titulo" data-i18n="permitirTitulo">Permitir endereço</h1>
+      <p id="estado" role="status" data-i18n="carregando">Carregando</p>
+      <section id="conteudo" hidden>
+        <p id="host" class="host"></p>
+        <p data-i18n="permitirPergunta"></p>
+        <p class="secundario" data-i18n="permitirExplicacao"></p>
+        <div class="botoes">
+          <button type="button" id="negar" class="botao-secundario" data-i18n="botaoNaoPermitir">Não permitir</button>
+          <button type="button" id="permitir" class="botao-primario" data-i18n="botaoPermitir">Permitir</button>
+        </div>
+      </section>
+    </main>
+    <script src="permitir.js"></script>
+  </body>
+</html>

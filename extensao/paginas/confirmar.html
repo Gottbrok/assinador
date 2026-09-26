@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title data-i18n="confirmarTitulo">Confirmar assinatura</title>
+    <link rel="stylesheet" href="paginas.css" />
+  </head>
+  <body>
+    <main class="janela" aria-labelledby="titulo">
+      <h1 id="titulo" data-i18n="confirmarTitulo">Confirmar assinatura</h1>
+      <p id="estado" role="status" data-i18n="carregando">Carregando</p>
+      <section id="conteudo" hidden>
+        <dl class="campos">
+          <div>
+            <dt data-i18n="rotuloEndereco">Endereço</dt>
+            <dd id="host" class="destaque"></dd>
+          </div>
+          <div>
+            <dt data-i18n="rotuloOrganizacao">Organização</dt>
+            <dd id="organizacao"></dd>
+          </div>
+          <div>
+            <dt data-i18n="rotuloDocumento">Documento</dt>
+            <dd id="documento"></dd>
+          </div>
+          <div>
+            <dt data-i18n="rotuloFinalidade">Finalidade</dt>
+            <dd id="finalidade"></dd>
+          </div>
+          <div>
+            <dt data-i18n="rotuloCertificado">Certificado</dt>
+            <dd>
+              <span id="titular"></span>
+              <span id="emissor" class="secundario"></span>
+              <span id="validade" class="secundario"></span>
+            </dd>
+          </div>
+        </dl>
+        <p id="aviso-pin" class="aviso" role="alert" hidden></p>
+        <form id="formulario" novalidate>
+          <div id="campo-pin" class="campo" hidden>
+            <label for="pin" data-i18n="rotuloPin">PIN do cartão ou do token</label>
+            <input id="pin" type="password" autocomplete="off" maxlength="64" spellcheck="false" />
+            <p id="erro-pin" class="erro" role="alert" hidden></p>
+          </div>
+          <p id="pin-no-leitor" class="secundario" data-i18n="pinNoLeitor" hidden></p>
+          <div class="botoes">
+            <button type="button" id="cancelar" class="botao-secundario" data-i18n="botaoCancelar">Cancelar</button>
+            <button type="submit" id="assinar" class="botao-primario" data-i18n="botaoAssinar">Assinar</button>
+          </div>
+        </form>
+        <p class="rodape" data-i18n="confirmarRodape"></p>
+      </section>
+    </main>
+    <script src="confirmar.js"></script>
+  </body>
+</html>

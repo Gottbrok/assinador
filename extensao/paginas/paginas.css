@@ -1,0 +1,242 @@
+/*
+ * As páginas da extensão: janelas de decisão (420 px) e opções. Sem framework e sem fonte externa
+ * (a extensão não acessa a rede). Contraste AA nos dois temas: texto principal acima de 12:1,
+ * secundário acima de 4.5:1, e o foco sempre visível.
+ */
+
+:root {
+  color-scheme: light dark;
+  --fundo: #ffffff;
+  --texto: #1b1f24;
+  --secundario: #57606a;
+  --borda: #d0d7de;
+  --superficie: #f6f8fa;
+  --primario: #1b1f24;
+  --primario-texto: #ffffff;
+  --aviso-fundo: #fff4e5;
+  --aviso-texto: #6b3d00;
+  --erro: #a40e26;
+  --foco: #0550ae;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fundo: #0d1117;
+    --texto: #e6edf3;
+    --secundario: #a3adb8;
+    --borda: #3d444d;
+    --superficie: #161b22;
+    --primario: #e6edf3;
+    --primario-texto: #0d1117;
+    --aviso-fundo: #3b2300;
+    --aviso-texto: #ffd8a8;
+    --erro: #ff9492;
+    --foco: #79c0ff;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--texto);
+  font: 15px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, sans-serif;
+}
+
+h1 {
+  font-size: 1.2rem;
+  margin: 0 0 0.75rem;
+}
+
+h2 {
+  font-size: 1rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+p {
+  margin: 0 0 0.75rem;
+}
+
+.janela {
+  padding: 1.25rem;
+}
+
+.opcoes {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.secundario {
+  color: var(--secundario);
+}
+
+.campos {
+  margin: 0 0 1rem;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  background: var(--superficie);
+}
+
+.campos > div {
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--borda);
+}
+
+.campos > div:first-child {
+  border-top: 0;
+}
+
+.campos dt {
+  font-size: 0.8rem;
+  color: var(--secundario);
+}
+
+.campos dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.campos dd span {
+  display: block;
+}
+
+.destaque,
+.host {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.host {
+  font-size: 1.1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  background: var(--superficie);
+}
+
+.aviso {
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: var(--aviso-fundo);
+  color: var(--aviso-texto);
+  font-weight: 600;
+}
+
+.erro {
+  color: var(--erro);
+  margin: 0.25rem 0 0;
+}
+
+.campo {
+  margin-bottom: 0.75rem;
+}
+
+.campo label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.campo input {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  color: var(--texto);
+  background: var(--fundo);
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+}
+
+.botoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.botoes.esquerda {
+  justify-content: flex-start;
+}
+
+button {
+  font: inherit;
+  padding: 0.45rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.botao-primario {
+  background: var(--primario);
+  color: var(--primario-texto);
+  border: 1px solid var(--primario);
+  font-weight: 600;
+}
+
+.botao-secundario {
+  background: transparent;
+  color: var(--texto);
+  border: 1px solid var(--borda);
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--foco);
+  outline-offset: 2px;
+}
+
+.rodape {
+  font-size: 0.8rem;
+  color: var(--secundario);
+}
+
+.permissoes {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.permissoes li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--borda);
+}
+
+.permissoes li:first-child {
+  border-top: 0;
+}
+
+.permissoes .origem {
+  display: block;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.permissoes .secundario {
+  display: block;
+  font-size: 0.85rem;
+}
+
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 0.75rem;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  background: var(--superficie);
+  font-size: 0.8rem;
+  max-height: 24rem;
+  overflow: auto;
+}

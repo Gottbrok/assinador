@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Página de teste do Assinador</title>
+    <style>
+      body { font: 15px/1.45 system-ui, sans-serif; max-width: 46rem; margin: 2rem auto; padding: 0 1rem; color: #1b1f24; }
+      button { font: inherit; padding: 0.35rem 0.9rem; margin: 0 0.5rem 0.5rem 0; }
+      input[type='text'] { font: inherit; width: 100%; padding: 0.35rem; }
+      pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #f6f8fa; border: 1px solid #d0d7de; padding: 0.75rem; }
+      .aviso { background: #fff4e5; color: #6b3d00; padding: 0.5rem 0.75rem; }
+      label { display: block; margin: 0.25rem 0; }
+    </style>
+  </head>
+  <body>
+    <h1>Página de teste do Assinador</h1>
+    <p class="aviso">
+      Página de DESENVOLVIMENTO. Fala com a extensão pelo protocolo da biblioteca; o bilhete é assinado
+      pela chave de desenvolvimento local do <code>host-teste</code>, que só o programa de desenvolvimento aceita.
+    </p>
+
+    <p>
+      <button type="button" id="ola">Versões</button>
+      <button type="button" id="listar">Procurar certificados</button>
+      <button type="button" id="diagnostico">Diagnóstico</button>
+    </p>
+
+    <fieldset>
+      <legend>Certificados</legend>
+      <div id="certificados">Nenhuma busca ainda.</div>
+    </fieldset>
+
+    <p>
+      <label for="documento">Título do documento (vai no bilhete e aparece na janela de confirmação)</label>
+      <input type="text" id="documento" value="Documento de teste do Assinador" maxlength="200" />
+    </p>
+    <p><button type="button" id="assinar">Assinar com o certificado escolhido</button></p>
+
+    <h2>Resposta</h2>
+    <pre id="saida">(nada ainda)</pre>
+
+    <script src="pagina.js"></script>
+  </body>
+</html>

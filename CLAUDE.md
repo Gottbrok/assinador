@@ -77,6 +77,14 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
 14. **Pacote de desenvolvimento não é release.** Os `.deb` e `.rpm` de `instaladores/linux` levam o
     build `dev`; o de produção (sem a tag, com os IDs das lojas, assinado) é da F7a. Mudou o pacote,
     rode `instaladores/linux/testar-pacotes.sh`: a remoção não pode deixar arquivo nem pasta.
+15. **A extensão só LIGA; quem decide é o programa e a pessoa.** Ela nunca confere o bilhete (só a
+    forma) e as janelas mostram só o que veio do PROGRAMA (o bilhete conferido, o certificado) e do
+    NAVEGADOR (a origem de quem pediu), nunca o que a página declara. A permissão é por ORIGEM, em
+    `storage.local` (🚫 `storage.sync`). Cada operação tem um orçamento abaixo do prazo da página, e
+    passo novo num fluxo usa o que RESTA dele, nunca um teto próprio somado. 🚫 Permissão nova no
+    manifesto, `host_permissions` ou qualquer `fetch` (o build reprova rede no bundle). Texto
+    visível só em `_locales/`, nos dois idiomas (o teste de paridade reprova chave faltando ou
+    sobrando).
 
 ## Como se trabalha aqui
 
@@ -86,8 +94,9 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
 - **Nunca `sed`, `awk` ou script de substituição em código.** Edição arquivo por arquivo.
 - **Agentes em paralelo não editam** este repositório ao mesmo tempo.
 - **Nunca** `git reset`, `git push --force`, `git rebase` nem `--amend` sobre commit que não é seu.
-- Texto visível à pessoa em português do Brasil. Nomes em código também em português, como na
-  biblioteca (`conferirBilhete`, `resumoParaExibicao`).
+- Texto visível à pessoa em português do Brasil (na extensão, também em espanhol, pelo
+  `_locales/es`). Nomes em código também em português, como na biblioteca (`conferirBilhete`,
+  `resumoParaExibicao`).
 - Go na versão estável corrente, fixada em cada `go.mod`. Rode `go vet` e `go test ./...` no módulo
   tocado antes de commitar.
 - **No `nativo/`, os dois builds**: `go vet ./... && go vet -tags dev ./...`, `go test ./...` e
@@ -95,6 +104,9 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
   `.github/workflows/nativo.yml`. Os testes com SoftHSM2 pulam sem ele: aponte o `.so` em
   `ASSINADOR_SOFTHSM` (sem root: `apt download softhsm2 libsofthsm2 softhsm2-common` e `dpkg -x`).
   `ASSINADOR_EXIGE_SOFTHSM=1` (o CI liga) faz a falta reprovar.
+- **Na `extensao/`**: `npm run type-check`, `npm test`, `npm run reproduzivel` e `npm run
+  lint:firefox`; o `npm run ponta-a-ponta` (Chromium do Playwright, programa dev e SoftHSM2) abre
+  navegador, então pergunte ao Cairo antes de rodá-lo fora do CI.
 
 ## Estado
 

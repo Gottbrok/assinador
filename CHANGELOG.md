@@ -75,3 +75,31 @@
     F5 precisa, e o release não aceita bilhete nenhum até a F7a); o ATR do Cairo, que o plano punha
     no escopo, espera o gate, porque não havia leitora nesta máquina; os avisos e o texto do
     diagnóstico são frases em português, como os `avisos` do `listar` (a mesma decisão da F3).
+- F3: a extensão (`extensao/`), Manifest V3 para Chrome, Edge e Firefox, TypeScript e Vite sem
+  framework, um arquivo por script e sem minificar.
+  - A ponte da página (mundo isolado, quadro de topo), o fundo com os quatro portões (remetente,
+    origem dita pelo navegador, permissão por endereço, forma), a porta de native messaging (um
+    pedido por vez; prazo vencido descarta a porta), as janelas `permitir.html` e `confirmar.html`
+    (o que o programa leu do bilhete e o host que o navegador diz; PIN só quando o dispositivo o
+    exige; botões travados por 600 ms depois de a janela ficar visível, contra clique cronometrado
+    pela página) e as opções (endereços permitidos com "Remover", versões, diagnóstico).
+  - O orçamento de prazos: cada operação tem um prazo dentro da extensão abaixo do da página, e cada
+    passo usa o menor entre o teto dele e o que resta. Somados, os tetos passavam do prazo da página
+    (permissão mais `listar`; `conferir`, janela e `assinar`), e a página desistiria com a janela
+    ainda aberta.
+  - Textos em `_locales/pt_BR` e `_locales/es`, com teste de paridade de chaves e marcadores.
+    Ícones provisórios gerados por script. Pacotes da loja reproduzíveis (`npm run reproduzivel`),
+    o do Chrome sem `key`. `web-ext lint` sem erro. CI `extensao.yml`, com o ponta a ponta no
+    Chromium do Playwright, o programa de desenvolvimento e o SoftHSM2.
+  - Programa: o `conferir` devolve `exigePin` e `estadoDoPin` do certificado (a janela precisa
+    saber se mostra o campo do PIN); o `diagnostico` atende a origem reservada
+    `https://extensao.invalid`, e só ele, porque as opções o pedem antes de haver endereço
+    autorizado; a versão informada é sempre `X.Y.Z` (o sufixo `~dev.N` fica só no nome do pacote).
+  - `host-teste servir`: a página de teste em `http://localhost`, com o bilhete emitido pela chave
+    dev local e a assinatura conferida contra o certificado; é a mesma página do ponta a ponta e do
+    teste manual com o cartão.
+  - Divergências do plano: a extensão pede `storage` além de `nativeMessaging` (a lista de endereços
+    permitidos, que o próprio plano exige, mora em `storage.local`); a página de teste fala o
+    protocolo à mão, e não pelo bundle da biblioteca, porque este repositório é público e a
+    biblioteca é privada; a chave de desenvolvimento segue a provisória até existir o rascunho do
+    item na Chrome Web Store (ato do Cairo).

@@ -17,9 +17,10 @@ Em construção. Licença Apache-2.0.
 | Pasta | O que é |
 |---|---|
 | `nativo/` | O programa, em Go. `cmd/assinador` (modos host, módulo e diagnóstico), `cmd/manifestos` (os manifestos dos navegadores) e os pacotes de `internal/` |
+| `extensao/` | A extensão para Chrome, Edge e Firefox: a ponte da página, a permissão por endereço, a janela de confirmação e as opções. Ver [`extensao/README.md`](extensao/README.md) e [`extensao/PRIVACIDADE.md`](extensao/PRIVACIDADE.md) |
 | `protocolo/` | [`PROTOCOLO.md`](protocolo/PROTOCOLO.md), as chaves públicas de produção, a chave pública da extensão de desenvolvimento e as fixtures do bilhete |
 | `instaladores/linux/` | O `.deb` e o `.rpm` (`empacotar.sh`) e a prova deles em contêiner (`testar-pacotes.sh`) |
-| `ferramentas/` | Prova e medição (F0) e o `host-teste`, que fala com o programa como a extensão. Nunca vai para release |
+| `ferramentas/` | Prova e medição (F0) e o `host-teste`, que fala com o programa como a extensão e serve a página de teste da extensão (`servir`). Nunca vai para release |
 | `docs/medicoes/` | O que foi medido com cartão real, com data e equipamento |
 
 A segurança do programa está em [`SECURITY.md`](SECURITY.md).

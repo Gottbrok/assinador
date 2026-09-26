@@ -1,0 +1,409 @@
+import { describe, expect, it } from 'vitest';
+
+import { criarFundo, daPropriaExtensao, lerConferir, lerDadosDoAssinar, lerDecisao, titularDoAssunto, type AmbienteDoFundo } from '../src/fundo';
+import type { Remetente } from '../src/origem';
+import { CHAVE_DAS_PERMISSOES } from '../src/permissoes';
+import { armazenamentoEmMemoria, drenar, erro, JanelasFalsas, ok, ProgramaFalso, RelogioManual, type PedidoRecebido } from './apoio';
+
+const ID = 'jmogljhnfdnhhoapijclifkpjfbhhppf';
+const RAIZ = `chrome-extension://${ID}/`;
+const ORIGEM = 'https://demot.confidata.app';
+const HEX = (c: string) => c.repeat(64);
+const BILHETE = 'eyJhbGciOiJFUzI1NiJ9.eyJ2IjoxfQ.YXNzaW5hdHVyYQ';
+const DADOS_DE_ASSINAR = { ref: HEX('a'), digest: HEX('b'), bilhete: BILHETE };
+
+const CONFERIDO = {
+  emissor: 'confidata',
+  organizacao: 'Organização Demo',
+  documento: 'Contrato de prestação de serviços',
+  finalidade: 'assinatura',
+  expiraEm: '2026-09-26T12:05:00Z',
+  certificado: { assunto: 'FULANA DE TAL:***********', emissor: 'AC TESTE', validoAte: '2027-09-26T00:00:00Z', exigePin: true, estadoDoPin: 'ok' },
+};
+
+/** O programa padrão: responde tudo com sucesso. */
+function programaPadrao(p: PedidoRecebido): unknown {
+  switch (p.op) {
+    case 'ola':
+      return ok(p, { versao: '1.0.0', protocolo: 1, plataforma: 'linux-amd64' });
+    case 'listar':
+      return ok(p, { certificados: [{ ref: HEX('a') }], avisos: [] });
+    case 'diagnostico':
+      return ok(p, { relatorio: { leitoras: [] }, texto: 'Leitoras: nenhuma' });
+    case 'conferir':
+      return ok(p, CONFERIDO);
+    case 'assinar':
+      return ok(p, { assinatura: 'QUJD' });
+    default:
+      return erro(p, 'protocolo');
+  }
+}
+
+function montar(opcoes: { dev?: boolean; permitidas?: string[]; responder?: (p: PedidoRecebido) => unknown | null } = {}) {
+  const programa = new ProgramaFalso(opcoes.responder ?? programaPadrao);
+  const janelas = new JanelasFalsas();
+  const relogio = new RelogioManual();
+  const armazenamento = armazenamentoEmMemoria(
+    opcoes.permitidas ? { [CHAVE_DAS_PERMISSOES]: Object.fromEntries(opcoes.permitidas.map((o) => [o, { desde: '2026-09-01T00:00:00.000Z' }])) } : {},
+  );
+  let seq = 0;
+  const amb: AmbienteDoFundo = {
+    idDaExtensao: ID,
+    urlDaExtensao: RAIZ,
+    versao: '1.0.0',
+    dev: opcoes.dev ?? false,
+    navegador: 'Navegador de teste',
+    conectar: programa.conectar,
+    armazenamento,
+    janelas,
+    novoId: () => `id-${(seq += 1)}`,
+    relogio,
+  };
+  return { fundo: criarFundo(amb), programa, janelas, relogio, armazenamento };
+}
+
+const daPagina = (origem = ORIGEM, extra: Partial<Remetente> = {}): Remetente => ({ id: ID, origin: origem, url: `${origem}/assinar/x`, frameId: 0, tab: { id: 7, windowId: 1 }, ...extra });
+const pedido = (op: string, dados?: unknown, origem = ORIGEM) => ({ tipo: 'pedido-da-pagina', id: 'p1', op, origem, ...(dados === undefined ? {} : { dados }) });
+
+describe('portões do fundo', () => {
+  it('recusa remetente que não é o script de conteúdo desta extensão no quadro de topo de uma aba', async () => {
+    const { fundo, programa } = montar({ permitidas: [ORIGEM] });
+    for (const r of [daPagina(ORIGEM, { id: 'outra' }), daPagina(ORIGEM, { frameId: 3 }), daPagina(ORIGEM, { tab: undefined })]) {
+      expect(await fundo.atenderPagina(pedido('listar'), r)).toEqual({ ok: false, erro: { codigo: 'origem-recusada', detalhe: 'remetente' } });
+    }
+    expect(programa.portas).toHaveLength(0);
+  });
+
+  it('a origem é a que o NAVEGADOR diz, igual à declarada e nos padrões', async () => {
+    const { fundo, programa } = montar({ permitidas: [ORIGEM, 'https://evil.com'] });
+    // Declara uma origem e o navegador diz outra.
+    expect(await fundo.atenderPagina(pedido('listar', undefined, ORIGEM), daPagina('https://outra.confidata.app'))).toMatchObject({ erro: { codigo: 'origem-recusada' } });
+    // Origem fora dos padrões, mesmo com permissão gravada.
+    expect(await fundo.atenderPagina(pedido('listar', undefined, 'https://evil.com'), daPagina('https://evil.com'))).toMatchObject({ erro: { codigo: 'origem-recusada' } });
+    expect(programa.portas).toHaveLength(0);
+  });
+
+  it('no Firefox, sem sender.origin, vale a origem de sender.url', async () => {
+    const { fundo } = montar({ permitidas: [ORIGEM] });
+    const firefox: Remetente = { id: ID, url: `${ORIGEM}/assinar/x`, frameId: 0, tab: { id: 7 } };
+    expect(await fundo.atenderPagina(pedido('listar'), firefox)).toMatchObject({ ok: true });
+  });
+
+  it('localhost só no build de desenvolvimento', async () => {
+    const local = 'http://localhost:3000';
+    const release = montar({ permitidas: [local] });
+    expect(await release.fundo.atenderPagina(pedido('listar', undefined, local), daPagina(local))).toMatchObject({ erro: { codigo: 'origem-recusada' } });
+    const dev = montar({ permitidas: [local], dev: true });
+    expect(await dev.fundo.atenderPagina(pedido('listar', undefined, local), daPagina(local))).toMatchObject({ ok: true });
+  });
+
+  it('mensagem sem forma é `protocolo`, e operação desconhecida também', async () => {
+    const { fundo } = montar({ permitidas: [ORIGEM] });
+    expect(await fundo.atenderPagina('lixo', daPagina())).toMatchObject({ erro: { codigo: 'protocolo' } });
+    expect(await fundo.atenderPagina(pedido('conferir'), daPagina())).toMatchObject({ erro: { codigo: 'protocolo', detalhe: 'operação desconhecida' } });
+    expect(await fundo.atenderPagina(pedido('formatar'), daPagina())).toMatchObject({ erro: { codigo: 'protocolo' } });
+  });
+});
+
+describe('ola', () => {
+  it('não pede permissão e diz as duas versões', async () => {
+    const { fundo, janelas, programa } = montar();
+    expect(await fundo.atenderPagina(pedido('ola'), daPagina())).toEqual({
+      ok: true,
+      dados: { extensao: { versao: '1.0.0' }, nativo: { versao: '1.0.0', protocolo: 1, plataforma: 'linux-amd64' } },
+    });
+    expect(janelas.abertas).toHaveLength(0);
+    expect(programa.portas[0]?.desligada).toBe(true);
+  });
+
+  it('sem o programa, responde `nativo: null` com o motivo, nunca erro', async () => {
+    const ausente = montar({ responder: () => null });
+    const r = ausente.fundo.atenderPagina(pedido('ola'), daPagina());
+    await drenar();
+    ausente.programa.cair(0, 'Specified native messaging host not found.');
+    expect(await r).toEqual({ ok: true, dados: { extensao: { versao: '1.0.0' }, nativo: null, motivoNativo: 'ausente' } });
+
+    const lento = montar({ responder: () => null });
+    const r2 = lento.fundo.atenderPagina(pedido('ola'), daPagina());
+    await drenar();
+    lento.relogio.avancar(1_200);
+    expect(await r2).toEqual({ ok: true, dados: { extensao: { versao: '1.0.0' }, nativo: null, motivoNativo: 'falhou' } });
+  });
+});
+
+describe('permissão por endereço', () => {
+  it('endereço novo abre permitir.html com o host do NAVEGADOR; negar é `permissao-negada` sem falar com o programa', async () => {
+    const { fundo, janelas, programa, armazenamento } = montar();
+    const r = fundo.atenderPagina(pedido('listar'), daPagina());
+    await drenar();
+    expect(janelas.abertas).toEqual([expect.objectContaining({ pagina: 'permitir.html', dados: { host: 'demot.confidata.app' } })]);
+    janelas.responder('permitir.html', { tipo: 'decisao', valor: { permitir: false } });
+    expect(await r).toEqual({ ok: false, erro: { codigo: 'permissao-negada' } });
+    expect(programa.portas).toHaveLength(0);
+    expect(armazenamento.dados).toEqual({});
+  });
+
+  it('permitir grava, lista, e a segunda vez não pergunta; revogado, pergunta de novo', async () => {
+    const { fundo, janelas, armazenamento } = montar();
+    const r = fundo.atenderPagina(pedido('listar'), daPagina());
+    await drenar();
+    janelas.responder('permitir.html', { tipo: 'decisao', valor: { permitir: true } });
+    expect(await r).toMatchObject({ ok: true, dados: { certificados: [{ ref: HEX('a') }] } });
+    expect(Object.keys(armazenamento.dados[CHAVE_DAS_PERMISSOES] as object)).toEqual([ORIGEM]);
+    expect(await fundo.atenderPagina(pedido('listar'), daPagina())).toMatchObject({ ok: true });
+    expect(janelas.abertas).toHaveLength(0);
+
+    armazenamento.dados[CHAVE_DAS_PERMISSOES] = {};
+    void fundo.atenderPagina(pedido('listar'), daPagina());
+    await drenar();
+    expect(janelas.abertas).toHaveLength(1);
+  });
+
+  it('janela fechada, prazo ou decisão sem forma não permitem; janela que não abre é `interno`', async () => {
+    for (const d of [{ tipo: 'fechada' as const }, { tipo: 'prazo' as const }, { tipo: 'decisao' as const, valor: { permitir: 'sim' } }]) {
+      const { fundo, janelas } = montar();
+      const r = fundo.atenderPagina(pedido('listar'), daPagina());
+      await drenar();
+      janelas.responder('permitir.html', d);
+      expect(await r).toMatchObject({ erro: { codigo: 'permissao-negada' } });
+    }
+    const { fundo, janelas } = montar();
+    const r = fundo.atenderPagina(pedido('listar'), daPagina());
+    await drenar();
+    janelas.responder('permitir.html', { tipo: 'falhou' });
+    expect(await r).toMatchObject({ erro: { codigo: 'interno' } });
+  });
+
+  it('dois pedidos do mesmo endereço ao mesmo tempo abrem UMA janela', async () => {
+    const { fundo, janelas } = montar();
+    const a = fundo.atenderPagina(pedido('listar'), daPagina());
+    const b = fundo.atenderPagina(pedido('diagnostico'), daPagina());
+    await drenar();
+    expect(janelas.abertas).toHaveLength(1);
+    janelas.responder('permitir.html', { tipo: 'decisao', valor: { permitir: true } });
+    expect(await a).toMatchObject({ ok: true });
+    expect(await b).toMatchObject({ ok: true });
+  });
+
+  it('a janela de permissão cabe no orçamento do listar, com a reserva para o programa', async () => {
+    const { fundo, janelas } = montar();
+    void fundo.atenderPagina(pedido('listar'), daPagina());
+    await drenar();
+    expect(janelas.abertas[0]?.prazoMs).toBe(25_000);
+    expect(janelas.abertas[0]?.prazoMs).toBeLessThanOrEqual(29_000 - 3_000);
+  });
+});
+
+describe('diagnóstico da página', () => {
+  it('acrescenta a versão da extensão e o navegador ao relatório do programa', async () => {
+    const { fundo } = montar({ permitidas: [ORIGEM] });
+    expect(await fundo.atenderPagina(pedido('diagnostico'), daPagina())).toEqual({
+      ok: true,
+      dados: {
+        relatorio: { leitoras: [], extensao: { versao: '1.0.0' }, navegador: 'Navegador de teste' },
+        texto: 'Extensão: versão 1.0.0\nNavegador: Navegador de teste\nLeitoras: nenhuma',
+      },
+    });
+  });
+});
+
+describe('assinar', () => {
+  /** Começa a assinatura e espera a janela abrir. A promessa vem num objeto: `async` achataria a do fluxo. */
+  async function ateAJanela(m: ReturnType<typeof montar>, dados: unknown = DADOS_DE_ASSINAR) {
+    const fluxo = m.fundo.atenderPagina(pedido('assinar', dados), daPagina());
+    await drenar();
+    return { fluxo };
+  }
+
+  it('conferir, janela com o que o bilhete e o navegador dizem, PIN, e assinar na MESMA porta', async () => {
+    const m = montar({ permitidas: [ORIGEM] });
+    const { fluxo: r } = await ateAJanela(m);
+    const janela = m.janelas.abertas[0];
+    expect(janela?.pagina).toBe('confirmar.html');
+    expect(janela?.dados).toEqual({
+      host: 'demot.confidata.app',
+      organizacao: 'Organização Demo',
+      documento: 'Contrato de prestação de serviços',
+      finalidade: 'assinatura',
+      certificado: { titular: 'FULANA DE TAL', emissor: 'AC TESTE', validoAte: '2027-09-26T00:00:00Z' },
+      exigePin: true,
+      estadoDoPin: 'ok',
+    });
+    m.janelas.responder('confirmar.html', { tipo: 'decisao', valor: { assinar: true, pin: '123456' } });
+    expect(await r).toEqual({ ok: true, dados: { assinatura: 'QUJD' } });
+    expect(m.programa.portas).toHaveLength(1);
+    const [conferir, assinar] = m.programa.portas[0]?.recebidos ?? [];
+    expect(conferir).toMatchObject({ op: 'conferir', origem: ORIGEM, dados: DADOS_DE_ASSINAR });
+    expect(assinar).toMatchObject({ op: 'assinar', origem: ORIGEM, dados: { ...DADOS_DE_ASSINAR, pin: '123456' } });
+    expect(m.programa.portas[0]?.desligada).toBe(true);
+  });
+
+  it('dispositivo sem PIN na janela (leitora com teclado): o PIN que vier não vai ao programa', async () => {
+    const m = montar({
+      permitidas: [ORIGEM],
+      responder: (p) => (p.op === 'conferir' ? ok(p, { ...CONFERIDO, certificado: { ...CONFERIDO.certificado, exigePin: false } }) : programaPadrao(p)),
+    });
+    const { fluxo: r } = await ateAJanela(m);
+    m.janelas.responder('confirmar.html', { tipo: 'decisao', valor: { assinar: true, pin: '999' } });
+    expect(await r).toMatchObject({ ok: true });
+    expect(m.programa.portas[0]?.recebidos[1]?.dados).toEqual(DADOS_DE_ASSINAR);
+  });
+
+  it('dados sem forma são `protocolo` e o programa nem é chamado', async () => {
+    for (const dados of [
+      undefined,
+      { ...DADOS_DE_ASSINAR, pin: '123' },
+      { ...DADOS_DE_ASSINAR, ref: 'A'.repeat(64) },
+      { ...DADOS_DE_ASSINAR, digest: HEX('b').slice(1) },
+      { ...DADOS_DE_ASSINAR, bilhete: 'sem.forma' },
+      { ...DADOS_DE_ASSINAR, bilhete: `${'a'.repeat(4096)}.b.c` },
+    ]) {
+      const m = montar({ permitidas: [ORIGEM] });
+      expect(await m.fundo.atenderPagina(pedido('assinar', dados), daPagina())).toMatchObject({ erro: { codigo: 'protocolo' } });
+      expect(m.programa.portas).toHaveLength(0);
+    }
+  });
+
+  it('recusa do conferir (bilhete) chega à página sem janela', async () => {
+    const m = montar({ permitidas: [ORIGEM], responder: (p) => (p.op === 'conferir' ? erro(p, 'bilhete-expirado') : programaPadrao(p)) });
+    expect(await m.fundo.atenderPagina(pedido('assinar', DADOS_DE_ASSINAR), daPagina())).toEqual({ ok: false, erro: { codigo: 'bilhete-expirado' } });
+    expect(m.janelas.abertas).toHaveLength(0);
+  });
+
+  it('token já bloqueado é `token-bloqueado` antes da janela', async () => {
+    const m = montar({
+      permitidas: [ORIGEM],
+      responder: (p) => (p.op === 'conferir' ? ok(p, { ...CONFERIDO, certificado: { ...CONFERIDO.certificado, estadoDoPin: 'bloqueado' } }) : programaPadrao(p)),
+    });
+    expect(await m.fundo.atenderPagina(pedido('assinar', DADOS_DE_ASSINAR), daPagina())).toMatchObject({ erro: { codigo: 'token-bloqueado' } });
+    expect(m.janelas.abertas).toHaveLength(0);
+  });
+
+  it('cada desfecho da janela vira o código certo, e o programa não assina', async () => {
+    const casos = [
+      [{ tipo: 'fechada' }, 'cancelado'],
+      [{ tipo: 'prazo' }, 'tempo-esgotado'],
+      [{ tipo: 'falhou' }, 'interno'],
+      [{ tipo: 'decisao', valor: { assinar: false } }, 'cancelado'],
+      [{ tipo: 'decisao', valor: { assinar: true } }, 'protocolo'],
+      [{ tipo: 'decisao', valor: 'sim' }, 'protocolo'],
+      [{ tipo: 'decisao', valor: { assinar: true, pin: 'a\u0000b' } }, 'protocolo'],
+    ] as const;
+    for (const [desfecho, codigo] of casos) {
+      const m = montar({ permitidas: [ORIGEM] });
+      const { fluxo: r } = await ateAJanela(m);
+      m.janelas.responder('confirmar.html', desfecho);
+      expect(await r, JSON.stringify(desfecho)).toMatchObject({ ok: false, erro: { codigo } });
+      expect(m.programa.todosOsPedidos().map((p) => p.op)).toEqual(['conferir']);
+      expect(m.programa.portas[0]?.desligada).toBe(true);
+    }
+  });
+
+  it('uma assinatura por vez: a segunda é `ocupado`, e a trava solta no fim, mesmo na falha', async () => {
+    const m = montar({ permitidas: [ORIGEM] });
+    const { fluxo: primeira } = await ateAJanela(m);
+    expect(await m.fundo.atenderPagina(pedido('assinar', DADOS_DE_ASSINAR), daPagina())).toMatchObject({ erro: { codigo: 'ocupado' } });
+    m.janelas.responder('confirmar.html', { tipo: 'fechada' });
+    expect(await primeira).toMatchObject({ erro: { codigo: 'cancelado' } });
+    const { fluxo: segunda } = await ateAJanela(m);
+    expect(m.janelas.abertas).toHaveLength(1);
+    m.janelas.responder('confirmar.html', { tipo: 'decisao', valor: { assinar: true, pin: '1' } });
+    expect(await segunda).toMatchObject({ ok: true });
+  });
+
+  it('o orçamento de 235 s vale para o fluxo inteiro: a janela fecha com a reserva para o cartão', async () => {
+    let assinarPrazo = -1;
+    const m = montar({ permitidas: [ORIGEM] });
+    const r = m.fundo.atenderPagina(pedido('assinar', DADOS_DE_ASSINAR), daPagina());
+    await drenar();
+    expect(m.janelas.abertas[0]?.prazoMs).toBe(180_000);
+    // A pessoa demora 170 s para decidir.
+    m.relogio.avancar(170_000);
+    m.programa.responder = (p) => {
+      if (p.op === 'assinar') {
+        assinarPrazo = Math.max(...m.relogio.pendentes());
+        return null;
+      }
+      return programaPadrao(p);
+    };
+    m.janelas.responder('confirmar.html', { tipo: 'decisao', valor: { assinar: true, pin: '1' } });
+    await drenar();
+    // Sobram 65 s do orçamento, abaixo do teto de 100 s do assinar.
+    expect(assinarPrazo).toBe(65_000);
+    m.relogio.avancar(65_000);
+    expect(await r).toMatchObject({ ok: false, erro: { codigo: 'tempo-esgotado' } });
+  });
+
+  it('conferir lento encurta a janela, e sem tempo para ela é `tempo-esgotado`', async () => {
+    const m = montar({ permitidas: [ORIGEM], responder: () => null });
+    const r = m.fundo.atenderPagina(pedido('assinar', DADOS_DE_ASSINAR), daPagina());
+    await drenar();
+    m.relogio.avancar(28_000);
+    expect(await r).toMatchObject({ ok: false, erro: { codigo: 'tempo-esgotado' } });
+  });
+});
+
+describe('páginas da própria extensão', () => {
+  const daExtensao = (pagina: string): Remetente => ({ id: ID, url: `${RAIZ}${pagina}`, tab: { id: 9 } });
+
+  it('só página desta extensão fala por este canal; o script de conteúdo não', async () => {
+    expect(daPropriaExtensao(daExtensao('opcoes.html'), { idDaExtensao: ID, urlDaExtensao: RAIZ })).toBe(true);
+    expect(daPropriaExtensao({ id: ID, origin: RAIZ.slice(0, -1) }, { idDaExtensao: ID, urlDaExtensao: RAIZ })).toBe(true);
+    expect(daPropriaExtensao(daPagina(), { idDaExtensao: ID, urlDaExtensao: RAIZ })).toBe(false);
+    expect(daPropriaExtensao({ id: 'outra', url: `${RAIZ}opcoes.html` }, { idDaExtensao: ID, urlDaExtensao: RAIZ })).toBe(false);
+    expect(daPropriaExtensao({ id: ID, url: `chrome-extension://${ID}x/opcoes.html` }, { idDaExtensao: ID, urlDaExtensao: RAIZ })).toBe(false);
+    const { fundo } = montar();
+    expect(await fundo.atenderExtensao({ tipo: 'versoes' }, daPagina())).toBeNull();
+  });
+
+  it('as opções pedem as versões e o diagnóstico com a origem da extensão, sem permissão', async () => {
+    const { fundo, programa, janelas } = montar();
+    expect(await fundo.atenderExtensao({ tipo: 'versoes' }, daExtensao('opcoes.html'))).toEqual({
+      extensao: { versao: '1.0.0' },
+      nativo: { versao: '1.0.0', protocolo: 1, plataforma: 'linux-amd64' },
+    });
+    expect(await fundo.atenderExtensao({ tipo: 'diagnostico' }, daExtensao('opcoes.html'))).toMatchObject({ ok: true, dados: { texto: expect.stringContaining('Leitoras') } });
+    expect(programa.todosOsPedidos().map((p) => [p.op, p.origem])).toEqual([
+      ['ola', 'https://extensao.invalid'],
+      ['diagnostico', 'https://extensao.invalid'],
+    ]);
+    expect(janelas.abertas).toHaveLength(0);
+  });
+
+  it('mensagem desconhecida volta null', async () => {
+    const { fundo } = montar();
+    expect(await fundo.atenderExtensao({ tipo: 'listar' }, daExtensao('opcoes.html'))).toBeNull();
+    expect(await fundo.atenderExtensao('lixo', daExtensao('opcoes.html'))).toBeNull();
+  });
+});
+
+describe('leitores', () => {
+  it('lerDadosDoAssinar é estrito', () => {
+    expect(lerDadosDoAssinar(DADOS_DE_ASSINAR)).toEqual(DADOS_DE_ASSINAR);
+    expect(lerDadosDoAssinar({ ...DADOS_DE_ASSINAR, extra: 1 })).toBeNull();
+    expect(lerDadosDoAssinar({ ref: HEX('a'), digest: HEX('b') })).toBeNull();
+    expect(lerDadosDoAssinar([DADOS_DE_ASSINAR])).toBeNull();
+  });
+
+  it('titularDoAssunto tira o que vem depois do `:`', () => {
+    expect(titularDoAssunto('FULANA DE TAL:***********')).toBe('FULANA DE TAL');
+    expect(titularDoAssunto('SEM DOCUMENTO')).toBe('SEM DOCUMENTO');
+    expect(titularDoAssunto(':123')).toBe(':123');
+  });
+
+  it('lerConferir recusa o que não tem forma', () => {
+    expect(lerConferir({ ...CONFERIDO, certificado: { ...CONFERIDO.certificado, exigePin: 'sim' } }, 'h')).toBeNull();
+    expect(lerConferir({ ...CONFERIDO, organizacao: 1 }, 'h')).toBeNull();
+    expect(lerConferir({ ...CONFERIDO, certificado: { ...CONFERIDO.certificado, estadoDoPin: undefined } }, 'h')?.estadoDoPin).toBeNull();
+  });
+
+  it('lerDecisao segue as regras do PIN do programa', () => {
+    expect(lerDecisao({ assinar: false, pin: 'ignorado' })).toEqual({ assinar: false });
+    expect(lerDecisao({ assinar: true, pin: '1234' })).toEqual({ assinar: true, pin: '1234' });
+    expect(lerDecisao({ assinar: true, pin: '' })).toBeNull();
+    expect(lerDecisao({ assinar: true, pin: 'é'.repeat(33) })).toBeNull();
+    expect(lerDecisao({ assinar: true, pin: 'a'.repeat(64) })).toEqual({ assinar: true, pin: 'a'.repeat(64) });
+    expect(lerDecisao({ assinar: true, pin: 'a\u007fb' })).toBeNull();
+    expect(lerDecisao({ assinar: 'true' })).toBeNull();
+  });
+});

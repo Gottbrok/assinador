@@ -1,0 +1,118 @@
+name: extensao
+
+# A extensão (Chrome, Edge e Firefox): tipos, testes de unidade, ícones em dia com o gerador, os
+# pacotes da loja reproduzíveis (dois builds, mesmo SHA-256), o `web-ext lint` do Firefox, e o ponta a
+# ponta no Chromium com o programa de desenvolvimento e o SoftHSM2 fazendo o papel do cartão. As ações
+# são pinadas por commit (a tag vai no comentário): o repositório é público e o CI monta o que roda no
+# computador da pessoa.
+
+on:
+  push:
+    paths:
+      - "extensao/**"
+      - "protocolo/**"
+      - "nativo/**"
+      - "ferramentas/host-teste/**"
+      - ".github/workflows/extensao.yml"
+  pull_request:
+    paths:
+      - "extensao/**"
+      - "protocolo/**"
+      - "nativo/**"
+      - "ferramentas/host-teste/**"
+      - ".github/workflows/extensao.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  extensao:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: extensao
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: extensao/package-lock.json
+
+      - run: npm ci
+
+      - name: Tipos
+        run: npm run type-check
+
+      - name: Testes de unidade
+        run: npm test
+
+      - name: Ícones em dia com o gerador
+        run: |
+          node scripts/gerar-icones-provisorios.mjs
+          git diff --exit-code -- icones
+
+      - name: Pacotes da loja reproduzíveis
+        run: |
+          npm run reproduzivel
+          sha256sum pacotes/*.zip | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: web-ext lint (Firefox, loja e desenvolvimento)
+        run: |
+          npm run lint:firefox
+          node build.mjs --dev
+          npx web-ext lint --source-dir dist/firefox-dev --self-hosted
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: assinador-extensao
+          path: extensao/pacotes/*.zip
+          if-no-files-found: error
+
+  ponta-a-ponta:
+    needs: extensao
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: nativo/go.mod
+          cache-dependency-path: |
+            nativo/go.sum
+            ferramentas/go.sum
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: extensao/package-lock.json
+
+      - name: SoftHSM2 e gcc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends softhsm2 gcc
+
+      - name: Dependências e o Chromium do Playwright
+        working-directory: extensao
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Página, extensão, programa e token
+        working-directory: extensao
+        env:
+          ASSINADOR_EXIGE_SOFTHSM: "1"
+        run: npm run ponta-a-ponta
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: ponta-a-ponta-falhou
+          path: extensao/test-results
+          if-no-files-found: ignore

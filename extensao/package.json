@@ -1,0 +1,30 @@
+{
+  "name": "assinador-extensao",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Extensão do Assinador (Chrome, Edge e Firefox): liga a página ao programa que lê o token ou cartão e mostra a janela de confirmação.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "build": "node build.mjs",
+    "build:dev": "node build.mjs --dev",
+    "pacotes": "node build.mjs --zip",
+    "reproduzivel": "node scripts/conferir-reproducao.mjs",
+    "lint:firefox": "web-ext lint --source-dir dist/firefox --self-hosted",
+    "ponta-a-ponta": "node build.mjs --dev && cd ../nativo && go test -tags extensao -count=1 -run TestExtensaoNoNavegador -v ./cmd/assinador"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.60.0",
+    "@types/chrome": "0.2.9",
+    "@types/node": "22.20.4",
+    "typescript": "5.9.2",
+    "vite": "7.3.6",
+    "vitest": "5.0.2",
+    "web-ext": "10.7.0"
+  }
+}

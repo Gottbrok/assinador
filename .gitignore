@@ -3,6 +3,13 @@ ferramentas/prova-mensagens/bin/
 /bin/
 /dist/
 
+# Extensão: dependências, builds, pacotes e saídas do Playwright
+extensao/node_modules/
+extensao/dist/
+extensao/pacotes/
+extensao/test-results/
+extensao/playwright-report/
+
 # Saídas de prova (assinatura e certificado exportado ficam fora do repositório)
 *.bin
 *.pem

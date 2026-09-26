@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title data-i18n="opcoesTitulo">Assinador: opções</title>
+    <link rel="stylesheet" href="paginas.css" />
+  </head>
+  <body>
+    <main class="opcoes" aria-labelledby="titulo">
+      <h1 id="titulo" data-i18n="opcoesTitulo">Assinador: opções</h1>
+
+      <section aria-labelledby="titulo-permissoes">
+        <h2 id="titulo-permissoes" data-i18n="enderecosPermitidos">Endereços permitidos</h2>
+        <p class="secundario" data-i18n="enderecosExplicacao"></p>
+        <p id="permissoes-vazia" class="secundario" data-i18n="nenhumEndereco" hidden></p>
+        <ul id="permissoes" class="permissoes"></ul>
+      </section>
+
+      <section aria-labelledby="titulo-versoes">
+        <h2 id="titulo-versoes" data-i18n="versoes">Versões</h2>
+        <p id="versao-extensao"></p>
+        <p id="versao-programa" role="status"></p>
+      </section>
+
+      <section aria-labelledby="titulo-diagnostico">
+        <h2 id="titulo-diagnostico" data-i18n="diagnostico">Diagnóstico</h2>
+        <p class="secundario" data-i18n="diagnosticoExplicacao"></p>
+        <div class="botoes esquerda">
+          <button type="button" id="gerar-diagnostico" class="botao-secundario" data-i18n="botaoGerarDiagnostico">Gerar diagnóstico</button>
+          <button type="button" id="copiar-diagnostico" class="botao-secundario" data-i18n="botaoCopiarDiagnostico" hidden>Copiar diagnóstico</button>
+        </div>
+        <p id="aviso-diagnostico" role="status"></p>
+        <pre id="diagnostico" hidden></pre>
+      </section>
+
+      <section aria-labelledby="titulo-privacidade">
+        <h2 id="titulo-privacidade" data-i18n="privacidade">Privacidade</h2>
+        <p data-i18n="privacidadeTexto"></p>
+      </section>
+    </main>
+    <script src="opcoes.js"></script>
+  </body>
+</html>
