@@ -1,0 +1,16 @@
+{
+  "nome": "carga-adulterada",
+  "descricao": "A carga trocada depois de assinada (outro resumo), com a assinatura original.",
+  "jws": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFzc2luYWRvcitqd3MiLCJraWQiOiJ0ZXN0ZSJ9.eyJ2IjoxLCJpc3MiOiJjb25maWRhdGEiLCJhdWQiOiJodHRwczovL2RlbW90LmNvbmZpZGF0YS5hcHAiLCJzaWQiOiIzZjJiOGMxZS03YTRkLTRlOWItOWMxYS0yZDVlNmY3MDgxOTIiLCJkaWciOiI3NmYyMDY3MmM0Mzk1YWJjMjczMThiMTJiZTM1MDI2NjgzY2M0Yjg3M2RkOTFkOWM3ZmFlZWFhMjg1MDNiMWUzIiwiY2VyIjoiOTU1ZDY1ZjhhMzM3ZmM1YTU4YjYwZWFjMTE4ZTU3MDVlZDk2YjcyNmZjMWU3MTMyN2JlNmI5YjhkMmI0ZjE0YiIsImZpbiI6ImFzc2luYXR1cmEiLCJkb2MiOiJDb250cmF0byBkZSBwcmVzdGHDp8OjbyBkZSBzZXJ2acOnb3MiLCJvcmciOiJDb25maWRhdGEgVGVjbm9sb2dpYSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkwMDAwMzAwfQ.hBZ35Vl072YbJpmbXmBPb2h7gIWa9KTStEPGr7_TbqUfCK3UB3AK7atnwZ83YyQ1HcQDHrzoQb8z_LQBjJO4Jg",
+  "entrada": {
+    "origem": "https://demot.confidata.app",
+    "digest": "76f20672c4395abc27318b12be35026683cc4b873dd91d9c7faeeaa28503b1e3",
+    "certificadoSha256": "955d65f8a337fc5a58b60eac118e5705ed96b726fc1e71327be6b9b8d2b4f14b",
+    "agora": 1790000005
+  },
+  "esperado": {
+    "ok": false,
+    "codigo": "bilhete-invalido",
+    "etapa": "assinatura"
+  }
+}

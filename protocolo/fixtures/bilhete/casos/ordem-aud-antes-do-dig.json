@@ -1,0 +1,16 @@
+{
+  "nome": "ordem-aud-antes-do-dig",
+  "descricao": "aud e dig errados: aud.",
+  "jws": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFzc2luYWRvcitqd3MiLCJraWQiOiJ0ZXN0ZSJ9.eyJ2IjoxLCJpc3MiOiJjb25maWRhdGEiLCJhdWQiOiJodHRwczovL291dHJhLmNvbmZpZGF0YS5hcHAiLCJzaWQiOiIzZjJiOGMxZS03YTRkLTRlOWItOWMxYS0yZDVlNmY3MDgxOTIiLCJkaWciOiJiZWRkMWUzY2RkNWVkODFiYjU4NTE4N2QwYmYzMzI4ZWQ2MTk3ZDczZWNjMDFlNmU1MTQwODQ3MWE4NGU3NzY3IiwiY2VyIjoiOTU1ZDY1ZjhhMzM3ZmM1YTU4YjYwZWFjMTE4ZTU3MDVlZDk2YjcyNmZjMWU3MTMyN2JlNmI5YjhkMmI0ZjE0YiIsImZpbiI6ImFzc2luYXR1cmEiLCJkb2MiOiJDb250cmF0byBkZSBwcmVzdGHDp8OjbyBkZSBzZXJ2acOnb3MiLCJvcmciOiJDb25maWRhdGEgVGVjbm9sb2dpYSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkwMDAwMzAwfQ.BLXXyyOR8xt2Ncr8I9jgaoXoNyRRl_G6jbKYhfa0BuJDGrXWpjwa13x9mqp-loOXgzhC5P4l1MfI0gX0aD2iHg",
+  "entrada": {
+    "origem": "https://demot.confidata.app",
+    "digest": "76f20672c4395abc27318b12be35026683cc4b873dd91d9c7faeeaa28503b1e3",
+    "certificadoSha256": "955d65f8a337fc5a58b60eac118e5705ed96b726fc1e71327be6b9b8d2b4f14b",
+    "agora": 1790000005
+  },
+  "esperado": {
+    "ok": false,
+    "codigo": "origem-recusada",
+    "etapa": "aud"
+  }
+}

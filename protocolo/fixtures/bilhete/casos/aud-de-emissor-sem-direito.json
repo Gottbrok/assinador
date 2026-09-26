@@ -1,0 +1,16 @@
+{
+  "nome": "aud-de-emissor-sem-direito",
+  "descricao": "aud igual à origem, mas o emissor confidata não pode usar ushield.app.",
+  "jws": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFzc2luYWRvcitqd3MiLCJraWQiOiJ0ZXN0ZSJ9.eyJ2IjoxLCJpc3MiOiJjb25maWRhdGEiLCJhdWQiOiJodHRwczovL3VzaGllbGQuYXBwIiwic2lkIjoiM2YyYjhjMWUtN2E0ZC00ZTliLTljMWEtMmQ1ZTZmNzA4MTkyIiwiZGlnIjoiYmVkZDFlM2NkZDVlZDgxYmI1ODUxODdkMGJmMzMyOGVkNjE5N2Q3M2VjYzAxZTZlNTE0MDg0NzFhODRlNzc2NyIsImNlciI6Ijk1NWQ2NWY4YTMzN2ZjNWE1OGI2MGVhYzExOGU1NzA1ZWQ5NmI3MjZmYzFlNzEzMjdiZTZiOWI4ZDJiNGYxNGIiLCJmaW4iOiJhc3NpbmF0dXJhIiwiZG9jIjoiQ29udHJhdG8gZGUgcHJlc3Rhw6fDo28gZGUgc2VydmnDp29zIiwib3JnIjoiQ29uZmlkYXRhIFRlY25vbG9naWEiLCJpYXQiOjE3OTAwMDAwMDAsImV4cCI6MTc5MDAwMDMwMH0.p7XCk2V0zDPxl6LL6Wy8xjaaDl6lOB0MGNcO9NPGQdNSSHq5claqx8sGVFtN33LCwpL620mErGEWyihMR52brA",
+  "entrada": {
+    "origem": "https://ushield.app",
+    "digest": "bedd1e3cdd5ed81bb585187d0bf3328ed6197d73ecc01e6e51408471a84e7767",
+    "certificadoSha256": "955d65f8a337fc5a58b60eac118e5705ed96b726fc1e71327be6b9b8d2b4f14b",
+    "agora": 1790000005
+  },
+  "esperado": {
+    "ok": false,
+    "codigo": "origem-recusada",
+    "etapa": "padrao"
+  }
+}

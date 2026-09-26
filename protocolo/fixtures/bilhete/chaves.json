@@ -1,0 +1,35 @@
+[
+  {
+    "kid": "teste",
+    "iss": "confidata",
+    "ambiente": "teste",
+    "jwk": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "eRreN-j9xszMP0m6HAXD-AqkXYMOiDVQk4wlqgyRdJE",
+      "y": "7QUIMJHnjw74prpGn9Ue7rH6-PQfjpA5HkNIcwQ-QrQ"
+    }
+  },
+  {
+    "kid": "teste-ushield",
+    "iss": "ushield",
+    "ambiente": "teste",
+    "jwk": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "da0-9jsJFcKqQjeo8S8rA1Jg2MeXV6VJBMt_KfQUI4w",
+      "y": "D7j5_eCVRPIdeVwt6osZ33bZVFKflhP_9DnmSAOwWTU"
+    }
+  },
+  {
+    "kid": "teste-dev",
+    "iss": "confidata",
+    "ambiente": "dev",
+    "jwk": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "qBX8vzzAkN1vpcEHFfjUpu-T80-gTx-NqmqHswaT1nE",
+      "y": "Aq4xvoa3hTWKqY2MkTrRHnVJs8YB8q684jKa6Oh8_80"
+    }
+  }
+]

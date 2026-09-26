@@ -1,0 +1,32 @@
+{
+  "nome": "dev-tambem-aceita-a-origem-de-producao",
+  "descricao": "Os padrões de dev se ACRESCENTAM aos do emissor, não os substituem.",
+  "jws": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFzc2luYWRvcitqd3MiLCJraWQiOiJ0ZXN0ZS1kZXYifQ.eyJ2IjoxLCJpc3MiOiJjb25maWRhdGEiLCJhdWQiOiJodHRwczovL2RlbW90LmNvbmZpZGF0YS5hcHAiLCJzaWQiOiIzZjJiOGMxZS03YTRkLTRlOWItOWMxYS0yZDVlNmY3MDgxOTIiLCJkaWciOiJiZWRkMWUzY2RkNWVkODFiYjU4NTE4N2QwYmYzMzI4ZWQ2MTk3ZDczZWNjMDFlNmU1MTQwODQ3MWE4NGU3NzY3IiwiY2VyIjoiOTU1ZDY1ZjhhMzM3ZmM1YTU4YjYwZWFjMTE4ZTU3MDVlZDk2YjcyNmZjMWU3MTMyN2JlNmI5YjhkMmI0ZjE0YiIsImZpbiI6ImFzc2luYXR1cmEiLCJkb2MiOiJDb250cmF0byBkZSBwcmVzdGHDp8OjbyBkZSBzZXJ2acOnb3MiLCJvcmciOiJDb25maWRhdGEgVGVjbm9sb2dpYSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkwMDAwMzAwfQ.w3JZmK8b6ZWNlVl0tLAAWOXTC-bCxhm129LWeSYr9ZOUoOzGWx2JQNaytMkl81g_PN7-slB-GBHhxE6wDyUbqw",
+  "entrada": {
+    "origem": "https://demot.confidata.app",
+    "digest": "bedd1e3cdd5ed81bb585187d0bf3328ed6197d73ecc01e6e51408471a84e7767",
+    "certificadoSha256": "955d65f8a337fc5a58b60eac118e5705ed96b726fc1e71327be6b9b8d2b4f14b",
+    "agora": 1790000005
+  },
+  "esperado": {
+    "ok": true,
+    "bilhete": {
+      "v": 1,
+      "iss": "confidata",
+      "aud": "https://demot.confidata.app",
+      "sid": "3f2b8c1e-7a4d-4e9b-9c1a-2d5e6f708192",
+      "dig": "bedd1e3cdd5ed81bb585187d0bf3328ed6197d73ecc01e6e51408471a84e7767",
+      "cer": "955d65f8a337fc5a58b60eac118e5705ed96b726fc1e71327be6b9b8d2b4f14b",
+      "fin": "assinatura",
+      "doc": "Contrato de prestação de serviços",
+      "org": "Confidata Tecnologia",
+      "iat": 1790000000,
+      "exp": 1790000300
+    },
+    "chave": {
+      "kid": "teste-dev",
+      "iss": "confidata",
+      "ambiente": "dev"
+    }
+  }
+}

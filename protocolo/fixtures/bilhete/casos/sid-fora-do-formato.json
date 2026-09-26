@@ -1,0 +1,16 @@
+{
+  "nome": "sid-fora-do-formato",
+  "descricao": "sid com espaço.",
+  "jws": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFzc2luYWRvcitqd3MiLCJraWQiOiJ0ZXN0ZSJ9.eyJ2IjoxLCJpc3MiOiJjb25maWRhdGEiLCJhdWQiOiJodHRwczovL2RlbW90LmNvbmZpZGF0YS5hcHAiLCJzaWQiOiJjb20gZXNwYWNvIiwiZGlnIjoiYmVkZDFlM2NkZDVlZDgxYmI1ODUxODdkMGJmMzMyOGVkNjE5N2Q3M2VjYzAxZTZlNTE0MDg0NzFhODRlNzc2NyIsImNlciI6Ijk1NWQ2NWY4YTMzN2ZjNWE1OGI2MGVhYzExOGU1NzA1ZWQ5NmI3MjZmYzFlNzEzMjdiZTZiOWI4ZDJiNGYxNGIiLCJmaW4iOiJhc3NpbmF0dXJhIiwiZG9jIjoiQ29udHJhdG8gZGUgcHJlc3Rhw6fDo28gZGUgc2VydmnDp29zIiwib3JnIjoiQ29uZmlkYXRhIFRlY25vbG9naWEiLCJpYXQiOjE3OTAwMDAwMDAsImV4cCI6MTc5MDAwMDMwMH0.L6NSHFZ8MtI71M3fBtIyAsxi5NQYsWvOv1K-yv3MrxH3o0Vl_Y0JF5mr2SnJnR2S7j6HdrAKYU4QgjxxXLXDpw",
+  "entrada": {
+    "origem": "https://demot.confidata.app",
+    "digest": "bedd1e3cdd5ed81bb585187d0bf3328ed6197d73ecc01e6e51408471a84e7767",
+    "certificadoSha256": "955d65f8a337fc5a58b60eac118e5705ed96b726fc1e71327be6b9b8d2b4f14b",
+    "agora": 1790000005
+  },
+  "esperado": {
+    "ok": false,
+    "codigo": "bilhete-invalido",
+    "etapa": "carga"
+  }
+}

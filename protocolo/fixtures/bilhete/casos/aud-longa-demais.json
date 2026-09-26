@@ -1,0 +1,16 @@
+{
+  "nome": "aud-longa-demais",
+  "descricao": "aud com 257 caracteres ASCII, igual à origem informada: o teto de aud vem antes da comparação.",
+  "jws": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFzc2luYWRvcitqd3MiLCJraWQiOiJ0ZXN0ZSJ9.eyJ2IjoxLCJpc3MiOiJjb25maWRhdGEiLCJhdWQiOiJodHRwczovL2FhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSIsInNpZCI6IjNmMmI4YzFlLTdhNGQtNGU5Yi05YzFhLTJkNWU2ZjcwODE5MiIsImRpZyI6ImJlZGQxZTNjZGQ1ZWQ4MWJiNTg1MTg3ZDBiZjMzMjhlZDYxOTdkNzNlY2MwMWU2ZTUxNDA4NDcxYTg0ZTc3NjciLCJjZXIiOiI5NTVkNjVmOGEzMzdmYzVhNThiNjBlYWMxMThlNTcwNWVkOTZiNzI2ZmMxZTcxMzI3YmU2YjliOGQyYjRmMTRiIiwiZmluIjoiYXNzaW5hdHVyYSIsImRvYyI6IkNvbnRyYXRvIGRlIHByZXN0YcOnw6NvIGRlIHNlcnZpw6dvcyIsIm9yZyI6IkNvbmZpZGF0YSBUZWNub2xvZ2lhIiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE3OTAwMDAzMDB9.qWPcDwP0PJ6rSgmQunSElh2sS4AZj9qnnaVBDm702ZpT-wrkR9KCJHbHL6AGrlhXZlRkZEdxqd0niVGijkeOcA",
+  "entrada": {
+    "origem": "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "digest": "bedd1e3cdd5ed81bb585187d0bf3328ed6197d73ecc01e6e51408471a84e7767",
+    "certificadoSha256": "955d65f8a337fc5a58b60eac118e5705ed96b726fc1e71327be6b9b8d2b4f14b",
+    "agora": 1790000005
+  },
+  "esperado": {
+    "ok": false,
+    "codigo": "bilhete-invalido",
+    "etapa": "carga"
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "protocoloDaPagina": 1,
+  "tipo": "assinador+jws",
+  "algoritmo": "ES256",
+  "versao": 1,
+  "validadeS": 300,
+  "toleranciaS": 900,
+  "tamanhoMaximoDoBilhete": 4096,
+  "limiteDoDocumento": 200,
+  "limiteDaOrganizacao": 120,
+  "emissores": [
+    "confidata",
+    "ushield"
+  ],
+  "padroesDeOrigem": {
+    "confidata": [
+      "^https://[a-z0-9-]{1,63}\\.confidata\\.app$"
+    ],
+    "ushield": [
+      "^https://ushield\\.app$"
+    ]
+  },
+  "padroesDeOrigemDev": [
+    "^http://([a-z0-9-]+\\.)?localhost(:[0-9]+)?$"
+  ],
+  "faixasDeControle": [
+    [
+      0,
+      31
+    ],
+    [
+      127,
+      159
+    ],
+    [
+      1564,
+      1564
+    ],
+    [
+      8206,
+      8207
+    ],
+    [
+      8232,
+      8238
+    ],
+    [
+      8294,
+      8297
+    ],
+    [
+      65279,
+      65279
+    ]
+  ],
+  "faixasDeEspaco": [
+    [
+      32,
+      32
+    ],
+    [
+      160,
+      160
+    ],
+    [
+      5760,
+      5760
+    ],
+    [
+      8192,
+      8202
+    ],
+    [
+      8239,
+      8239
+    ],
+    [
+      8287,
+      8287
+    ],
+    [
+      12288,
+      12288
+    ]
+  ],
+  "formatosDaCarga": {
+    "aud": "^[\\x21-\\x7e]{1,256}$",
+    "sid": "^[A-Za-z0-9_-]{1,64}$",
+    "hex": "^[0-9a-f]{64}$"
+  },
+  "inteiroMaximo": 9007199254740991,
+  "ordemDaConferencia": [
+    "forma",
+    "alg",
+    "typ",
+    "kid",
+    "assinatura",
+    "carga",
+    "v",
+    "carga",
+    "iss",
+    "aud",
+    "padrao",
+    "dig",
+    "cer",
+    "tempo"
+  ],
+  "codigoDaEtapa": {
+    "forma": "bilhete-invalido",
+    "alg": "bilhete-invalido",
+    "typ": "bilhete-invalido",
+    "kid": "bilhete-invalido",
+    "assinatura": "bilhete-invalido",
+    "carga": "bilhete-invalido",
+    "v": "bilhete-invalido",
+    "iss": "bilhete-invalido",
+    "aud": "origem-recusada",
+    "padrao": "origem-recusada",
+    "dig": "digest-divergente",
+    "cer": "certificado-divergente",
+    "tempo": "relogio"
+  },
+  "codigosDeErro": [
+    "origem-recusada",
+    "bilhete-invalido",
+    "bilhete-expirado",
+    "relogio",
+    "digest-divergente",
+    "certificado-divergente",
+    "certificado-nao-encontrado",
+    "chave-ausente",
+    "algoritmo-nao-suportado",
+    "permissao-negada",
+    "pin-incorreto",
+    "token-bloqueado",
+    "cancelado",
+    "tempo-esgotado",
+    "ocupado",
+    "nativo-ausente",
+    "nativo-desatualizado",
+    "modulo-falhou",
+    "protocolo",
+    "interno"
+  ]
+}

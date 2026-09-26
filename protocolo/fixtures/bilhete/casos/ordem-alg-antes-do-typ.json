@@ -1,0 +1,16 @@
+{
+  "nome": "ordem-alg-antes-do-typ",
+  "descricao": "alg none e typ JWT: alg.",
+  "jws": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIiwia2lkIjoidGVzdGUifQ.eyJ2IjoxLCJpc3MiOiJjb25maWRhdGEiLCJhdWQiOiJodHRwczovL2RlbW90LmNvbmZpZGF0YS5hcHAiLCJzaWQiOiIzZjJiOGMxZS03YTRkLTRlOWItOWMxYS0yZDVlNmY3MDgxOTIiLCJkaWciOiJiZWRkMWUzY2RkNWVkODFiYjU4NTE4N2QwYmYzMzI4ZWQ2MTk3ZDczZWNjMDFlNmU1MTQwODQ3MWE4NGU3NzY3IiwiY2VyIjoiOTU1ZDY1ZjhhMzM3ZmM1YTU4YjYwZWFjMTE4ZTU3MDVlZDk2YjcyNmZjMWU3MTMyN2JlNmI5YjhkMmI0ZjE0YiIsImZpbiI6ImFzc2luYXR1cmEiLCJkb2MiOiJDb250cmF0byBkZSBwcmVzdGHDp8OjbyBkZSBzZXJ2acOnb3MiLCJvcmciOiJDb25maWRhdGEgVGVjbm9sb2dpYSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkwMDAwMzAwfQ.",
+  "entrada": {
+    "origem": "https://demot.confidata.app",
+    "digest": "bedd1e3cdd5ed81bb585187d0bf3328ed6197d73ecc01e6e51408471a84e7767",
+    "certificadoSha256": "955d65f8a337fc5a58b60eac118e5705ed96b726fc1e71327be6b9b8d2b4f14b",
+    "agora": 1790000005
+  },
+  "esperado": {
+    "ok": false,
+    "codigo": "bilhete-invalido",
+    "etapa": "alg"
+  }
+}

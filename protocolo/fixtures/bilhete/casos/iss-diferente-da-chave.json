@@ -1,0 +1,16 @@
+{
+  "nome": "iss-diferente-da-chave",
+  "descricao": "iss ushield assinado pela chave do emissor confidata.",
+  "jws": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFzc2luYWRvcitqd3MiLCJraWQiOiJ0ZXN0ZSJ9.eyJ2IjoxLCJpc3MiOiJ1c2hpZWxkIiwiYXVkIjoiaHR0cHM6Ly91c2hpZWxkLmFwcCIsInNpZCI6IjNmMmI4YzFlLTdhNGQtNGU5Yi05YzFhLTJkNWU2ZjcwODE5MiIsImRpZyI6ImJlZGQxZTNjZGQ1ZWQ4MWJiNTg1MTg3ZDBiZjMzMjhlZDYxOTdkNzNlY2MwMWU2ZTUxNDA4NDcxYTg0ZTc3NjciLCJjZXIiOiI5NTVkNjVmOGEzMzdmYzVhNThiNjBlYWMxMThlNTcwNWVkOTZiNzI2ZmMxZTcxMzI3YmU2YjliOGQyYjRmMTRiIiwiZmluIjoiYXNzaW5hdHVyYSIsImRvYyI6IkNvbnRyYXRvIGRlIHByZXN0YcOnw6NvIGRlIHNlcnZpw6dvcyIsIm9yZyI6IkNvbmZpZGF0YSBUZWNub2xvZ2lhIiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE3OTAwMDAzMDB9.bAtEO5b_4oPdKEcZl_1kGLHWSCfCg0K8bRgDOMEFGj5jkJLlT9nUptl2DxSwTPYd676qAHORI38eT4aRWv-lyA",
+  "entrada": {
+    "origem": "https://ushield.app",
+    "digest": "bedd1e3cdd5ed81bb585187d0bf3328ed6197d73ecc01e6e51408471a84e7767",
+    "certificadoSha256": "955d65f8a337fc5a58b60eac118e5705ed96b726fc1e71327be6b9b8d2b4f14b",
+    "agora": 1790000005
+  },
+  "esperado": {
+    "ok": false,
+    "codigo": "bilhete-invalido",
+    "etapa": "iss"
+  }
+}

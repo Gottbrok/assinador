@@ -1,0 +1,16 @@
+{
+  "nome": "carga-nao-json",
+  "descricao": "Carga assinada que não é JSON.",
+  "jws": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFzc2luYWRvcitqd3MiLCJraWQiOiJ0ZXN0ZSJ9.aXN0byBuYW8gZSBqc29u.rq7BZnEvQIe0kW6qHTfhH4rNa5feAOJEoqSiMUuNp4HLyAzz9T__zmgMZEByQvitGnLNlovu2rMnAB4x_DXtBg",
+  "entrada": {
+    "origem": "https://demot.confidata.app",
+    "digest": "bedd1e3cdd5ed81bb585187d0bf3328ed6197d73ecc01e6e51408471a84e7767",
+    "certificadoSha256": "955d65f8a337fc5a58b60eac118e5705ed96b726fc1e71327be6b9b8d2b4f14b",
+    "agora": 1790000005
+  },
+  "esperado": {
+    "ok": false,
+    "codigo": "bilhete-invalido",
+    "etapa": "carga"
+  }
+}

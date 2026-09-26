@@ -1,0 +1,32 @@
+{
+  "nome": "valido-dev-localhost",
+  "descricao": "Chave de ambiente dev aceita localhost (e só ela).",
+  "jws": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFzc2luYWRvcitqd3MiLCJraWQiOiJ0ZXN0ZS1kZXYifQ.eyJ2IjoxLCJpc3MiOiJjb25maWRhdGEiLCJhdWQiOiJodHRwOi8vZGVtby5sb2NhbGhvc3Q6MzAwMCIsInNpZCI6IjNmMmI4YzFlLTdhNGQtNGU5Yi05YzFhLTJkNWU2ZjcwODE5MiIsImRpZyI6ImJlZGQxZTNjZGQ1ZWQ4MWJiNTg1MTg3ZDBiZjMzMjhlZDYxOTdkNzNlY2MwMWU2ZTUxNDA4NDcxYTg0ZTc3NjciLCJjZXIiOiI5NTVkNjVmOGEzMzdmYzVhNThiNjBlYWMxMThlNTcwNWVkOTZiNzI2ZmMxZTcxMzI3YmU2YjliOGQyYjRmMTRiIiwiZmluIjoiYXNzaW5hdHVyYSIsImRvYyI6IkNvbnRyYXRvIGRlIHByZXN0YcOnw6NvIGRlIHNlcnZpw6dvcyIsIm9yZyI6IkNvbmZpZGF0YSBUZWNub2xvZ2lhIiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE3OTAwMDAzMDB9.i08UEzkxdBbO9kla3n16qlAHK_rxFeNAgqXPKKGlJBm2b7xBblS5co-lV-EVJVug6XH-zgUGJCM8z75XgMLytw",
+  "entrada": {
+    "origem": "http://demo.localhost:3000",
+    "digest": "bedd1e3cdd5ed81bb585187d0bf3328ed6197d73ecc01e6e51408471a84e7767",
+    "certificadoSha256": "955d65f8a337fc5a58b60eac118e5705ed96b726fc1e71327be6b9b8d2b4f14b",
+    "agora": 1790000005
+  },
+  "esperado": {
+    "ok": true,
+    "bilhete": {
+      "v": 1,
+      "iss": "confidata",
+      "aud": "http://demo.localhost:3000",
+      "sid": "3f2b8c1e-7a4d-4e9b-9c1a-2d5e6f708192",
+      "dig": "bedd1e3cdd5ed81bb585187d0bf3328ed6197d73ecc01e6e51408471a84e7767",
+      "cer": "955d65f8a337fc5a58b60eac118e5705ed96b726fc1e71327be6b9b8d2b4f14b",
+      "fin": "assinatura",
+      "doc": "Contrato de prestação de serviços",
+      "org": "Confidata Tecnologia",
+      "iat": 1790000000,
+      "exp": 1790000300
+    },
+    "chave": {
+      "kid": "teste-dev",
+      "iss": "confidata",
+      "ambiente": "dev"
+    }
+  }
+}

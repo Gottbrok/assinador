@@ -1,0 +1,32 @@
+{
+  "nome": "doc-e-org-com-controles",
+  "descricao": "Os pontos de FAIXAS_DE_CONTROLE saem de doc e org na saída (BEL, RLO, separador de linha, NUL, C1, ALM, LRM, LRI).",
+  "jws": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFzc2luYWRvcitqd3MiLCJraWQiOiJ0ZXN0ZSJ9.eyJ2IjoxLCJpc3MiOiJjb25maWRhdGEiLCJhdWQiOiJodHRwczovL2RlbW90LmNvbmZpZGF0YS5hcHAiLCJzaWQiOiIzZjJiOGMxZS03YTRkLTRlOWItOWMxYS0yZDVlNmY3MDgxOTIiLCJkaWciOiJiZWRkMWUzY2RkNWVkODFiYjU4NTE4N2QwYmYzMzI4ZWQ2MTk3ZDczZWNjMDFlNmU1MTQwODQ3MWE4NGU3NzY3IiwiY2VyIjoiOTU1ZDY1ZjhhMzM3ZmM1YTU4YjYwZWFjMTE4ZTU3MDVlZDk2YjcyNmZjMWU3MTMyN2JlNmI5YjhkMmI0ZjE0YiIsImZpbiI6ImFzc2luYXR1cmEiLCJkb2MiOiJDb250cmF0b1x1MDAwNyBkZeKAriB0ZXN0ZeKAqGZpbe-7vyIsIm9yZyI6Ik9yZ1x1MDAwMMKf2JzigI7igaZYIiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE3OTAwMDAzMDB9.7kuLDc_360l7xhA_gSrgWtbWZxwJ8NA2WSeDjf9Ilo66UR6pmUjfQKxpFn58RFhDB17l-fceX5vnH7LlrGSXyw",
+  "entrada": {
+    "origem": "https://demot.confidata.app",
+    "digest": "bedd1e3cdd5ed81bb585187d0bf3328ed6197d73ecc01e6e51408471a84e7767",
+    "certificadoSha256": "955d65f8a337fc5a58b60eac118e5705ed96b726fc1e71327be6b9b8d2b4f14b",
+    "agora": 1790000005
+  },
+  "esperado": {
+    "ok": true,
+    "bilhete": {
+      "v": 1,
+      "iss": "confidata",
+      "aud": "https://demot.confidata.app",
+      "sid": "3f2b8c1e-7a4d-4e9b-9c1a-2d5e6f708192",
+      "dig": "bedd1e3cdd5ed81bb585187d0bf3328ed6197d73ecc01e6e51408471a84e7767",
+      "cer": "955d65f8a337fc5a58b60eac118e5705ed96b726fc1e71327be6b9b8d2b4f14b",
+      "fin": "assinatura",
+      "doc": "Contrato de testefim",
+      "org": "OrgX",
+      "iat": 1790000000,
+      "exp": 1790000300
+    },
+    "chave": {
+      "kid": "teste",
+      "iss": "confidata",
+      "ambiente": "teste"
+    }
+  }
+}

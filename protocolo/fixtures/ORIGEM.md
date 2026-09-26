@@ -1,0 +1,100 @@
+# Origem das fixtures
+
+As fixtures de `bilhete/` são o contrato do bilhete entre a biblioteca `@confidata/icp-brasil`
+(a referência em TypeScript, `src/bilhete.ts`) e o programa (`nativo/internal/bilhete`). Elas são
+COPIADAS da biblioteca, nunca editadas aqui: para mudar um caso, mude a tabela da biblioteca, gere
+de novo lá, publique a tag e copie de novo.
+
+- Repositório: `Gottbrok/icp-brasil`
+- Tag: `v0.4.0` (commit `219360f32c0174059a7a14c8ed7fc8815e78d680`). Os arquivos são idênticos aos
+  da `v0.3.0`, onde o protocolo do Assinador nasceu.
+- Pasta de origem: `tests/fixtures/bilhete/`
+- Como foram copiadas: `git archive v0.4.0 tests/fixtures/bilhete | tar -x -C protocolo/fixtures/bilhete --strip-components=3`
+
+O teste `nativo/internal/bilhete/fixtures_test.go` confere cada soma abaixo, e que não há arquivo
+a mais nem a menos na pasta. Para conferir à mão, de dentro de `protocolo/fixtures/`:
+`sha256sum -c` sobre as linhas do bloco.
+
+```
+8ea18708411bab48246542a93c948e3ac16d71fa73aaa726d417148e74ca2f7d  bilhete/LEIAME.md
+e272be0385b1dc306cf0106faec970c7f7d81974895913f2f8e9744aaa6a4c42  bilhete/casos/alg-hs256.json
+5d0e18dcae652972e073e4843c74f1875109ae18e396e1c6a7aa331a6ce04706  bilhete/casos/alg-none.json
+1c9e6868843e7144e2fcc0fb8bd0a5bda77ecab329ae7c05c1c949c367ba9afd  bilhete/casos/alg-numerico.json
+9434212323d99c3b8258eb0fa4b10ab7373608d2c2ef1b570db311542f0789ea  bilhete/casos/assinado-por-outra-chave.json
+ad61d77c62d576f79d4912ca5f49ef381409738af175c02af6dd9d45dc49a560  bilhete/casos/assinatura-adulterada.json
+8d91553c111e944dcfdfaede4cd37f61d24805e451d18135df90ceb52ae6815e  bilhete/casos/assinatura-com-preenchimento.json
+4e7292c37b31341f44fc7ca5dea0ae37a4e886af803991164852ca3be4dc74eb  bilhete/casos/assinatura-com-quebra-de-linha.json
+98b8936e0cb3f9e7acd7de37293058dc988b84bb3e5a496b307eb8519d381a43  bilhete/casos/assinatura-curta.json
+268ab2257ca38b7dc0a017b411e4430cacb472fe2524d7536a5ca6587ef95950  bilhete/casos/assinatura-nao-canonica.json
+71abfd9e5cfaf58dc113f0fb24d36ac1cf463fbd622d6298cc1d35f39523562b  bilhete/casos/aud-de-emissor-sem-direito.json
+85f01f74d6ee17497090116a046af17ac47fab70eb8126c993c818eb6b8d943c  bilhete/casos/aud-errada.json
+cf986a1ac27bdf31e72c45fe6d9540726b98de89556f8d4c0ca83a400cb200ef  bilhete/casos/aud-longa-demais.json
+d870faa279ae323196b36c80719a54732babc2635ff5bc316f602624b41e0695  bilhete/casos/aud-nao-ascii.json
+67ccf5d6f0700380ad48ccb25c37c3321d9e4d076912626b00e29ac4d2dd8718  bilhete/casos/cabecalho-com-campo-extra.json
+c15928e76d0fd4d4ed688df49a4131f009bdf41f8e4299d61a6dcf077432cffd  bilhete/casos/cabecalho-com-chave-maiuscula.json
+79d2cb122997a7f53bc753be72751a15d9bf967dd67e47122544cd1fcaf65339  bilhete/casos/cabecalho-com-numero-fora-do-float64.json
+230b009b9b2dbc49e1db22eff176c8ce8e7cb91f90ee3074c1f34acf775e1957  bilhete/casos/cabecalho-com-quebra-de-linha.json
+4b36fddf7c45f03d1d675e23151b5abb3eadffc62fe0667e45708c809a6e7dac  bilhete/casos/cabecalho-nao-canonico.json
+1695f39d2f2af775446e37a4580baafc495f86e692cf62f611d20096fe37d5c5  bilhete/casos/cabecalho-sem-kid.json
+d1d291fc42669df2748609b39f6dfda90f54914d224be6b108083c8f52686bde  bilhete/casos/carga-adulterada.json
+5c1c3e20caf98681840c0d28226e98fd628fb53f66c3aec92ec6981e832c01e5  bilhete/casos/carga-array.json
+e2b123fd9893accea4bce1c1b337c4bedad0a3b683caace786c864fa528c5473  bilhete/casos/carga-com-campo-extra.json
+6c310dfcd44246c0a522fcb5e6e82cfcfab1cbee54d61ce7360dd8ea2428f071  bilhete/casos/carga-nao-canonica.json
+a64ee21a73d8a99cf43e1571c6743734601047ccf11f7536226d3093537f84ac  bilhete/casos/carga-nao-json.json
+8b0b23380b214c0969fb4262ee62aab0ac3cf8e7848f60630517b0d2a8c78843  bilhete/casos/carga-sem-campo.json
+27164aded8ee58bd3f6c9c1b92f745cd584993370fce3e3aecb1fa04e81fced5  bilhete/casos/carga-utf8-invalido.json
+7720762d3f610424bb6e991233d1083d4abb1d3fd8ffac406b3c44f20c36919e  bilhete/casos/cer-errado.json
+092e69591dcb5764e8b060148da199c7917bf723f25a59c72e02ccb0b3fa1663  bilhete/casos/dev-tambem-aceita-a-origem-de-producao.json
+2d24f06b6f8ad5726a547e4e37d945e5479765fb3b16d36ba78ba948d3aa3ff4  bilhete/casos/dig-errado.json
+2364731ade5cb331608ec49bf82e9c02e986d48df53e552e501bd5319c5b8d40  bilhete/casos/dig-maiusculo.json
+5bb53f1f9a50d9a536a405df27032c9d9c3632ae793eb165781f9698144fea43  bilhete/casos/doc-acima-do-limite.json
+b7f88925f19918f7126a8c1b4a21300c4a1769d2022b12a078d533f9c95ff31a  bilhete/casos/doc-com-surrogate-solto.json
+1d8d6e54d9c0f8f30f789b62c772dc54461468a540002832a8bc246d92b7f157  bilhete/casos/doc-e-org-com-controles.json
+fbedeaecc02283a4e3212bd677e4f46e6aaec1670b867b7b1705f63a222cdc16  bilhete/casos/doc-so-com-controles.json
+0d09e01f75e20a5d3afb9bc97c5d3fce2d027f760364f643804ff0ecd2fef407  bilhete/casos/doc-vazio.json
+652f8310f16c82edee484a1683d72f7c33bf64bcf14a16bc8020ac24514812d4  bilhete/casos/dominio-parecido.json
+c80ba0e6f693ebad83c8faef18cdc8fcb8fb748ef37fafb7b3afa4a98db0ea1b  bilhete/casos/expirado-dentro-da-tolerancia.json
+bcfcb26843da61b0e1fbc2b786105cff862667803267f12025efb36e015ba216  bilhete/casos/fin-desconhecida.json
+52d6c95a189980e9d4841663ddac68b992ada964ab765a78c3543c9bb1904614  bilhete/casos/fora-da-tolerancia.json
+29580856f1a4cf460d92e68a8a7c65f56d8d3d0572bb4477fad55caddc450e6b  bilhete/casos/grande-demais.json
+d218b2256e0ca7403adf5bcdc99c59a8b346cee098eea5611e25afa53c570a43  bilhete/casos/iat-acima-do-inteiro-seguro.json
+f84b4375d1f537747aae9040e6f67e4e831ba3c90739a54d4b2bd8750d8df3d6  bilhete/casos/iat-nao-inteiro.json
+6bef07b9f4e4e667184ae63e39baecad016c1148f1713e4179b1b7f2ffc7518b  bilhete/casos/iat-negativo.json
+199e3adc809b06d3e84d271ae42ba56c32ff59f2aaaf99d4f5bc131cc92c58a3  bilhete/casos/iat-no-futuro.json
+5cf6c1f8684e2f8b3d710d1047d61b5d81e6fa37882799aa84092cd9179f5e50  bilhete/casos/iss-diferente-da-chave.json
+4dd2f2947b85dbd2f4038d245306294f5ca8513def3b58e534a89eff25eb1eee  bilhete/casos/kid-com-maiuscula.json
+c51925ed576cd7425c2b31d92699e1cb259d2fd5fa19df0cc52219849dd78b07  bilhete/casos/kid-desconhecido.json
+09116ca6fc9e3847e57339ec29e05b69034b4e3b0d9cac97b6241c21a27ad3fc  bilhete/casos/kid-numerico.json
+967a61368827519aeb7ce41d0cf5499104473a6b83e8a4ba751360f6086f44bb  bilhete/casos/limite-inferior-do-tempo.json
+64ab34e81ce910e2896959c3443b71d16c111d5087d3f5993cd13b268322899e  bilhete/casos/limite-superior-do-tempo.json
+d5320b4bbf3e3780e6e2094931fbfd3d54ba1e4d6c5e3f3492b7eded764c26c2  bilhete/casos/localhost-com-chave-que-nao-e-dev.json
+895291cd805cabf8bcad6e0f92f760fa6f3fcb47867d517bfcfffcf82626dabc  bilhete/casos/numero-fora-do-float64.json
+f4a6615d8d332621ba41324b227ef7bb5d59952fae67d8e23729e07884ab25c7  bilhete/casos/ordem-alg-antes-do-typ.json
+90bd0ff00b43e6b3146e44e94c3c125a8db12da1b23b80503f4c6320601b04ed  bilhete/casos/ordem-assinatura-antes-da-carga.json
+b3dfb2d3b25b1c0e09747847be535e6ba381c845d43f1545790433aeb8388c21  bilhete/casos/ordem-aud-antes-do-dig.json
+2f1fc99b6fcea2eddf1df16b620cc40f9bac4a340c7e30b86bdbe41c01dc5a60  bilhete/casos/ordem-carga-antes-do-iss.json
+956b273bd8e03c1073750855ba3f235df77e5cbd5d7b13bc39c02b158b31fea1  bilhete/casos/ordem-cer-antes-do-tempo.json
+392fb15cdc355616651e1f96bde700f86b467c99a5838114f0ec6087e6edee38  bilhete/casos/ordem-dig-antes-do-cer.json
+75f35ab54434def31eea9b45ee2e69e25f1d6df576e15709746bd1c71788e497  bilhete/casos/ordem-forma-antes-do-alg.json
+798a41f506c6186a83211db0cf57a9674f8de2e34175aec5bb33bb682f93636e  bilhete/casos/ordem-iss-antes-da-aud.json
+2a812205a0cfff51b51a5c7216082e89b5338b8aa8ac758237ace10be1096995  bilhete/casos/ordem-kid-antes-da-assinatura.json
+a92859a6cb3d030aa516af10b8fea97e4a2162c87b23437dfa1860a1d997171a  bilhete/casos/ordem-padrao-antes-do-dig.json
+e289469356dcdafdf9b6511d497e92effb76495cc7d9a0d45797ebe282eb86fb  bilhete/casos/ordem-typ-antes-do-kid.json
+981fa8af34682ab76f698700040c340a57b162bd86605313dc90eca442244350  bilhete/casos/ordem-v-antes-da-carga.json
+e528e728adf30de0b2a2b676d609213768591b4758e88c300c2f09ba9ebc041f  bilhete/casos/ordem-v-antes-de-iat-nao-inteiro.json
+57015f34efdfea381a3f4b800bcc03c8faacf317c4c0703f9f898ff6a8047bb1  bilhete/casos/org-so-com-espacos.json
+445539a6428f0cb905a9fcbfc1979c05d8e3bf9809ee23809cfe1be54028f68d  bilhete/casos/quatro-partes.json
+58ddb3577a8d323d253e6fdecd66f6a1aa0c8bc9e09c132837b22008fc096777  bilhete/casos/sid-fora-do-formato.json
+0cb3f76acfebdc5fbb0fb17dc04a01203f23bc01203d075559991a75670785db  bilhete/casos/sid-longo-demais.json
+7083ef41224fec39e5e1d6dca49891363659c9c449c3bc14d2978c5b675f9e2d  bilhete/casos/texto-unicode-no-limite.json
+a835181daac72b83c0e9cf03f8e21f1dcee91ea524da838edf9e10e49eb363f7  bilhete/casos/typ-errado.json
+1a60d770aaef52bca79433058756e53332088c14ed9ebd56f4bf58b5484c8ddd  bilhete/casos/v-como-texto.json
+cc4e539bee41168579d308f880f82b7d7794ecb2dfbc115fe46a8433bbb1d9d3  bilhete/casos/v-errado.json
+8c6c7e26de17d5fc9d145b1281baa71430f00c550e257884271732a1537f0cd1  bilhete/casos/validade-diferente.json
+d9af3fd7d06d3b9ee5d49df0413b53b9e7608a18a699a3b8b7a63de8fa043646  bilhete/casos/valido-dev-localhost.json
+2389cd596c3f1d179c29b1b6b360bbec94439735f0fb6443cb22b995921413bd  bilhete/casos/valido-ushield.json
+eb76009a40314fa127958794a559b1b0ea9176eb129d7799629cf22ef0c60819  bilhete/casos/valido-verificacao.json
+229f5baa9c9a0de1c2f432faed040f795b8933dd319208eca43a6af01885d204  bilhete/casos/valido.json
+6be608504affccb70d4ea9e6303f5a7f34ca1957f512488093d8b225e65d5e72  bilhete/chaves.json
+e3427b4d06030c3ad478121d01defefc333077a1d7d4296f3ffab3b0caf3b161  bilhete/protocolo.json
+```

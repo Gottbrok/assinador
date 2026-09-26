@@ -1,0 +1,32 @@
+{
+  "nome": "valido-ushield",
+  "descricao": "Emissor ushield, na única origem que ele pode usar.",
+  "jws": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFzc2luYWRvcitqd3MiLCJraWQiOiJ0ZXN0ZS11c2hpZWxkIn0.eyJ2IjoxLCJpc3MiOiJ1c2hpZWxkIiwiYXVkIjoiaHR0cHM6Ly91c2hpZWxkLmFwcCIsInNpZCI6IjNmMmI4YzFlLTdhNGQtNGU5Yi05YzFhLTJkNWU2ZjcwODE5MiIsImRpZyI6ImJlZGQxZTNjZGQ1ZWQ4MWJiNTg1MTg3ZDBiZjMzMjhlZDYxOTdkNzNlY2MwMWU2ZTUxNDA4NDcxYTg0ZTc3NjciLCJjZXIiOiI5NTVkNjVmOGEzMzdmYzVhNThiNjBlYWMxMThlNTcwNWVkOTZiNzI2ZmMxZTcxMzI3YmU2YjliOGQyYjRmMTRiIiwiZmluIjoiYXNzaW5hdHVyYSIsImRvYyI6IkNvbnRyYXRvIGRlIHByZXN0YcOnw6NvIGRlIHNlcnZpw6dvcyIsIm9yZyI6InVzaGllbGQiLCJpYXQiOjE3OTAwMDAwMDAsImV4cCI6MTc5MDAwMDMwMH0.y8C5ifu3YtjI4X4KfS3Zah96KbCEK18wrlD4xi-frZDUXAywpi6CAxef54DOEyJUezpzv5y9kGVmpZf29-E0wQ",
+  "entrada": {
+    "origem": "https://ushield.app",
+    "digest": "bedd1e3cdd5ed81bb585187d0bf3328ed6197d73ecc01e6e51408471a84e7767",
+    "certificadoSha256": "955d65f8a337fc5a58b60eac118e5705ed96b726fc1e71327be6b9b8d2b4f14b",
+    "agora": 1790000005
+  },
+  "esperado": {
+    "ok": true,
+    "bilhete": {
+      "v": 1,
+      "iss": "ushield",
+      "aud": "https://ushield.app",
+      "sid": "3f2b8c1e-7a4d-4e9b-9c1a-2d5e6f708192",
+      "dig": "bedd1e3cdd5ed81bb585187d0bf3328ed6197d73ecc01e6e51408471a84e7767",
+      "cer": "955d65f8a337fc5a58b60eac118e5705ed96b726fc1e71327be6b9b8d2b4f14b",
+      "fin": "assinatura",
+      "doc": "Contrato de prestação de serviços",
+      "org": "ushield",
+      "iat": 1790000000,
+      "exp": 1790000300
+    },
+    "chave": {
+      "kid": "teste-ushield",
+      "iss": "ushield",
+      "ambiente": "teste"
+    }
+  }
+}

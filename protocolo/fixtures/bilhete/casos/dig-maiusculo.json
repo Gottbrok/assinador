@@ -1,0 +1,16 @@
+{
+  "nome": "dig-maiusculo",
+  "descricao": "dig em hexadecimal maiúsculo (o protocolo é minúsculo).",
+  "jws": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFzc2luYWRvcitqd3MiLCJraWQiOiJ0ZXN0ZSJ9.eyJ2IjoxLCJpc3MiOiJjb25maWRhdGEiLCJhdWQiOiJodHRwczovL2RlbW90LmNvbmZpZGF0YS5hcHAiLCJzaWQiOiIzZjJiOGMxZS03YTRkLTRlOWItOWMxYS0yZDVlNmY3MDgxOTIiLCJkaWciOiJCRUREMUUzQ0RENUVEODFCQjU4NTE4N0QwQkYzMzI4RUQ2MTk3RDczRUNDMDFFNkU1MTQwODQ3MUE4NEU3NzY3IiwiY2VyIjoiOTU1ZDY1ZjhhMzM3ZmM1YTU4YjYwZWFjMTE4ZTU3MDVlZDk2YjcyNmZjMWU3MTMyN2JlNmI5YjhkMmI0ZjE0YiIsImZpbiI6ImFzc2luYXR1cmEiLCJkb2MiOiJDb250cmF0byBkZSBwcmVzdGHDp8OjbyBkZSBzZXJ2acOnb3MiLCJvcmciOiJDb25maWRhdGEgVGVjbm9sb2dpYSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkwMDAwMzAwfQ._7EoCxlGDpRmAFair0qEL8qKo30kAqlVoMd8o8jDtORDo-LFvgqMsnzt8bWYUuqv7hI4_gdbCkcC1PlWG46rew",
+  "entrada": {
+    "origem": "https://demot.confidata.app",
+    "digest": "BEDD1E3CDD5ED81BB585187D0BF3328ED6197D73ECC01E6E51408471A84E7767",
+    "certificadoSha256": "955d65f8a337fc5a58b60eac118e5705ed96b726fc1e71327be6b9b8d2b4f14b",
+    "agora": 1790000005
+  },
+  "esperado": {
+    "ok": false,
+    "codigo": "bilhete-invalido",
+    "etapa": "carga"
+  }
+}

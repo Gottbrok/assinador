@@ -1,0 +1,16 @@
+{
+  "nome": "ordem-padrao-antes-do-dig",
+  "descricao": "aud fora do padrão do emissor e dig errado: padrao.",
+  "jws": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFzc2luYWRvcitqd3MiLCJraWQiOiJ0ZXN0ZSJ9.eyJ2IjoxLCJpc3MiOiJjb25maWRhdGEiLCJhdWQiOiJodHRwczovL3VzaGllbGQuYXBwIiwic2lkIjoiM2YyYjhjMWUtN2E0ZC00ZTliLTljMWEtMmQ1ZTZmNzA4MTkyIiwiZGlnIjoiYmVkZDFlM2NkZDVlZDgxYmI1ODUxODdkMGJmMzMyOGVkNjE5N2Q3M2VjYzAxZTZlNTE0MDg0NzFhODRlNzc2NyIsImNlciI6Ijk1NWQ2NWY4YTMzN2ZjNWE1OGI2MGVhYzExOGU1NzA1ZWQ5NmI3MjZmYzFlNzEzMjdiZTZiOWI4ZDJiNGYxNGIiLCJmaW4iOiJhc3NpbmF0dXJhIiwiZG9jIjoiQ29udHJhdG8gZGUgcHJlc3Rhw6fDo28gZGUgc2VydmnDp29zIiwib3JnIjoiQ29uZmlkYXRhIFRlY25vbG9naWEiLCJpYXQiOjE3OTAwMDAwMDAsImV4cCI6MTc5MDAwMDMwMH0.HJxK8ERk_RCuDPVGd3oV50LqFTP77xQnDqEBWQleCyaKNPeP8rfeQPCh78WcUqJtlSrSzwECYRUKtCOE3BTQUg",
+  "entrada": {
+    "origem": "https://ushield.app",
+    "digest": "76f20672c4395abc27318b12be35026683cc4b873dd91d9c7faeeaa28503b1e3",
+    "certificadoSha256": "955d65f8a337fc5a58b60eac118e5705ed96b726fc1e71327be6b9b8d2b4f14b",
+    "agora": 1790000005
+  },
+  "esperado": {
+    "ok": false,
+    "codigo": "origem-recusada",
+    "etapa": "padrao"
+  }
+}
