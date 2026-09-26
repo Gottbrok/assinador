@@ -172,16 +172,21 @@ da biblioteca; o programa não os produz.
 Descoberta, em ordem, sem repetir o mesmo arquivo (caminho real):
 
 1. o catálogo MEDIDO (`nativo/internal/catalogo`);
-2. os registros do p11-kit (`~/.config/pkcs11/modules`, `/etc/pkcs11/modules` e
-   `/usr/share/p11-kit/modules`, `*.module`): o de mesmo nome numa pasta anterior esconde os das
-   seguintes; o módulo por nome, sem caminho, se resolve no `$(libdir)/pkcs11` do Debian, do Ubuntu
-   e do Fedora; `enable-in` sem `assinador` e `disable-in` com ele tiram o registro; o
+2. os registros do p11-kit (`*.module`), com as regras do `pkcs11.conf(5)`: o de mesmo nome se
+   junta campo a campo, com o de `/etc/pkcs11/modules` sobre o de `/usr/share/p11-kit/modules` e o
+   da pessoa (`~/.config/pkcs11/modules`) sobre os dois; a pasta da pessoa só conta se o
+   `user-config` de `/etc/pkcs11/pkcs11.conf` não for `none` (com `only`, só ela); `module:` em
+   branco desliga; o módulo por nome, sem caminho, se resolve no `$(libdir)/pkcs11` do Debian, do
+   Ubuntu e do Fedora; `enable-in` sem `assinador` e `disable-in` com ele tiram o registro; o
    `p11-kit-trust` (repositório de ACs) e o `gnome-keyring` (senhas) ficam de fora;
 3. `/etc/confidata-assinador/modulos.d/*.conf` e `~/.config/confidata-assinador/modulos` (um
    caminho absoluto por linha; `#` comenta).
 
 O que foi pedido e não existe (do catálogo, registrado no p11-kit sem o arquivo, ou da
-configuração) vai ao diagnóstico como `ausente`.
+configuração) vai ao diagnóstico como `ausente`. O módulo achado pelo p11-kit ou pela configuração
+com o NOME de arquivo de um do catálogo é aquele módulo (o rótulo e o genérico do catálogo): o
+OpenSC registrado fora do caminho medido continua genérico na fusão, e o SafeSign num caminho que o
+catálogo não mediu continua sendo o SafeSign.
 
 Cada módulo roda num processo filho (`assinador modulo --caminho <x>`), que o próprio programa
 lança, por operação. O filho lê o pedido no descritor 3 e responde no 4, com o mesmo quadro; a
@@ -203,7 +208,7 @@ devolvem o MESMO relatório (`nativo/internal/diagnostico`), para o suporte, sem
 { programa: { versao, protocolo, plataforma }, sistema,
   pcsc: { estado: 'ok' | 'sem-biblioteca' | 'sem-servico' | 'sem-leitora' | 'falhou', detalhe? },
   leitoras: [{ nome, comCartao, mudo?, atr?, cartao?, sugestao? }],
-  provedores: [{ nome, caminho?, origem?, estado: 'carregado' | 'ausente' | 'falhou', certificados, detalhe? }],
+  provedores: [{ nome, caminho?, origem?, fabricante?, estado: 'carregado' | 'ausente' | 'falhou', certificados, detalhe? }],
   certificados: [{ titular, emissor?, validoAte?, situacao, provedor, leitor? }],
   avisos: [frase] }
 ```
@@ -211,14 +216,20 @@ devolvem o MESMO relatório (`nativo/internal/diagnostico`), para o suporte, sem
 - **PC/SC:** só estado. O programa lê as leitoras e o ATR de cada cartão (`SCardGetStatusChange`
   com prazo zero), nunca conecta ao cartão e nunca manda comando a ele. A biblioteca (o pcsc-lite,
   no Linux) é aberta com `dlopen` na hora da consulta: sem ela, o programa abre do mesmo jeito, e o
-  diagnóstico diz o que instalar. Passados 5 s sem resposta do `pcscd`, o relatório diz que ele não
-  respondeu.
+  diagnóstico diz o que instalar. As leitoras são consultadas ao mesmo tempo que os módulos;
+  passados 5 s sem resposta do `pcscd`, o relatório diz que ele não respondeu. A lista de leitoras
+  que cresce entre o pedido do tamanho e o da lista é lida de novo.
 - **Sugestão pelo ATR:** o ATR que está no catálogo medido diz qual programa do fabricante lê o
-  cartão (`cartao` e `sugestao`); sem esse programa instalado, o aviso manda instalá-lo.
+  cartão (`cartao` e `sugestao`); sem esse programa carregado, o aviso manda instalá-lo. O módulo do
+  catálogo se reconhece pelo rótulo ou pelo fabricante que declara no `C_GetInfo` (`fabricante`),
+  e o "não achou certificado" se decide pela contagem do PRÓPRIO módulo.
 - **Certificados:** o titular é o CN com os dígitos trocados por `*` (o CN ICP-Brasil é
-  `NOME:CPF`); o emissor sai como está, exceto no autoassinado, em que ele é o próprio titular. O de
-  AC não entra. `situacao`: `valido`, `vencido`, `ainda-nao-valido`, `chave-nao-rsa`,
-  `sem-uso-de-assinatura` ou `ilegivel`.
+  `NOME:CPF`); o emissor sai com as sequências de 11 ou mais dígitos mascaradas, e no autoassinado
+  ele é o próprio titular. O de AC não entra, nem na lista nem na contagem do módulo. `situacao`:
+  `valido`, `vencido`, `ainda-nao-valido`, `chave-nao-rsa`, `sem-uso-de-assinatura` ou `ilegivel`.
+- **Texto de fora:** o que vem do aparelho e do certificado (o nome da leitora, o CN, o que o
+  módulo declara) sai sem caractere de controle nem de direção, e com teto: um aparelho malicioso
+  não forja linha no relatório nem manda sequência de escape ao terminal do suporte.
 - **Avisos:** frases em português para a pessoa (a biblioteca do PC/SC falta; o `pcscd` não está
   rodando; nenhuma leitora; nenhuma leitora com cartão; o cartão não responde; o cartão usa um
   programa que não está instalado; o programa instalado não achou certificado; o cartão não foi lido
@@ -235,7 +246,9 @@ herdam).
 e os manifestos com o ID provisório): o `.deb` da arquitetura da máquina e, no amd64, o `.rpm`. O
 programa vai para `/usr/lib/confidata-assinador/assinador`; o manifesto do Chrome, do Chromium e do
 Edge para `/etc/opt/chrome`, `/etc/chromium` e `/etc/opt/edge` (`native-messaging-hosts/`), e o do
-Firefox para `/usr/lib/mozilla` (e `/usr/lib64/mozilla` no `.rpm`). Recomenda o `pcscd` e o
-`libccid` (no Fedora, `pcsc-lite` e `pcsc-lite-ccid`). `instaladores/linux/testar-pacotes.sh` prova
-os dois em contêiner: instala, roda, remove, e nada sobra. Os pacotes de produção, assinados e com
-os IDs das lojas, são da F7a.
+Firefox para `/usr/lib/mozilla` (e `/usr/lib64/mozilla` no `.rpm`). Depende da glibc 2.34 (o
+empacotamento reprova se o binário passar a exigir mais) e recomenda o `pcscd` e o `libccid` (no
+Fedora, `pcsc-lite` e `pcsc-lite-ccid`). `instaladores/linux/testar-pacotes.sh` prova os dois em
+contêiner: fotografa `/etc`, `/usr` e `/opt`, instala, confere os manifestos (o ID e o caminho) e o
+programa, remove, e reprova se a foto não voltar a ser a mesma. Os pacotes de produção, assinados e
+com os IDs das lojas, são da F7a.
