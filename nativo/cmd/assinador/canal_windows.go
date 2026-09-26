@@ -19,13 +19,21 @@ import (
 // toda DLL carregada DEPOIS lê ao iniciar; e o descritor 1 dos C runtimes compartilhados que JÁ
 // estavam carregados (o `msvcrt.dll` e o `ucrtbase.dll`, que DLLs do sistema trazem cedo), trocado
 // por `_dup2`, como o `dup2` do Linux. A cópia não é herdável: o host não lança filho no Windows.
-// saidasAntigas guarda os `os.Stdout` substituídos, para o finalizador nunca rodar sobre eles.
-var saidasAntigas []*os.File
-
+//
+// O handle ORIGINAL fica protegido contra fechamento antes dos `_dup2`: cada C runtime o guarda
+// como descritor 1 e o fecha ao trocar, e com os dois carregados o segundo fecharia de novo um
+// número que o Windows já pode ter dado a outro recurso (uma thread do runtime do Go, por exemplo).
+// Protegido, o fechamento falha sem estrago (o `_dup2` do UCRT e o do `msvcrt` ignoram essa falha,
+// e seguem), e o número nunca volta ao Windows.
 func separarCanal() (*os.File, error) {
 	processo := win.CurrentProcess()
+	original := win.Handle(os.Stdout.Fd())
 	var copia win.Handle
-	if err := win.DuplicateHandle(processo, win.Handle(os.Stdout.Fd()), processo, &copia, 0, false, win.DUPLICATE_SAME_ACCESS); err != nil {
+	if err := win.DuplicateHandle(processo, original, processo, &copia, 0, false, win.DUPLICATE_SAME_ACCESS); err != nil {
+		return nil, err
+	}
+	if err := win.SetHandleInformation(original, handleProtegidoContraFechamento, handleProtegidoContraFechamento); err != nil {
+		_ = win.CloseHandle(copia)
 		return nil, err
 	}
 	nome, _ := win.UTF16PtrFromString("NUL")
@@ -39,9 +47,8 @@ func separarCanal() (*os.File, error) {
 		_ = win.CloseHandle(nulo)
 		return nil, err
 	}
-	// O `os.Stdout` antigo fica vivo para sempre: o `_dup2` abaixo fecha o handle original no C
-	// runtime, e o finalizador do arquivo antigo fecharia DE NOVO o mesmo número, que o Windows já
-	// pode ter dado a outro recurso.
+	// O `os.Stdout` antigo também fica vivo para sempre, para o finalizador dele nem tentar fechar o
+	// handle original.
 	saidasAntigas = append(saidasAntigas, os.Stdout)
 	os.Stdout = os.NewFile(uintptr(nulo), "NUL")
 	for _, crt := range []string{"msvcrt.dll", "ucrtbase.dll"} {
@@ -52,6 +59,13 @@ func separarCanal() (*os.File, error) {
 	}
 	return os.NewFile(uintptr(copia), "canal"), nil
 }
+
+// handleProtegidoContraFechamento é o HANDLE_FLAG_PROTECT_FROM_CLOSE (winbase.h), que o
+// `golang.org/x/sys/windows` não declara.
+const handleProtegidoContraFechamento = 0x00000002
+
+// saidasAntigas guarda os `os.Stdout` substituídos, para o finalizador nunca rodar sobre eles.
+var saidasAntigas []*os.File
 
 // desviarDescritorDoCRT aponta o descritor 1 de um C runtime JÁ carregado para NUL. O que ainda não
 // foi carregado não precisa: ao iniciar, ele lê a saída padrão do processo, que já é NUL.

@@ -34,9 +34,17 @@ func escreverPeloCRT(dll, texto string) bool {
 // compartilhados, e "canal" pela cópia.
 func TestMain(m *testing.M) {
 	if os.Getenv("ASSINADOR_TESTE_DO_CANAL") == "1" {
+		original := os.Stdout.Fd()
 		canal, err := separarCanal()
 		if err != nil {
 			os.Exit(3)
+		}
+		informacao := win.NewLazySystemDLL("kernel32.dll").NewProc("GetHandleInformation")
+		// O handle original está protegido contra fechamento: os `_dup2` dos C runtimes o fecham sem
+		// efeito, e o número dele nunca volta ao Windows para ser dado a outro recurso.
+		var flagsDoOriginal uint32
+		if r, _, _ := informacao.Call(original, uintptr(unsafe.Pointer(&flagsDoOriginal))); r == 0 || flagsDoOriginal&handleProtegidoContraFechamento == 0 {
+			os.Exit(6)
 		}
 		_, _ = os.Stdout.WriteString("perdida-pelo-go ")
 		if h, err := win.GetStdHandle(win.STD_OUTPUT_HANDLE); err == nil {
@@ -50,7 +58,7 @@ func TestMain(m *testing.M) {
 		// O ucrtbase existe do Windows 10 em diante; sem ele, não há o que desviar.
 		_ = escreverPeloCRT("ucrtbase.dll", "perdida-pelo-ucrt ")
 		var flags uint32
-		r, _, _ := win.NewLazySystemDLL("kernel32.dll").NewProc("GetHandleInformation").Call(canal.Fd(), uintptr(unsafe.Pointer(&flags)))
+		r, _, _ := informacao.Call(canal.Fd(), uintptr(unsafe.Pointer(&flags)))
 		if r == 0 || flags&win.HANDLE_FLAG_INHERIT != 0 {
 			os.Exit(4)
 		}
@@ -69,7 +77,7 @@ func TestCanalSeparadoDaSaidaPadrao(t *testing.T) {
 	cmd.Env = append(os.Environ(), "ASSINADOR_TESTE_DO_CANAL=1")
 	saida, err := cmd.Output()
 	if err != nil {
-		t.Fatalf("o processo de teste falhou (3: não separou; 4: a cópia herdável; 5: sem o msvcrt): %v", err)
+		t.Fatalf("o processo de teste falhou (3: não separou; 4: a cópia herdável; 5: sem o msvcrt; 6: o original sem proteção): %v", err)
 	}
 	if string(saida) != "canal" {
 		t.Fatalf("a saída verdadeira recebeu %q: o que foi escrito na saída padrão vazou para o canal", saida)
