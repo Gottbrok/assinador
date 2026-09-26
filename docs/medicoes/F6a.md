@@ -37,10 +37,13 @@ nunca presumido.
 ## Pendente (a prova da F0 no Windows e o gate de saída da F6a, com o cartão e o Cairo)
 
 O programa, o gerador de manifestos e o `registrar-windows.ps1` saem do CI, no artefato
-`assinador-dev-windows-amd64`. Registro e diagnóstico, no PowerShell, sem administrador:
+`assinador-dev-windows-amd64`. Registro e diagnóstico, no PowerShell, sem administrador (os arquivos
+baixados são desbloqueados, e o script roda com a política liberada só para aquela execução; o
+SmartScreen pode pedir confirmação, porque o programa de desenvolvimento não é assinado):
 
 ```powershell
-.\registrar-windows.ps1 -Programa .\assinador-dev.exe -Manifestos .\manifestos-dev.exe
+Unblock-File .\assinador-dev.exe, .\manifestos-dev.exe, .\registrar-windows.ps1
+powershell -ExecutionPolicy Bypass -File .\registrar-windows.ps1 -Programa .\assinador-dev.exe -Manifestos .\manifestos-dev.exe
 & "$env:LOCALAPPDATA\ConfidataAssinadorDev\assinador.exe" diagnostico
 ```
 
@@ -58,5 +61,10 @@ O programa, o gerador de manifestos e o `registrar-windows.ps1` saem do CI, no a
       (`openssl`, ou a própria conferência do programa). PIN errado uma vez (o diálogo do Windows
       diz), e cancelar o diálogo (a página recebe `cancelado`).
 - [ ] Com o segundo token (SafeNet ou Gemalto), se veio.
+- [ ] Se algum provedor recusar a assinatura já na abertura da chave (`modulo-falhou` com a etapa
+      "abrir a chave", código `NTE_BAD_PUBLIC_KEY` `0x80090015` ou parecido): é a conferência da
+      chave contra o certificado (`CRYPT_ACQUIRE_COMPARE_KEY_FLAG`), que o CSP do fabricante pode
+      não saber fazer. Anotar o provedor e o código: ela é defesa redundante (o host confere a
+      assinatura contra o certificado depois) e pode sair para esse caso.
 - [ ] Anotar se, sem leitora conectada, o Windows responde `SCARD_E_NO_SERVICE` (é o que o texto do
       diagnóstico presume, pelo serviço Cartão Inteligente que só roda com leitora).

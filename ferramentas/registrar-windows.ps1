@@ -5,10 +5,13 @@ messaging pelo `manifestos.exe` (os mesmos IDs de extensão que o programa aceit
 escrito à mão) e grava as chaves HKCU que o Chrome, o Edge, o Chromium e o Firefox leem. Não pede
 administrador, e `-Remover` desfaz tudo.
 
-Os dois executáveis são os do build `dev` (o artefato `assinador-dev-windows-*` do CI):
+Os dois executáveis são os do build `dev` (o artefato `assinador-dev-windows-*` do CI). O Windows
+marca o que veio da internet e, por padrão, não roda script: desbloqueie os três arquivos baixados
+e rode o script com a política só para esta execução:
 
-  .\registrar-windows.ps1 -Programa .\assinador-dev.exe -Manifestos .\manifestos-dev.exe
-  .\registrar-windows.ps1 -Remover
+  Unblock-File .\assinador-dev.exe, .\manifestos-dev.exe, .\registrar-windows.ps1
+  powershell -ExecutionPolicy Bypass -File .\registrar-windows.ps1 -Programa .\assinador-dev.exe -Manifestos .\manifestos-dev.exe
+  powershell -ExecutionPolicy Bypass -File .\registrar-windows.ps1 -Remover
 #>
 param(
   [string]$Programa,
@@ -41,6 +44,9 @@ if (-not $Programa -or -not $Manifestos) {
 New-Item -ItemType Directory -Force -Path $Pasta | Out-Null
 $Instalado = Join-Path $Pasta 'assinador.exe'
 Copy-Item -Path (Resolve-Path $Programa).Path -Destination $Instalado -Force
+# A cópia leva a marca de "veio da internet" do original; sem ela, o navegador lança o programa sem
+# o aviso do SmartScreen no meio do native messaging.
+Unblock-File -Path $Instalado
 & (Resolve-Path $Manifestos).Path -saida $Pasta -programa $Instalado
 if ($LASTEXITCODE -ne 0) { throw "O manifestos.exe saiu com $LASTEXITCODE." }
 

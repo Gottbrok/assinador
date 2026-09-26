@@ -1,7 +1,9 @@
 // Package host é o modo padrão do programa: fala native messaging com a extensão pela entrada e
 // saída padrão, uma operação por vez (pedido concorrente é `ocupado`), e sai quando a entrada
 // fecha. Nada além das respostas vai para a saída padrão, e o host nunca carrega biblioteca
-// PKCS#11 no próprio processo: quem as carrega são os filhos do provedor.
+// PKCS#11 no próprio processo: quem as carrega são os filhos do provedor. No Windows é diferente:
+// o CSP ou o KSP do fabricante roda dentro do host (a API do sistema os carrega na hora de assinar),
+// e o canal se protege do que eles escrevem (`separarCanal`, em `cmd/assinador/canal_windows.go`).
 package host
 
 import (

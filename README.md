@@ -79,17 +79,22 @@ GOOS=windows GOARCH=amd64 go build -tags dev -o ../bin/manifestos-dev.exe ./cmd/
 ```
 
 O CI publica os dois, com o `registrar-windows.ps1`, no artefato `assinador-dev-windows-amd64` (e
-`-arm64`). No Windows, sem administrador:
+`-arm64`). No Windows, sem administrador. O que veio da internet é marcado e o PowerShell, por padrão,
+não roda script: primeiro se desbloqueiam os arquivos, e o script roda com a política liberada só
+para aquela execução:
 
 ```powershell
-.\registrar-windows.ps1 -Programa .\assinador-dev.exe -Manifestos .\manifestos-dev.exe
+Unblock-File .\assinador-dev.exe, .\manifestos-dev.exe, .\registrar-windows.ps1
+powershell -ExecutionPolicy Bypass -File .\registrar-windows.ps1 -Programa .\assinador-dev.exe -Manifestos .\manifestos-dev.exe
 & "$env:LOCALAPPDATA\ConfidataAssinadorDev\assinador.exe" diagnostico
-.\registrar-windows.ps1 -Remover
+powershell -ExecutionPolicy Bypass -File .\registrar-windows.ps1 -Remover
 ```
 
-O registro copia o programa para `%LOCALAPPDATA%\ConfidataAssinadorDev`, gera os manifestos (os
-IDs de extensão que o programa aceita) e grava as chaves `HKCU` do Chrome, do Edge, do Chromium e
-do Firefox; `-Remover` desfaz tudo. A chave dev do bilhete fica em
+O registro copia o programa para `%LOCALAPPDATA%\ConfidataAssinadorDev` (e tira da cópia a marca de
+"veio da internet"), gera os manifestos (os IDs de extensão que o programa aceita) e grava as chaves
+`HKCU` do Chrome, do Edge, do Chromium e do Firefox; `-Remover` desfaz tudo. O programa de
+desenvolvimento não é assinado (a assinatura de código é da F6b), e o SmartScreen pode pedir
+confirmação na primeira execução. A chave dev do bilhete fica em
 `%APPDATA%\confidata-assinador\chaves-dev.json`.
 
 Os testes do Windows rodam no CI (job `windows`, em x64 e arm64): certificados com chave de
