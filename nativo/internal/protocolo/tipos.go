@@ -97,11 +97,16 @@ type DadosDoConferir struct {
 	Certificado CertificadoParaConferir `json:"certificado"`
 }
 
-// CertificadoParaConferir é o certificado escolhido, como a janela o mostra.
+// CertificadoParaConferir é o certificado escolhido, como a janela o mostra. `ExigePin` diz se a
+// janela pede o PIN (token com caminho protegido de autenticação pede no teclado da leitora ou no
+// diálogo do fabricante, e a janela não mostra o campo), e `EstadoDoPin` é o aviso de tentativas:
+// os dois são os mesmos do `listar`, lidos na mesma enumeração que achou o certificado (F3).
 type CertificadoParaConferir struct {
-	Assunto   string `json:"assunto"`
-	Emissor   string `json:"emissor"`
-	ValidoAte string `json:"validoAte"`
+	Assunto     string `json:"assunto"`
+	Emissor     string `json:"emissor"`
+	ValidoAte   string `json:"validoAte"`
+	ExigePin    bool   `json:"exigePin"`
+	EstadoDoPin string `json:"estadoDoPin,omitempty"`
 }
 
 // DadosDoAssinar leva a assinatura RSA PKCS#1 v1.5 com DigestInfo SHA-256, em base64.

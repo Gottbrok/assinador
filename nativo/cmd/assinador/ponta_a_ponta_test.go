@@ -172,6 +172,9 @@ func TestPontaAPontaComSoftHSM(t *testing.T) {
 	if r["ok"] != true || d["documento"] != "Contrato da ponta a ponta" || d["certificado"].(map[string]any)["assunto"] != "TITULAR DE TESTE:***********" {
 		t.Fatalf("conferir: %v", r)
 	}
+	if d["certificado"].(map[string]any)["exigePin"] != true {
+		t.Fatalf("conferir: o SoftHSM exige PIN pelo C_Login, e a janela precisa saber: %v", r)
+	}
 
 	r = s.pedir(t, "assinar", map[string]string{"ref": ref, "digest": dig, "bilhete": s.bilhete(t, dig, ref), "pin": "000000"})
 	if codigo(r) != "pin-incorreto" {

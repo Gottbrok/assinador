@@ -65,7 +65,7 @@ quando a entrada fecha, e os filhos dos módulos morrem com ele.
 |---|---|---|
 | `ola` | nenhum | `{ versao, protocolo: 1, plataforma }` (a extensão acrescenta a versão dela) |
 | `listar` | nenhum | `{ certificados: [{ ref, der, provedor, rotuloDoProvedor, leitor?, exigePin, estadoDoPin? }], avisos: [texto] }` |
-| `conferir` | `{ ref, digest, bilhete }` | `{ emissor, organizacao, documento, finalidade, expiraEm, certificado: { assunto, emissor, validoAte } }` |
+| `conferir` | `{ ref, digest, bilhete }` | `{ emissor, organizacao, documento, finalidade, expiraEm, certificado: { assunto, emissor, validoAte, exigePin, estadoDoPin? } }` |
 | `assinar` | `{ ref, digest, bilhete, pin? }` | `{ assinatura }` |
 | `diagnostico` | nenhum | `{ relatorio, texto }` |
 
@@ -78,7 +78,10 @@ quando a entrada fecha, e os filhos dos módulos morrem com ele.
 - `conferir` devolve o que a janela de confirmação mostra: o `doc`, a `org`, a `fin` e o `exp` do
   bilhete (este em RFC 3339, UTC), e o certificado escolhido. O `assunto` sai com os dígitos
   trocados por `*`: o CN ICP-Brasil é `NOME:CPF`, e o programa não interpreta campo ICP-Brasil (a
-  leitura de nome, CPF e empresa é da biblioteca, no navegador).
+  leitura de nome, CPF e empresa é da biblioteca, no navegador). `exigePin` e `estadoDoPin` são os
+  mesmos do `listar`, da mesma enumeração que achou o certificado: a janela mostra o campo de PIN só
+  com `exigePin` e o aviso de tentativas pelo `estadoDoPin` (F3). A extensão não precisa listar de
+  novo para saber.
 - `assinar` confere tudo de novo: o programa não guarda estado entre `conferir` e `assinar`.
 - `pin`: texto de até 64 bytes, sem caractere de controle. Só vai ao cartão quando o token exige
   PIN pelo `C_Login`; se o token tem caminho protegido de autenticação (teclado na leitora, ou

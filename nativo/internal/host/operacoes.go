@@ -112,7 +112,7 @@ func (h *Host) prepararAto(ctx context.Context, p mensagens.Pedido) (achado, *x5
 }
 
 func (h *Host) conferir(ctx context.Context, p mensagens.Pedido) (protocolo.DadosDoConferir, *protocolo.Erro) {
-	_, x, b, e := h.prepararAto(ctx, p)
+	a, x, b, e := h.prepararAto(ctx, p)
 	if e != nil {
 		return protocolo.DadosDoConferir{}, e
 	}
@@ -123,9 +123,11 @@ func (h *Host) conferir(ctx context.Context, p mensagens.Pedido) (protocolo.Dado
 		Finalidade:  b.Fin,
 		ExpiraEm:    time.Unix(b.Exp, 0).UTC().Format(time.RFC3339),
 		Certificado: protocolo.CertificadoParaConferir{
-			Assunto:   assinatura.Mascarar(x.Subject.CommonName),
-			Emissor:   x.Issuer.CommonName,
-			ValidoAte: x.NotAfter.UTC().Format(time.RFC3339),
+			Assunto:     assinatura.Mascarar(x.Subject.CommonName),
+			Emissor:     x.Issuer.CommonName,
+			ValidoAte:   x.NotAfter.UTC().Format(time.RFC3339),
+			ExigePin:    a.certificado.ExigePin,
+			EstadoDoPin: a.certificado.EstadoDoPin,
 		},
 	}, nil
 }

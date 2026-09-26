@@ -272,6 +272,15 @@ func TestConferirMostraOBilheteEOCertificadoSemCpf(t *testing.T) {
 	if d.ExpiraEm != time.Unix(agoraFixo.Unix()+290, 0).UTC().Format(time.RFC3339) {
 		t.Fatalf("expira: %s", d.ExpiraEm)
 	}
+	// A janela pede o PIN só quando o token exige, e mostra o aviso de tentativas (F3).
+	if !d.Certificado.ExigePin || d.Certificado.EstadoDoPin != protocolo.PinOk {
+		t.Fatalf("PIN do certificado: %+v", d.Certificado)
+	}
+	semPin := novoCenario(t, false)
+	r = semPin.host.atender(context.Background(), pedido(t, "conferir", origemDaPagina, map[string]string{"ref": semPin.ref, "digest": digest, "bilhete": semPin.emitir(t, digest, semPin.ref, nil)}))
+	if d, ok := r.Dados.(protocolo.DadosDoConferir); !r.OK || !ok || d.Certificado.ExigePin {
+		t.Fatalf("token com caminho protegido não pede PIN na janela: %+v", r)
+	}
 }
 
 func TestAssinarLevaOPinSoQuandoPrecisaEZera(t *testing.T) {
