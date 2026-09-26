@@ -51,7 +51,10 @@ fundo que `dados`, e conteúdo depois do objeto. `v` é exatamente o número `1`
 (`chrome-extension://<id>/` no Chrome e no Edge, mais `--parent-window=<n>` no Windows; o caminho
 do manifesto e o ID no Firefox). Fora das nossas extensões, toda operação responde
 `origem-recusada` com o detalhe `chamador`. O ID do Firefox é fixo (`assinador@confidata.com.br`);
-os do Chrome e do Edge entram na F7a (os de desenvolvimento, na F3).
+os do Chrome e do Edge das lojas entram na F7a. O build de desenvolvimento aceita também o ID que
+o Chrome e o Edge derivam da chave pública de `extensao-dev.json` (provisório: a F3 o troca pelo do
+rascunho do item na loja). A lista que o programa aceita é a MESMA que vai ao `allowed_origins`
+dos manifestos (`nativo/cmd/manifestos`).
 
 **Uma operação por vez.** Pedido que chega com outra em curso recebe `ocupado`. O programa sai
 quando a entrada fecha, e os filhos dos módulos morrem com ele.
@@ -166,10 +169,19 @@ da biblioteca; o programa não os produz.
 
 ## Módulos PKCS#11 (Linux e macOS)
 
-Descoberta, em ordem, sem repetir o mesmo arquivo (caminho real): o catálogo MEDIDO
-(`nativo/internal/catalogo`), `/etc/confidata-assinador/modulos.d/*.conf` e
-`~/.config/confidata-assinador/modulos` (um caminho absoluto por linha; `#` comenta). O p11-kit
-entra na F2b.
+Descoberta, em ordem, sem repetir o mesmo arquivo (caminho real):
+
+1. o catálogo MEDIDO (`nativo/internal/catalogo`);
+2. os registros do p11-kit (`~/.config/pkcs11/modules`, `/etc/pkcs11/modules` e
+   `/usr/share/p11-kit/modules`, `*.module`): o de mesmo nome numa pasta anterior esconde os das
+   seguintes; o módulo por nome, sem caminho, se resolve no `$(libdir)/pkcs11` do Debian, do Ubuntu
+   e do Fedora; `enable-in` sem `assinador` e `disable-in` com ele tiram o registro; o
+   `p11-kit-trust` (repositório de ACs) e o `gnome-keyring` (senhas) ficam de fora;
+3. `/etc/confidata-assinador/modulos.d/*.conf` e `~/.config/confidata-assinador/modulos` (um
+   caminho absoluto por linha; `#` comenta).
+
+O que foi pedido e não existe (do catálogo, registrado no p11-kit sem o arquivo, ou da
+configuração) vai ao diagnóstico como `ausente`.
 
 Cada módulo roda num processo filho (`assinador modulo --caminho <x>`), que o próprio programa
 lança, por operação. O filho lê o pedido no descritor 3 e responde no 4, com o mesmo quadro; a
@@ -181,3 +193,49 @@ processo derruba só o filho; a lista segue com os outros módulos e um aviso. P
 
 Certificados iguais vistos por dois módulos (o SafeSign e o OpenSC no mesmo cartão) são fundidos
 por `ref`, e fica o do fabricante.
+
+## Diagnóstico
+
+A operação `diagnostico` e o modo `assinador diagnostico` do terminal (`--json` para o relatório)
+devolvem o MESMO relatório (`nativo/internal/diagnostico`), para o suporte, sem CPF:
+
+```
+{ programa: { versao, protocolo, plataforma }, sistema,
+  pcsc: { estado: 'ok' | 'sem-biblioteca' | 'sem-servico' | 'sem-leitora' | 'falhou', detalhe? },
+  leitoras: [{ nome, comCartao, mudo?, atr?, cartao?, sugestao? }],
+  provedores: [{ nome, caminho?, origem?, estado: 'carregado' | 'ausente' | 'falhou', certificados, detalhe? }],
+  certificados: [{ titular, emissor?, validoAte?, situacao, provedor, leitor? }],
+  avisos: [frase] }
+```
+
+- **PC/SC:** só estado. O programa lê as leitoras e o ATR de cada cartão (`SCardGetStatusChange`
+  com prazo zero), nunca conecta ao cartão e nunca manda comando a ele. A biblioteca (o pcsc-lite,
+  no Linux) é aberta com `dlopen` na hora da consulta: sem ela, o programa abre do mesmo jeito, e o
+  diagnóstico diz o que instalar. Passados 5 s sem resposta do `pcscd`, o relatório diz que ele não
+  respondeu.
+- **Sugestão pelo ATR:** o ATR que está no catálogo medido diz qual programa do fabricante lê o
+  cartão (`cartao` e `sugestao`); sem esse programa instalado, o aviso manda instalá-lo.
+- **Certificados:** o titular é o CN com os dígitos trocados por `*` (o CN ICP-Brasil é
+  `NOME:CPF`); o emissor sai como está, exceto no autoassinado, em que ele é o próprio titular. O de
+  AC não entra. `situacao`: `valido`, `vencido`, `ainda-nao-valido`, `chave-nao-rsa`,
+  `sem-uso-de-assinatura` ou `ilegivel`.
+- **Avisos:** frases em português para a pessoa (a biblioteca do PC/SC falta; o `pcscd` não está
+  rodando; nenhuma leitora; nenhuma leitora com cartão; o cartão não responde; o cartão usa um
+  programa que não está instalado; o programa instalado não achou certificado; o cartão não foi lido
+  por programa nenhum; um programa de cartão falhou; nenhum programa de cartão; certificado
+  vencido). O `texto` é o relatório em frases, uma linha por item.
+
+O host protege o canal do que o C escreve: no modo host, o descritor 1 aponta para `/dev/null`
+desde o início, e só o canal com a extensão usa a cópia do descritor verdadeiro (que os filhos não
+herdam).
+
+## Pacotes para Linux
+
+`instaladores/linux/empacotar.sh` monta os pacotes de DESENVOLVIMENTO (o programa com a tag `dev`
+e os manifestos com o ID provisório): o `.deb` da arquitetura da máquina e, no amd64, o `.rpm`. O
+programa vai para `/usr/lib/confidata-assinador/assinador`; o manifesto do Chrome, do Chromium e do
+Edge para `/etc/opt/chrome`, `/etc/chromium` e `/etc/opt/edge` (`native-messaging-hosts/`), e o do
+Firefox para `/usr/lib/mozilla` (e `/usr/lib64/mozilla` no `.rpm`). Recomenda o `pcscd` e o
+`libccid` (no Fedora, `pcsc-lite` e `pcsc-lite-ccid`). `instaladores/linux/testar-pacotes.sh` prova
+os dois em contêiner: instala, roda, remove, e nada sobra. Os pacotes de produção, assinados e com
+os IDs das lojas, são da F7a.

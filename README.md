@@ -16,8 +16,9 @@ Em construção. Licença Apache-2.0.
 
 | Pasta | O que é |
 |---|---|
-| `nativo/` | O programa, em Go. `cmd/assinador` (modos host e módulo) e os pacotes de `internal/` |
-| `protocolo/` | [`PROTOCOLO.md`](protocolo/PROTOCOLO.md), as chaves públicas de produção e as fixtures do bilhete |
+| `nativo/` | O programa, em Go. `cmd/assinador` (modos host, módulo e diagnóstico), `cmd/manifestos` (os manifestos dos navegadores) e os pacotes de `internal/` |
+| `protocolo/` | [`PROTOCOLO.md`](protocolo/PROTOCOLO.md), as chaves públicas de produção, a chave pública da extensão de desenvolvimento e as fixtures do bilhete |
+| `instaladores/linux/` | O `.deb` e o `.rpm` (`empacotar.sh`) e a prova deles em contêiner (`testar-pacotes.sh`) |
 | `ferramentas/` | Prova e medição (F0) e o `host-teste`, que fala com o programa como a extensão. Nunca vai para release |
 | `docs/medicoes/` | O que foi medido com cartão real, com data e equipamento |
 
@@ -38,7 +39,31 @@ go build -tags dev -o ../bin/assinador-dev ./cmd/assinador  # desenvolvimento: a
 ```
 
 `go generate ./internal/bilhete` regenera `internal/bilhete/chaves.go` a partir de
-`protocolo/chaves-publicas.json`; um teste reprova se os dois divergirem.
+`protocolo/chaves-publicas.json`; um teste reprova se os dois divergirem. O desenho das estruturas
+do PC/SC se confere contra os cabeçalhos do pcsc-lite (`libpcsclite-dev`):
+`CGO_CFLAGS="$(pkg-config --cflags libpcsclite)" go test -tags pcsc_cabecalho ./internal/pcsc/`.
+
+## Diagnóstico
+
+```sh
+bin/assinador diagnostico          # em frases, para o suporte (sem CPF)
+bin/assinador diagnostico --json   # o mesmo relatório, em JSON
+```
+
+Mostra o sistema, as leitoras e o ATR de cada cartão (com o programa do fabricante que o lê,
+quando o ATR está no catálogo medido), os programas de cartão (módulos PKCS#11) com o estado de
+cada um, os certificados com o nome mascarado, e avisos em frase ("o serviço pcscd não está
+rodando", "este cartão usa o SafeSign, que não está instalado").
+
+## Pacotes para Linux
+
+```sh
+instaladores/linux/empacotar.sh 0.1.0~dev.1 dist   # o .deb desta arquitetura e, no amd64, o .rpm
+instaladores/linux/testar-pacotes.sh dist          # instala, roda e remove em contêiner (Docker)
+```
+
+São pacotes de DESENVOLVIMENTO: o programa com a tag `dev` e os manifestos com o ID provisório da
+extensão. Os de produção, assinados e com os IDs das lojas, vêm com a publicação.
 
 ## Testar com o cartão, sem navegador
 

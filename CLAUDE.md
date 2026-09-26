@@ -63,13 +63,20 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
 11. **`C_Login` só por `entrarNoToken`** (`nativo/internal/pkcs11/login.go`, que copia o PIN para
     memória do C e a zera antes do `free`). 🚫 O `Login` do `miekg/pkcs11` no programa: ele usa
     `C.CString` e não zera (achado da F0). Só o apoio de teste do SoftHSM o usa, para montar o token.
-12. **A saída padrão é do canal.** No modo host, só o host escreve no descritor da saída padrão (o
-    `main` troca o `os.Stdout` por `/dev/null`); o filho de módulo fala pelos descritores 3 e 4, com
-    a saída padrão em `/dev/null`. 🚫 Carregar biblioteca PKCS#11 no processo do host.
-13. **Chaves e fixtures têm um só escritor.** `protocolo/chaves-publicas.json` lista só chave de
-    produção, e `nativo/internal/bilhete/chaves.go` sai dele por `go generate ./internal/bilhete`
+12. **A saída padrão é do canal.** No modo host, o `main` aponta o DESCRITOR 1 para `/dev/null`
+    (`separarCanal`) e só o host escreve na cópia do descritor verdadeiro: o que o C escreve (o
+    pcsc-lite roda no processo do host) cai no vazio. O filho de módulo fala pelos descritores 3 e 4,
+    com a saída padrão em `/dev/null`. 🚫 Carregar biblioteca PKCS#11 no processo do host; 🚫 mandar
+    comando ao cartão pelo PC/SC (ele serve só para ler o estado das leitoras e o ATR).
+13. **Chaves, IDs e fixtures têm um só escritor.** `protocolo/chaves-publicas.json` lista só chave
+    de produção, e `nativo/internal/bilhete/chaves.go` sai dele por `go generate ./internal/bilhete`
     (🚫 à mão). As fixtures do bilhete vêm da biblioteca por `git archive` da tag, com as somas em
-    `protocolo/fixtures/ORIGEM.md` (🚫 editar fixture aqui).
+    `protocolo/fixtures/ORIGEM.md` (🚫 editar fixture aqui). Os IDs de extensão que o programa aceita
+    (`origem.ExtensoesChrome`) são os que vão aos manifestos (`cmd/manifestos`): 🚫 escrever
+    manifesto à mão. O ID de desenvolvimento só existe no build `dev`.
+14. **Pacote de desenvolvimento não é release.** Os `.deb` e `.rpm` de `instaladores/linux` levam o
+    build `dev`; o de produção (sem a tag, com os IDs das lojas, assinado) é da F7a. Mudou o pacote,
+    rode `instaladores/linux/testar-pacotes.sh`: a remoção não pode deixar arquivo nem pasta.
 
 ## Como se trabalha aqui
 

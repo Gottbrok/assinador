@@ -47,3 +47,31 @@
     código no lugar da frase, o que muda o protocolo na biblioteca.
   - Aceito por desenho: `CKR_USER_ALREADY_LOGGED_IN` (middleware que compartilha o login entre
     aplicações) segue sem conferir o PIN digitado, como nos outros assinadores.
+- F2b: o diagnóstico, o catálogo por ATR, o p11-kit e os pacotes para Linux.
+  - `pcsc`: as leitoras e o ATR de cada cartão pelo pcsc-lite, só estado (nunca conecta ao cartão),
+    com a biblioteca aberta por `dlopen` na hora (o programa abre sem ela) e o desenho das
+    estruturas conferido contra os cabeçalhos de verdade (tag `pcsc_cabecalho`, no CI).
+  - `diagnostico`: o relatório e o texto do suporte, sem CPF (o titular mascarado; o emissor do
+    autoassinado também), com a sugestão do programa do fabricante pelo ATR e os avisos em frase;
+    responde à operação `diagnostico` e ao modo novo `assinador diagnostico [--json]` do terminal.
+    O `pcscd` que não responde em 5 s não segura o relatório.
+  - `catalogo`: o tipo `ATR` (o cartão medido e o módulo que o lê), ainda sem entrada: o ATR do
+    cartão Certisign do Cairo entra no gate, lido pelo diagnóstico. O OpenSC ganhou o caminho do
+    Fedora (`/usr/lib64/opensc-pkcs11.so`), medido num Fedora 43 em contêiner.
+  - `pkcs11`: os registros do p11-kit como segunda fonte (o da pessoa sobre o de `/etc`, este
+    sobre o do pacote; `enable-in` e `disable-in`; o `p11-kit-trust` e o `gnome-keyring` de fora; o
+    módulo por nome resolvido no `$(libdir)/pkcs11`), e a origem de cada módulo no diagnóstico.
+  - `main`: o descritor 1 do host aponta para `/dev/null` desde o início, e só o canal usa a cópia
+    do descritor verdadeiro (com CLOEXEC): o que o C escreve (o pcsc-lite, agora no processo do
+    host) não corrompe o quadro.
+  - `origem` e `cmd/manifestos`: o ID provisório da extensão de desenvolvimento, derivado da chave
+    PÚBLICA em `protocolo/extensao-dev.json` (a privada não existe; a F3 troca pela do rascunho da
+    loja), aceito só no build `dev` (a catraca confere que o release não o contém); os manifestos
+    dos navegadores saem da MESMA lista que o programa confere.
+  - `instaladores/linux`: o `.deb` (amd64 e arm64) e o `.rpm` (x86_64) de DESENVOLVIMENTO pelo
+    `nfpm`, e a prova em contêiner (instala, roda, remove, nada sobra); no CI, compilados nativos em
+    cada arquitetura e guardados como artefato, sem assinatura até a F7a.
+  - Divergências do plano: os pacotes da F2b levam o build `dev` (é o que o teste manual das F4b e
+    F5 precisa, e o release não aceita bilhete nenhum até a F7a); o ATR do Cairo, que o plano punha
+    no escopo, espera o gate, porque não havia leitora nesta máquina; os avisos e o texto do
+    diagnóstico são frases em português, como os `avisos` do `listar` (a mesma decisão da F3).
