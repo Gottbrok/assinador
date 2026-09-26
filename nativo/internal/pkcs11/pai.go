@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
 	"sync"
 	"time"
 
@@ -88,7 +89,18 @@ func (p *Provedor) conversar(ctx context.Context, m Modulo, pedido pedidoAoModul
 		return respostaDoModulo{}, err
 	}
 	terminou := make(chan error, 1)
-	go func() { terminou <- cmd.Wait() }()
+	go func() {
+		err := cmd.Wait()
+		// O filho saiu: o que ele escreveu já está no canal. Um auxiliar da biblioteca que herdou o
+		// descritor da resposta o mantém aberto, e a leitura esperaria o prazo inteiro; ela espera só
+		// `esperaDoFim` pelo que ficou no canal.
+		limite := time.Now().Add(esperaDoFim)
+		if prazoFinal, ok := ctx.Deadline(); ok && prazoFinal.Before(limite) {
+			limite = prazoFinal
+		}
+		_ = leResposta.SetReadDeadline(limite)
+		terminou <- err
+	}()
 
 	corpo, _ := json.Marshal(pedido)
 	escrita := mensagens.EscreverQuadro(escrevePedido, corpo, tetoDoPedido)
@@ -139,11 +151,20 @@ func erroDaConversa(m Modulo, err error, noPrazo protocolo.Codigo) *protocolo.Er
 	return protocolo.Novo(protocolo.ModuloFalhou, "módulo "+m.Nome+": "+err.Error())
 }
 
+// erroDaResposta traduz a recusa que o filho mandou, conferindo o código e as tentativas contra o
+// vocabulário do protocolo: o que sai daqui chega à página.
 func erroDaResposta(r respostaDoModulo) *protocolo.Erro {
 	if r.Erro == nil {
 		return protocolo.Novo(protocolo.Interno, "resposta do módulo sem ok nem erro")
 	}
-	return &protocolo.Erro{Codigo: r.Erro.Codigo, Detalhe: r.Erro.Detalhe, Tentativas: r.Erro.Tentativas}
+	if !slices.Contains(protocolo.Codigos, r.Erro.Codigo) {
+		return protocolo.Novo(protocolo.Interno, "código desconhecido na resposta do módulo")
+	}
+	tentativas := r.Erro.Tentativas
+	if tentativas != protocolo.TentativasPoucas && tentativas != protocolo.TentativasUltima {
+		tentativas = ""
+	}
+	return &protocolo.Erro{Codigo: r.Erro.Codigo, Detalhe: r.Erro.Detalhe, Tentativas: tentativas}
 }
 
 type resultadoDeListar struct {

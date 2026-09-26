@@ -184,22 +184,32 @@ func (s *sessaoDeTrabalho) chavesPrivadas(sessao p11.SessionHandle) []chavePriva
 }
 
 // casar acha a chave do certificado: pelo CKA_ID (o comum) ou, quando o ID falta ou não casa, pelo
-// módulo RSA da chave igual ao do certificado.
+// módulo RSA da chave igual ao do certificado. O CKA_ID só vale se a chave não DESMENTIR o
+// certificado: a chave com o mesmo ID cujo módulo se lê e é outro (cartão renovado que manteve o ID
+// da chave antiga) é pulada, e a busca segue pelo módulo.
 func casar(c certificadoNoSlot, chaves []chavePrivada) (chavePrivada, bool) {
+	var moduloDoCertificado []byte
+	if c.cert != nil {
+		if pub, ok := c.cert.PublicKey.(*rsa.PublicKey); ok {
+			moduloDoCertificado = pub.N.Bytes()
+		}
+	}
+	mesmoModulo := func(k chavePrivada) bool {
+		return moduloDoCertificado != nil && len(k.modulo) > 0 && bytes.Equal(bytes.TrimLeft(k.modulo, "\x00"), moduloDoCertificado)
+	}
+	desmente := func(k chavePrivada) bool {
+		return moduloDoCertificado != nil && len(k.modulo) > 0 && !mesmoModulo(k)
+	}
 	if len(c.id) > 0 {
 		for _, k := range chaves {
-			if bytes.Equal(k.id, c.id) {
+			if bytes.Equal(k.id, c.id) && !desmente(k) {
 				return k, true
 			}
 		}
 	}
-	if c.cert != nil {
-		if pub, ok := c.cert.PublicKey.(*rsa.PublicKey); ok {
-			for _, k := range chaves {
-				if len(k.modulo) > 0 && bytes.Equal(bytes.TrimLeft(k.modulo, "\x00"), pub.N.Bytes()) {
-					return k, true
-				}
-			}
+	for _, k := range chaves {
+		if mesmoModulo(k) {
+			return k, true
 		}
 	}
 	return chavePrivada{}, false

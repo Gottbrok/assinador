@@ -3,6 +3,9 @@
 package pkcs11
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"errors"
 	"testing"
 
@@ -54,6 +57,49 @@ func TestErroDaAssinatura(t *testing.T) {
 		if e := erroDaAssinatura("C_Sign", p11.Error(ckr)); e.Codigo != codigo {
 			t.Errorf("%x: %v", ckr, e)
 		}
+	}
+}
+
+// O código que o filho manda só passa se for do vocabulário, e as tentativas só com os dois valores.
+func TestErroDaRespostaConfereOVocabulario(t *testing.T) {
+	e := erroDaResposta(respostaDoModulo{Erro: &erroDoModulo{Codigo: "inventado", Detalhe: "x"}})
+	if e.Codigo != protocolo.Interno {
+		t.Fatalf("código fora do vocabulário passou: %+v", e)
+	}
+	e = erroDaResposta(respostaDoModulo{Erro: &erroDoModulo{Codigo: protocolo.PinIncorreto, Tentativas: "muitas"}})
+	if e.Codigo != protocolo.PinIncorreto || e.Tentativas != "" {
+		t.Fatalf("tentativas fora do vocabulário passaram: %+v", e)
+	}
+	e = erroDaResposta(respostaDoModulo{Erro: &erroDoModulo{Codigo: protocolo.PinIncorreto, Tentativas: protocolo.TentativasUltima}})
+	if e.Tentativas != protocolo.TentativasUltima {
+		t.Fatalf("%+v", e)
+	}
+	if e := erroDaResposta(respostaDoModulo{}); e.Codigo != protocolo.Interno {
+		t.Fatalf("resposta vazia: %+v", e)
+	}
+}
+
+// O CKA_ID só vale se a chave não desmentir o certificado: no cartão renovado que manteve o ID da
+// chave antiga, a chave nova se acha pelo módulo.
+func TestCasarNaoAceitaIdDesmentidoPeloModulo(t *testing.T) {
+	certKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	velha, _ := rsa.GenerateKey(rand.Reader, 2048)
+	c := certificadoNoSlot{id: []byte{1}, cert: &x509.Certificate{PublicKey: &certKey.PublicKey}}
+	chaves := []chavePrivada{
+		{handle: 10, id: []byte{1}, modulo: velha.N.Bytes()},
+		{handle: 20, id: []byte{2}, modulo: append([]byte{0}, certKey.N.Bytes()...)},
+	}
+	if k, ok := casar(c, chaves); !ok || k.handle != 20 {
+		t.Fatalf("casou com %d (%v)", k.handle, ok)
+	}
+	// Sem módulo legível, o CKA_ID segue valendo (o token que não deixa ler o módulo da privada).
+	chaves[0].modulo = nil
+	if k, ok := casar(c, chaves[:1]); !ok || k.handle != 10 {
+		t.Fatalf("sem módulo: %d (%v)", k.handle, ok)
+	}
+	// Ninguém com o ID nem com o módulo: sem chave.
+	if _, ok := casar(c, []chavePrivada{{handle: 30, id: []byte{9}, modulo: velha.N.Bytes()}}); ok {
+		t.Fatal("casou com chave alheia")
 	}
 }
 

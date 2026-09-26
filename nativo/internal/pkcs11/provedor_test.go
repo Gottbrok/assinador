@@ -343,6 +343,24 @@ func TestModuloQueTravaNoFimNaoSeguraAResposta(t *testing.T) {
 	}
 }
 
+// Um filho que morre deixando um processo auxiliar da biblioteca vivo (ele herdou o descritor da
+// resposta, que então não fecha) não prende o pai até o prazo inteiro: com o filho morto, a leitura
+// espera só `esperaDoFim` pelo que ficou no canal.
+func TestFilhoMortoComAjudanteNaoPrendeOPai(t *testing.T) {
+	t.Setenv("ASSINADOR_MODULO_DE_TESTE", "cai-com-ajudante")
+	m := Modulo{Caminho: compilarModuloDeTeste(t), Nome: "ajudante", Rotulo: "Módulo com ajudante"}
+	p := provedorDe(t, m)
+	p.PrazoDeListar = 10 * time.Second
+	inicio := time.Now()
+	_, avisos := p.Listar(context.Background())
+	if d := time.Since(inicio); d > esperaDoFim+time.Second+500*time.Millisecond {
+		t.Fatalf("o pai esperou o auxiliar: %s", d)
+	}
+	if len(avisos) != 1 {
+		t.Fatalf("o módulo que caiu devia virar aviso: %v", avisos)
+	}
+}
+
 // Dois módulos vendo o mesmo cartão (o SafeSign e o OpenSC): a lista funde por `ref` e fica com o
 // do fabricante, venha ele antes ou depois do genérico.
 func TestFusaoPorRefPrefereOFabricante(t *testing.T) {

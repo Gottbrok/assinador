@@ -6,7 +6,9 @@
  *   (ausente) ou "cai": aborta no C_Initialize, como uma biblioteca com defeito;
  *   "trava": dorme para sempre no C_Initialize, como uma biblioteca esperando um cartão;
  *   "trava-no-fim": responde normalmente (zero slots) e dorme para sempre no C_Finalize, como uma
- *   biblioteca que trava ao encerrar DEPOIS de ter feito o trabalho.
+ *   biblioteca que trava ao encerrar DEPOIS de ter feito o trabalho;
+ *   "cai-com-ajudante": lança um processo auxiliar (que herda os descritores e vive 5 s) e aborta no
+ *   C_Initialize, como uma biblioteca que deixa um serviço próprio rodando.
  *
  * Só os testes o compilam (gcc -shared -fPIC). Não vai para release.
  */
@@ -47,6 +49,10 @@ static CK_RV inicializar(void *argumentos) {
 	(void)argumentos;
 	if (modo("trava-no-fim")) return CKR_OK;
 	if (modo("trava")) dormir_para_sempre();
+	if (modo("cai-com-ajudante") && fork() == 0) {
+		sleep(5);
+		_exit(0);
+	}
 	abort();
 	return CKR_OK;
 }

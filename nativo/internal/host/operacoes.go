@@ -28,7 +28,9 @@ type achado struct {
 	provedor    assinatura.Provedor
 }
 
-// listarTodos junta os certificados de todos os provedores, sem repetir `ref` (fica o primeiro).
+// listarTodos junta os certificados de todos os provedores, sem repetir `ref` (fica o primeiro). A
+// `ref` é RECALCULADA do DER aqui, e não aceita do provedor: é contra ela que o `cer` do bilhete é
+// conferido, e cada provedor (o PKCS#11 hoje, o do Windows na F6a) a monta do seu jeito.
 func (h *Host) listarTodos(ctx context.Context) ([]achado, []string) {
 	var achados []achado
 	var avisos []string
@@ -37,7 +39,7 @@ func (h *Host) listarTodos(ctx context.Context) ([]achado, []string) {
 		certs, av := p.Listar(ctx)
 		avisos = append(avisos, av...)
 		for _, c := range certs {
-			if vistos[c.Ref] {
+			if c.Ref != assinatura.Ref(c.DER) || vistos[c.Ref] {
 				continue
 			}
 			vistos[c.Ref] = true

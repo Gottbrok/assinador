@@ -359,6 +359,25 @@ func TestCertificadoVencidoOuAusenteNaoAssina(t *testing.T) {
 	}
 }
 
+// A ref que o provedor declara não é aceita: o host a recalcula do DER. Um provedor que pusesse a
+// ref de outro certificado não faria o bilhete daquele valer para este.
+func TestRefRecalculadaDoDer(t *testing.T) {
+	c := novoCenario(t, true)
+	outroDer := c.provedor.certs[1].DER
+	c.provedor.certs[0].DER = outroDer // a ref continua a do titular, o DER é outro
+	digest := resumo("documento")
+	r := c.host.atender(context.Background(), pedido(t, "conferir", origemDaPagina, map[string]string{"ref": c.ref, "digest": digest, "bilhete": c.emitir(t, digest, c.ref, nil)}))
+	if r.OK || r.Erro.Codigo != protocolo.CertificadoNaoEncontrado {
+		t.Fatalf("ref que não é do DER passou: %+v", r)
+	}
+	lista := c.host.atender(context.Background(), pedido(t, "listar", origemDaPagina, nil)).Dados.(protocolo.DadosDoListar)
+	for _, cert := range lista.Certificados {
+		if cert.Ref == c.ref {
+			t.Fatal("a lista trouxe a ref que não é do DER")
+		}
+	}
+}
+
 func TestDiagnostico(t *testing.T) {
 	c := novoCenario(t, true)
 	r := c.host.atender(context.Background(), pedido(t, "diagnostico", origemDaPagina, nil))
@@ -450,6 +469,28 @@ func TestExecutarUmaOperacaoPorVez(t *testing.T) {
 	can.escreve.Close()
 	if err := <-fim; err != nil {
 		t.Fatalf("a entrada fechada devia encerrar sem erro: %v", err)
+	}
+}
+
+// O cancelamento (que é como o SIGTERM chega ao host) encerra o programa sem esperar a entrada
+// fechar; antes, o sinal era engolido e o processo seguia vivo.
+func TestExecutarEncerraNoCancelamento(t *testing.T) {
+	c := novoCenario(t, true)
+	leEntrada, escreveEntrada := io.Pipe()
+	defer escreveEntrada.Close()
+	c.host.Entrada = leEntrada
+	c.host.Saida = io.Discard
+	ctx, cancelar := context.WithCancel(context.Background())
+	fim := make(chan error, 1)
+	go func() { fim <- c.host.Executar(ctx) }()
+	cancelar()
+	select {
+	case err := <-fim:
+		if err != nil {
+			t.Fatalf("o cancelamento devia encerrar sem erro: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("o host não encerrou no cancelamento")
 	}
 }
 

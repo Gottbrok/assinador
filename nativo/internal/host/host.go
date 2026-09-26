@@ -86,6 +86,11 @@ func (h *Host) Executar(ctx context.Context) error {
 		case r := <-respostas:
 			ocupado = false
 			h.responder(r)
+		case <-ctx.Done():
+			// SIGTERM ou SIGINT (o `main` os troca pelo cancelamento): a operação em curso é
+			// cancelada, o que mata os filhos, e o programa sai sem esperar a entrada fechar.
+			emCurso.Wait()
+			return nil
 		case err := <-fim:
 			cancelar()
 			emCurso.Wait()
