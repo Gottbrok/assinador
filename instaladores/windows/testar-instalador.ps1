@@ -44,11 +44,11 @@ $PastaDeLogs = (Resolve-Path -LiteralPath $PastaDeLogs).Path
 $Nome ='br.com.confidata.assinador'
 $IdDev = (Get-Content -LiteralPath (Join-Path $Raiz 'protocolo\extensao-dev.json') -Raw | ConvertFrom-Json).idChrome
 if ($Escopo -eq 'usuario') {
-  $Pasta = Join-Path $env:LOCALAPPDATA 'Programs\Confidata Assinador'
+  $Pasta = Join-Path $env:LOCALAPPDATA 'Programs\Assinador uShield'
   $Colmeia = 'HKCU:'
   $NomeDaColmeia = 'HKEY_CURRENT_USER'
 } else {
-  $Pasta = Join-Path $env:ProgramFiles 'Confidata Assinador'
+  $Pasta = Join-Path $env:ProgramFiles 'Assinador uShield'
   $Colmeia = 'HKLM:'
   $NomeDaColmeia = 'HKEY_LOCAL_MACHINE'
 }

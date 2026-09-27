@@ -106,8 +106,8 @@ assinatura de código:
 
 | MSI | Instala em | Chaves | Para quem |
 |---|---|---|---|
-| `assinador-dev-windows-<arq>-usuario.msi` | `%LOCALAPPDATA%\Programs\Confidata Assinador` | `HKCU` | a pessoa, sem administrador (dois cliques ou `msiexec /i`) |
-| `assinador-dev-windows-<arq>-maquina.msi` | `%ProgramFiles%\Confidata Assinador` | `HKLM` | o administrador, por GPO ou Intune |
+| `assinador-dev-windows-<arq>-usuario.msi` | `%LOCALAPPDATA%\Programs\Assinador uShield` | `HKCU` | a pessoa, sem administrador (dois cliques ou `msiexec /i`) |
+| `assinador-dev-windows-<arq>-maquina.msi` | `%ProgramFiles%\Assinador uShield` | `HKLM` | o administrador, por GPO ou Intune |
 
 Os dois levam o programa e os dois manifestos na mesma pasta, e as chaves do Chrome, do Edge, do
 Chromium e do Firefox apontam para os manifestos; os manifestos apontam o programa pelo NOME, que os
@@ -123,7 +123,7 @@ msiexec /i assinador-dev-windows-amd64-maquina.msi /qn
 ```
 
 A versão nova se instala por cima da instalada (o mesmo escopo; a mesma versão também, o que troca o
-x64 emulado pelo arm64). Para remover, "Configurações, Aplicativos, Assinador Confidata
+x64 emulado pelo arm64). Para remover, "Configurações, Aplicativos, Assinador uShield
 (desenvolvimento)", ou `msiexec /x <arquivo> /qn` com o MESMO arquivo que instalou: cada MSI montado
 é um produto novo, e o de outra execução do CI responde 1605.
 

@@ -268,3 +268,9 @@
   - o resumo do pacote sai em português.
   - Aceito: o título do commit da F6b-i diz "provados no CI" antes de o CI rodar (o
     `docs/medicoes/F6b.md` diz o que foi e o que não foi provado).
+- F6b-i: o nome visível Assinador uShield (decisão D2) também no MSI: o produto em "Aplicativos"
+  ("Assinador uShield (desenvolvimento)"), o resumo do pacote, a mensagem de versão mais nova e a pasta
+  de instalação nos dois escopos (`%LOCALAPPDATA%\Programs\Assinador uShield` e
+  `%ProgramFiles%\Assinador uShield`, antes `Confidata Assinador`). Os nomes internos não mudam, e o
+  `Manufacturer` segue Confidata, como o `vendor` dos pacotes Linux. A mensagem do `.wxs` sem versão
+  passou a dizer que a versão é a do pacote (a auditoria separou as duas).

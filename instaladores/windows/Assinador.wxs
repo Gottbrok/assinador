@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  O instalador do Assinador para o Windows (F6b), no WiX 5.
+  O instalador do Assinador para o Windows (F6b), no WiX 5. O nome VISÍVEL é Assinador uShield (decisão
+  D2 do plano): o do produto em "Aplicativos" e o da pasta de instalação; os nomes internos (o programa,
+  os manifestos, o host de native messaging, os arquivos .msi) não mudam com ele.
 
   Um fonte, dois MSI: `-d Escopo=usuario` instala na pasta do usuário e grava em HKCU, sem pedir
   administrador; `-d Escopo=maquina` instala em Program Files e grava em HKLM, para a distribuição por
@@ -23,7 +25,7 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
 
   <?ifndef Versao ?>
-    <?error Informe -d Versao=X.Y.Z (a mesma que o programa informa) ?>
+    <?error Informe -d Versao=X.Y.Z (a do pacote, o -VersaoDoMsi do empacotar.ps1) ?>
   <?endif?>
   <?ifndef Origem ?>
     <?error Informe -d Origem=<pasta com assinador.exe, chromium.json e firefox.json> ?>
@@ -44,7 +46,7 @@
     <?error Escopo é usuario ou maquina ?>
   <?endif?>
 
-  <Package Name="Assinador Confidata (desenvolvimento)"
+  <Package Name="Assinador uShield (desenvolvimento)"
            Manufacturer="Confidata"
            Version="$(var.Versao)"
            UpgradeCode="$(var.UpgradeCode)"
@@ -54,7 +56,7 @@
            Scope="$(var.EscopoDoPacote)">
 
     <SummaryInformation Codepage="1252"
-                        Description="Assinador Confidata (desenvolvimento)"
+                        Description="Assinador uShield (desenvolvimento)"
                         Keywords="Instalador"
                         Comments="Instala o programa que assina com o certificado digital do cartão ou do token, e o registra nos navegadores." />
 
@@ -65,7 +67,7 @@
     -->
     <MajorUpgrade AllowSameVersionUpgrades="yes"
                   IgnoreLanguage="yes"
-                  DowngradeErrorMessage="Uma versão mais nova do Assinador já está instalada." />
+                  DowngradeErrorMessage="Uma versão mais nova do Assinador uShield já está instalada." />
     <MediaTemplate EmbedCab="yes" />
     <Property Id="ARPNOMODIFY" Value="1" />
     <Property Id="ARPURLINFOABOUT" Value="https://github.com/Gottbrok/assinador" />
@@ -74,13 +76,13 @@
     <!-- %LOCALAPPDATA%\Programs, a pasta dos programas instalados por usuário. -->
     <StandardDirectory Id="LocalAppDataFolder">
       <Directory Id="PastaDosProgramas" Name="Programs">
-        <Directory Id="INSTALLFOLDER" Name="Confidata Assinador" />
+        <Directory Id="INSTALLFOLDER" Name="Assinador uShield" />
       </Directory>
     </StandardDirectory>
 <?else?>
     <!-- Program Files da arquitetura do pacote (x64 ou arm64). -->
     <StandardDirectory Id="ProgramFiles6432Folder">
-      <Directory Id="INSTALLFOLDER" Name="Confidata Assinador" />
+      <Directory Id="INSTALLFOLDER" Name="Assinador uShield" />
     </StandardDirectory>
 <?endif?>
 
