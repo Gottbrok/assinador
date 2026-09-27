@@ -29,7 +29,8 @@ import (
 	"github.com/Gottbrok/assinador/nativo/internal/origem"
 )
 
-const descricao = "Assinador: assina com o certificado digital do cartão ou do token"
+// descricao leva o nome visível (Assinador uShield, decisão D2); o `name` do host é nome interno fixo.
+const descricao = "Assinador uShield: assina com o certificado digital do cartão ou do token"
 
 type manifestoChromium struct {
 	Name           string   `json:"name"`

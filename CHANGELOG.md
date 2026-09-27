@@ -375,3 +375,5 @@
     produção, e os endereços da política como links.
   - Ficou: a descrição do manifesto do host em `cmd/manifestos` ainda diz "Assinador" (invisível na
     prática, e o arquivo segue reservado pela F6b-i até o CI dela ficar verde).
+- A descrição do manifesto do host (`cmd/manifestos`) passou a dizer "Assinador uShield", fechando o
+  que a entrada de cima deixou; o `name` do host é nome interno e não muda.
