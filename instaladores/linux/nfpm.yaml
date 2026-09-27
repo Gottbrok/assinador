@@ -1,10 +1,10 @@
-# O pacote de DESENVOLVIMENTO do Assinador para Linux (F2b): o programa com a tag dev e os
-# manifestos dos navegadores com os IDs provisórios de extensão. O pacote de produção (os IDs das
-# lojas, o programa sem a tag dev, a assinatura) é da F7a.
+# O pacote do Assinador para Linux, de DESENVOLVIMENTO (F2b: o programa com a tag dev e os IDs
+# provisórios de extensão) ou de PRODUÇÃO (F7a: o programa sem a tag dev e os IDs das lojas). A
+# receita é uma só; o `empacotar.sh` decide o modo e passa a variante da descrição.
 #
 # Não se roda este arquivo direto: `empacotar.sh` monta o programa e os manifestos numa pasta de
 # trabalho, roda o nfpm de DENTRO dela (os `src` são relativos a ela: o nfpm não expande variável
-# no `src`) e passa a arquitetura e a versão pelas variáveis NFPM_*.
+# no `src`) e passa a arquitetura, a versão e a variante pelas variáveis NFPM_*.
 name: confidata-assinador
 arch: ${NFPM_ARQUITETURA}
 platform: linux
@@ -15,8 +15,9 @@ maintainer: Confidata <suporte@confidata.com.br>
 vendor: Confidata
 homepage: https://github.com/Gottbrok/assinador
 license: Apache-2.0
+# NFPM_VARIANTE: ", build de DESENVOLVIMENTO" no pacote de desenvolvimento, vazia no de produção.
 description: |-
-  Assinador, build de DESENVOLVIMENTO: assina com o certificado digital A3
+  Assinador${NFPM_VARIANTE}: assina com o certificado digital A3
   (cartao ou token ICP-Brasil) a partir do navegador, sem que a chave saia do
   dispositivo. Nao abre porta de rede e nao guarda o PIN.
 

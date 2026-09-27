@@ -4,16 +4,26 @@
 # caminho do programa) e o diagnóstico; remove; e reprova se a foto depois da remoção não for a
 # de antes (arquivo ou pasta que sobrou, ou que sumiu).
 #
-#   instaladores/linux/testar-pacotes.sh <pasta com os pacotes>
+#   instaladores/linux/testar-pacotes.sh <pasta com os pacotes> [producao]
+#
+# Com `producao`, o ID esperado é o que o gerador de manifestos de PRODUÇÃO escreve (os IDs das
+# lojas, no programa); sem ele, o ID provisório de desenvolvimento.
 set -euo pipefail
 
-if [ "$#" -ne 1 ]; then
-  echo "uso: $0 <pasta com os pacotes>" >&2
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ] || { [ "$#" -eq 2 ] && [ "$2" != producao ]; }; then
+  echo "uso: $0 <pasta com os pacotes> [producao]" >&2
   exit 2
 fi
 PASTA="$(cd "$1" && pwd)"
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-ID_CHROME="$(grep -o '"idChrome": *"[a-p]\{32\}"' "$RAIZ/protocolo/extensao-dev.json" | grep -o '[a-p]\{32\}')"
+if [ "${2:-}" = producao ]; then
+  MANIFESTOS="$(mktemp -d)"
+  trap 'rm -rf "$MANIFESTOS"' EXIT
+  (cd "$RAIZ/nativo" && go run ./cmd/manifestos -saida "$MANIFESTOS" -programa /usr/lib/confidata-assinador/assinador)
+  ID_CHROME="$(grep -o 'chrome-extension://[a-p]\{32\}/' "$MANIFESTOS/chromium.json" | head -1 | grep -o '[a-p]\{32\}')"
+else
+  ID_CHROME="$(grep -o '"idChrome": *"[a-p]\{32\}"' "$RAIZ/protocolo/extensao-dev.json" | grep -o '[a-p]\{32\}')"
+fi
 
 # O mesmo roteiro nos dois sistemas. Argumentos: o pacote, o tipo (deb ou rpm) e o ID da extensão.
 read -r -d '' ROTEIRO <<'FIM' || true
