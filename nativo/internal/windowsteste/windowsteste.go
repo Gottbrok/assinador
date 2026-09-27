@@ -18,8 +18,11 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
+
+	"golang.org/x/sys/windows"
 )
 
 // Provedores de chave de software do Windows, um por caminho do programa.
@@ -61,9 +64,18 @@ func criar(t *testing.T, provedor string) (Certificado, error) {
 	_, _ = rand.Read(sufixo)
 	assunto := "CN=ASSINADOR TESTE " + hex.EncodeToString(sufixo)
 	t.Cleanup(func() {
-		roteiro := fmt.Sprintf("Get-ChildItem -Path 'Cert:\\CurrentUser\\My' | Where-Object { $_.Subject -eq '%s' } | Remove-Item -DeleteKey", assunto)
-		if _, err := powershell(roteiro); err != nil {
-			t.Logf("o certificado de teste %q ficou no repositório: %v", assunto, err)
+		// O `-DeleteKey` é parâmetro do provedor de certificados, e só existe quando o caminho vem na
+		// própria chamada (pelo pipe ele não é reconhecido): um `Remove-Item` por certificado.
+		roteiro := fmt.Sprintf("Get-ChildItem -Path 'Cert:\\CurrentUser\\My' | Where-Object { $_.Subject -eq '%s' } | ForEach-Object { Remove-Item -LiteralPath $_.PSPath -DeleteKey }", assunto)
+		var err error
+		comTrava(t, func() { _, err = powershell(roteiro) })
+		if err != nil {
+			// No CI, o certificado que fica no repositório reprova: é assim que a limpeza quebrada aparece.
+			if os.Getenv("ASSINADOR_EXIGE_WINDOWS") == "1" {
+				t.Errorf("o certificado de teste %q ficou no repositório: %v", assunto, err)
+			} else {
+				t.Logf("o certificado de teste %q ficou no repositório: %v", assunto, err)
+			}
 		}
 	})
 	var roteiro strings.Builder
@@ -78,7 +90,9 @@ func criar(t *testing.T, provedor string) (Certificado, error) {
 	}
 	roteiro.WriteString("$c = New-SelfSignedCertificate @p\n")
 	roteiro.WriteString("[Convert]::ToBase64String($c.RawData) + ' ' + $c.Thumbprint\n")
-	saida, err := powershell(roteiro.String())
+	var saida string
+	var err error
+	comTrava(t, func() { saida, err = powershell(roteiro.String()) })
 	// A última linha é a do certificado: o que o PowerShell escreveu antes (aviso, progresso) não conta.
 	linhas := strings.Split(saida, "\n")
 	campos := strings.Fields(linhas[len(linhas)-1])
@@ -90,6 +104,29 @@ func criar(t *testing.T, provedor string) (Certificado, error) {
 		return Certificado{}, fmt.Errorf("DER ilegível: %w", err)
 	}
 	return c, nil
+}
+
+// comTrava roda `f` com a trava que serializa, entre PROCESSOS, o que mexe no repositório e nas
+// chaves do usuário: o `go test` roda os pacotes em paralelo, e dois `New-SelfSignedCertificate` ao
+// mesmo tempo no mesmo perfil recusaram com "Access is denied" (0x80070005) no windows-11-arm do CI.
+// O mutex do Windows é da THREAD que o pegou: a goroutine fica presa a ela até soltá-lo.
+func comTrava(t *testing.T, f func()) {
+	t.Helper()
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	nome, _ := windows.UTF16PtrFromString(`Local\assinador-windowsteste`)
+	// Com o mutex já criado por outro processo, o x/sys devolve ERROR_ALREADY_EXISTS e o handle.
+	trava, err := windows.CreateMutex(nil, false, nome)
+	if trava == 0 {
+		t.Fatalf("a trava dos certificados de teste não abriu: %v", err)
+	}
+	defer windows.CloseHandle(trava)
+	// WAIT_ABANDONED é a trava de um processo de teste que morreu segurando-a: ela passa a ser nossa.
+	if evento, err := windows.WaitForSingleObject(trava, windows.INFINITE); err != nil || (evento != windows.WAIT_OBJECT_0 && evento != windows.WAIT_ABANDONED) {
+		t.Fatalf("a trava dos certificados de teste não veio: %d %v", evento, err)
+	}
+	defer windows.ReleaseMutex(trava)
+	f()
 }
 
 // powershell roda o roteiro e devolve a SAÍDA PADRÃO, sem as linhas em branco nas pontas. O erro e o

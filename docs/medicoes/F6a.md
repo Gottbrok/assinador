@@ -34,6 +34,20 @@ nunca presumido.
   compilam para `windows/amd64` e `windows/arm64`, nos builds de release e `dev`, com `go vet`,
   `staticcheck` e `govulncheck` limpos. RODAR no Windows é do CI (job `windows`) e da máquina do Cairo.
 
+**2026-09-27 · o primeiro CI do Windows (run 36281570799 do GitHub Actions, sem leitora nem cartão)**
+
+- **`windows-latest` (x64):** tudo verde. Os testes do provedor com os certificados de chave de
+  software (CNG, CSP com a inversão, CSP sem SHA-256), o canal com os dois C runtimes, a ponta a ponta
+  com o programa `dev`, os dois testes de cabeçalho RODANDO contra o MinGW do executor (as medidas
+  daqui conferidas lá), o `staticcheck`, o `govulncheck` e o registro de desenvolvimento.
+- **`windows-11-arm` (arm64):** o pacote do provedor passou (em 295 s: o `New-SelfSignedCertificate`
+  é lento ali), e a ponta a ponta reprovou com "Access is denied" (`0x80070005`) no
+  `New-SelfSignedCertificate`, enquanto o outro pacote criava certificados ao mesmo tempo no mesmo
+  perfil (o `go test` roda os pacotes em paralelo). A criação e a remoção passaram a correr atrás de
+  um mutex do Windows, entre processos.
+- A limpeza dos certificados de teste falhava em silêncio nos dois (o `-DeleteKey` pelo pipe não é
+  reconhecido): consertada, e no CI a limpeza que falha passou a reprovar.
+
 ## Pendente (a prova da F0 no Windows e o gate de saída da F6a, com o cartão e o Cairo)
 
 O programa, o gerador de manifestos e o `registrar-windows.ps1` saem do CI, no artefato

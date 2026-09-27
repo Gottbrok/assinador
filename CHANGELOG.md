@@ -205,3 +205,9 @@
   - o registro e a documentação: caminhos literais, as chaves-mãe vazias removidas, a política de
     execução e o `Unblock-File` nas instruções, o Windows Hello como chave do computador, o
     `KeepAlive` do nome do repositório, a regra 2 no Windows e o que medir a mais com o cartão.
+- O primeiro CI do Windows: o x64 verde inteiro, com os testes de cabeçalho rodando contra o MinGW
+  do executor. No arm64, dois `New-SelfSignedCertificate` ao mesmo tempo (os pacotes rodam em
+  paralelo) recusaram com "Access is denied", e a limpeza dos certificados de teste falhava em
+  silêncio nos dois (o `-DeleteKey` pelo pipe não existe). A criação e a remoção passaram a correr
+  atrás de um mutex do Windows entre processos, a remoção vai por certificado, e no CI a limpeza que
+  falha reprova.
