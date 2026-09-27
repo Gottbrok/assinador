@@ -81,10 +81,16 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
     (🚫 à mão). As fixtures do bilhete vêm da biblioteca por `git archive` da tag, com as somas em
     `protocolo/fixtures/ORIGEM.md` (🚫 editar fixture aqui). Os IDs de extensão que o programa aceita
     (`origem.ExtensoesChrome`) são os que vão aos manifestos (`cmd/manifestos`): 🚫 escrever
-    manifesto à mão. O ID de desenvolvimento só existe no build `dev`.
-14. **Pacote de desenvolvimento não é release.** Os `.deb` e `.rpm` de `instaladores/linux` levam o
-    build `dev`; o de produção (sem a tag, com os IDs das lojas, assinado) é da F7a. Mudou o pacote,
-    rode `instaladores/linux/testar-pacotes.sh`: a remoção não pode deixar arquivo nem pasta.
+    manifesto à mão. O ID de desenvolvimento só existe no build `dev`. A chave GPG das releases:
+    a PÚBLICA mora em `protocolo/chave-gpg-das-releases.asc` (a mesma que a tela de instalação
+    mostra), e a PRIVADA só no segredo `ASSINADOR_GPG_CHAVE` do GitHub Actions (regra 5).
+14. **Pacote de desenvolvimento não é release.** O `empacotar.sh` sem argumento de modo monta o
+    pacote de desenvolvimento (a tag `dev`, `assinador-dev-*`); o de produção (`producao`: sem a tag,
+    com os IDs das lojas, os nomes estáveis) só sai pelo `release.yml`, que cria a release como
+    RASCUNHO com o `SHA256SUMS` assinado e conferido contra a chave pública do repositório. 🚫 Artefato
+    `assinador-dev-*` do CI em página pública, e 🚫 publicar a release sem conferir: publicar é do
+    Cairo. Mudou o pacote, rode `instaladores/linux/testar-pacotes.sh` (com `producao` no de
+    produção): a remoção não pode deixar arquivo nem pasta.
 15. **A extensão só LIGA; quem decide é o programa e a pessoa.** Ela nunca confere o bilhete (só a
     forma) e as janelas mostram só o que veio do PROGRAMA (o bilhete conferido, o certificado) e do
     NAVEGADOR (a origem de quem pediu), nunca o que a página declara. A permissão é por ORIGEM, em

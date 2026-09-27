@@ -66,7 +66,28 @@ instaladores/linux/testar-pacotes.sh dist          # instala, roda e remove em c
 ```
 
 São pacotes de DESENVOLVIMENTO: o programa com a tag `dev` e os manifestos com o ID provisório da
-extensão. Os de produção, assinados e com os IDs das lojas, vêm com a publicação.
+extensão. Os de produção (`empacotar.sh <X.Y.Z> dist producao`) só saem pela release, e só depois de
+os IDs das lojas existirem: antes disso, o gerador de manifestos recusa.
+
+## Release
+
+Uma tag `vX.Y.Z` num commit da `main` roda o `.github/workflows/release.yml`: os pacotes Linux de
+produção (x64 e arm64, provados em contêiner com os IDs das lojas), os zips das extensões para as lojas
+(reproduzíveis), o `SHA256SUMS` e o `SHA256SUMS.asc`. A release nasce como RASCUNHO, e quem a publica é
+o Cairo, depois de conferir. Os nomes são estáveis, para o endereço
+`https://github.com/Gottbrok/assinador/releases/latest/download/<arquivo>` não mudar entre versões.
+
+A assinatura das somas é conferida, antes de a release existir, com SÓ a chave pública de
+`protocolo/chave-gpg-das-releases.asc`: a privada vive no segredo `ASSINADOR_GPG_CHAVE` (com a senha em
+`ASSINADOR_GPG_SENHA`), e sem as duas o workflow para. Quem baixa confere assim:
+
+```sh
+gpg --import chave-gpg-das-releases.asc
+gpg --verify SHA256SUMS.asc SHA256SUMS
+sha256sum --check --ignore-missing SHA256SUMS
+```
+
+O MSI do Windows entra na release quando o instalador (F6b) existir.
 
 ## Windows (desenvolvimento)
 

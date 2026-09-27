@@ -211,3 +211,16 @@
   silêncio nos dois (o `-DeleteKey` pelo pipe não existe). A criação e a remoção passaram a correr
   atrás de um mutex do Windows entre processos, a remoção vai por certificado, e no CI a limpeza que
   falha reprova.
+- F7a adiantada (decisão do Cairo): só o que não depende das lojas, do certificado da D4 nem da F6b.
+  - `docs/SUPORTE.md`: para quem atende o chamado, os vinte códigos do protocolo com a frase que a
+    pessoa lê, a causa no Linux e no Windows, o que fazer e quem resolve; os avisos do diagnóstico
+    por sistema; e o que nunca pedir (PIN, PUK, arquivo do certificado, CPF).
+  - `release.yml`: a tag `vX.Y.Z` num commit da `main` monta os pacotes Linux de produção e os zips
+    das extensões, assina as somas e cria a release como RASCUNHO. O `empacotar.sh` e o
+    `testar-pacotes.sh` ganharam o modo `producao`; o `somas-e-assinatura.sh` confere a assinatura
+    com SÓ a chave pública do repositório. Nada disso roda de verdade antes dos IDs das lojas e da
+    chave GPG das releases: até lá, o gerador de manifestos e o script das somas recusam.
+  - O PROTOCOLO dizia que o `bilhete-expirado` era da extensão ou da biblioteca; hoje nenhuma ponta o
+    produz (o programa responde `relogio` ao bilhete fora do prazo).
+  - Divergência do plano: a F7a pedia a release pronta para publicar; ela nasce RASCUNHO, porque
+    publicar é do Cairo (regra do CLAUDE.md), e o MSI do Windows fica para quando a F6b fechar.
