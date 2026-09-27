@@ -25,7 +25,12 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
 
 **Nomes internos fixos** (trocá-los depois quebra instalações): host de native messaging
 `br.com.confidata.assinador`; ID da extensão no Firefox `assinador@confidata.com.br`; módulo Go
-`github.com/Gottbrok/assinador/nativo`.
+`github.com/Gottbrok/assinador/nativo`; pacote Linux `confidata-assinador`. O nome VISÍVEL é
+**Assinador uShield** (decisão D2 do plano, 2026-09-27), o mesmo nas duas línguas, nas lojas, na
+extensão, nos instaladores e nos textos; os nomes internos não mudam com ele. A política de
+privacidade que as lojas publicam é `https://ushield.app/componente/privacidade` (no repositório do
+ushield, `src/content/privacidadeDoAssinador.ts`): mudou o que a extensão ou o programa acessam, ela
+muda junto com o `extensao/PRIVACIDADE.md` daqui.
 
 ## Regras que não se negociam
 

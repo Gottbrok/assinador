@@ -268,3 +268,20 @@
     pinada (o `VALIDSIG`), e a saída do gpg não é mais escondida. Quem baixa confere a impressão
     digital com a da tela de instalação e as somas com o `gpgv` num chaveiro só para isso. Provado
     com chaves descartáveis, fora do repositório, em catorze casos.
+- F7a, a preparação do envio às lojas (o que não depende das lojas, do certificado da D4 nem da F6b):
+  - O nome visível é **Assinador uShield** (decisão D2 do Cairo, 2026-09-27), o mesmo nas duas
+    línguas: a extensão (nome e título das opções) e a descrição dos pacotes Linux. Os nomes internos
+    não mudam.
+  - `docs/LOJAS.md`: o que as três lojas pedem, com os textos prontos (as descrições em português e
+    em espanhol, a finalidade única e a justificativa de cada permissão da Chrome Web Store, o uso de
+    dados, as notas para quem revisa e as instruções de build das fontes para a loja do Firefox) e a
+    lista do que falta antes de enviar.
+  - A política de privacidade que as lojas publicam é uma página pública do ushield
+    (`https://ushield.app/componente/privacidade`, decisão do Cairo), e o `extensao/PRIVACIDADE.md`
+    passou a dizer o mesmo que ela: o PIN do Windows, que é digitado no diálogo do Windows ou do
+    fabricante e que o programa não recebe; as versões, que a página recebe sem pedir; e o
+    certificado inteiro, com a data de nascimento no e-CPF.
+  - `docs/SUPORTE.md`: a empresa que desliga o programa por usuário (`NativeMessagingUserLevelHosts`)
+    só usa o instalador por máquina, e o programa por usuário é lido antes do por máquina.
+  - Divergência do plano: a política de privacidade seria uma seção da tela de instalação do
+    Confidata; é uma página do ushield, porque o componente leva o nome dele.

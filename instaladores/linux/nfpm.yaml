@@ -17,7 +17,7 @@ homepage: https://github.com/Gottbrok/assinador
 license: Apache-2.0
 # NFPM_VARIANTE: ", build de DESENVOLVIMENTO" no pacote de desenvolvimento, vazia no de produção.
 description: |-
-  Assinador${NFPM_VARIANTE}: assina com o certificado digital A3
+  Assinador uShield${NFPM_VARIANTE}: assina com certificado digital A3
   (cartao ou token ICP-Brasil) a partir do navegador, sem que a chave saia do
   dispositivo. Nao abre porta de rede e nao guarda o PIN.
 

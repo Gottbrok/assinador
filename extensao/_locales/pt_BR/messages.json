@@ -1,5 +1,5 @@
 {
-  "nomeDaExtensao": { "message": "Assinador Confidata", "description": "Nome da extensão nas lojas e no navegador (provisório até a decisão D2 do plano)." },
+  "nomeDaExtensao": { "message": "Assinador uShield", "description": "Nome da extensão nas lojas e no navegador (decisão D2 do plano, 2026-09-27). É nome próprio: o mesmo nas duas línguas." },
   "descricaoDaExtensao": { "message": "Assina com o certificado digital do seu cartão ou token (ICP-Brasil), com a sua confirmação antes de cada assinatura.", "description": "Descrição do manifesto; a Chrome Web Store aceita até 132 caracteres." },
   "carregando": { "message": "Carregando" },
   "janelaExpirou": { "message": "Esta janela não vale mais. Feche-a e tente de novo pela página." },
@@ -31,7 +31,7 @@
   "botaoNaoPermitir": { "message": "Não permitir" },
   "botaoPermitir": { "message": "Permitir" },
 
-  "opcoesTitulo": { "message": "Assinador: opções" },
+  "opcoesTitulo": { "message": "Assinador uShield: opções" },
   "enderecosPermitidos": { "message": "Endereços permitidos" },
   "enderecosExplicacao": { "message": "Só estes endereços podem ver os certificados deste computador e pedir assinaturas. Ao remover um, ele volta a pedir permissão." },
   "nenhumEndereco": { "message": "Nenhum endereço permitido ainda." },

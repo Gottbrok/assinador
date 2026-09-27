@@ -155,6 +155,21 @@ e os certificados dele não aparecem. No Windows, o programa do fabricante se re
 Windows, e o certificado do cartão entra no repositório pessoal pelo serviço de Propagação de
 Certificados.
 
+### Windows: instalação por usuário e por máquina
+
+O programa tem dois instaladores no Windows: o por usuário (sem administrador, o que a tela de
+instalação oferece) e o por máquina (para a TI distribuir por GPO ou Intune). Dois casos voltam:
+
+- **Empresa que desligou o programa por usuário.** Com a política `NativeMessagingUserLevelHosts` do
+  Chrome ou do Edge desligada, o navegador não abre programa instalado por usuário, e a extensão diz
+  que falta o programa com ele instalado. Só o instalador por máquina funciona ali, e quem o instala é
+  a TI. É o comportamento documentado da política **(não medido)**.
+- **Os dois instalados na mesma máquina.** O Chrome e o Edge leem a instalação do usuário antes da
+  da máquina, e um instalador não remove o outro. Se o por usuário for um pacote de desenvolvimento, o
+  navegador segue abrindo ele, que não aceita a extensão da loja (`nativo-ausente` com `falhou`).
+  Remover a instalação do usuário (Configurações do Windows, Aplicativos) resolve. Os pacotes de
+  desenvolvimento nunca são oferecidos em página pública, então o caso é de quem testa.
+
 ### PIN e PUK
 
 - O PIN é pedido pela janela de confirmação da extensão (Linux) ou pelo diálogo de PIN do provedor do

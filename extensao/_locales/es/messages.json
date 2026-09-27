@@ -1,5 +1,5 @@
 {
-  "nomeDaExtensao": { "message": "Assinador Confidata" },
+  "nomeDaExtensao": { "message": "Assinador uShield" },
   "descricaoDaExtensao": { "message": "Firma con el certificado digital de su tarjeta o token (ICP-Brasil), con su confirmación antes de cada firma." },
   "carregando": { "message": "Cargando" },
   "janelaExpirou": { "message": "Esta ventana ya no es válida. Ciérrela e intente de nuevo desde la página." },
@@ -31,7 +31,7 @@
   "botaoNaoPermitir": { "message": "No permitir" },
   "botaoPermitir": { "message": "Permitir" },
 
-  "opcoesTitulo": { "message": "Assinador: opciones" },
+  "opcoesTitulo": { "message": "Assinador uShield: opciones" },
   "enderecosPermitidos": { "message": "Direcciones permitidas" },
   "enderecosExplicacao": { "message": "Solo estas direcciones pueden ver los certificados de este computador y pedir firmas. Al quitar una, vuelve a pedir permiso." },
   "nenhumEndereco": { "message": "Todavía no hay direcciones permitidas." },

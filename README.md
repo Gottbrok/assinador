@@ -23,9 +23,11 @@ Em construção. Licença Apache-2.0.
 | `ferramentas/` | Prova e medição (F0), o `host-teste`, que fala com o programa como a extensão e serve a página de teste da extensão (`servir`), e o `registrar-windows.ps1`, que registra o programa de desenvolvimento no Windows antes do MSI. Nunca vai para release |
 | `docs/medicoes/` | O que foi medido com cartão real, com data e equipamento |
 
-A segurança do programa está em [`SECURITY.md`](SECURITY.md). Para quem atende o chamado de quem não
-consegue assinar, cada código de erro e cada aviso do diagnóstico, com a causa e o que fazer, está em
-[`docs/SUPORTE.md`](docs/SUPORTE.md).
+O nome visível é **Assinador uShield**. A segurança do programa está em [`SECURITY.md`](SECURITY.md).
+Para quem atende o chamado de quem não consegue assinar, cada código de erro e cada aviso do
+diagnóstico, com a causa e o que fazer, está em [`docs/SUPORTE.md`](docs/SUPORTE.md). O que as lojas de
+extensão pedem, com os textos prontos, está em [`docs/LOJAS.md`](docs/LOJAS.md), e a política de
+privacidade que elas publicam é `https://ushield.app/componente/privacidade`.
 
 ## Compilar e testar (Linux)
 
