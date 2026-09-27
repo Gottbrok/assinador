@@ -41,7 +41,9 @@ privacidade e o `extensao/PRIVACIDADE.md` mudam juntos.
 
 ### Descrição detalhada, em espanhol
 
-> El Assinador uShield te permite firmar con el certificado digital ICP-Brasil de tu tarjeta o token
+No mesmo tratamento dos textos da extensão (`_locales/es`, "usted"), que é o espanhol neutro das lojas.
+
+> El Assinador uShield le permite firmar con el certificado digital ICP-Brasil de su tarjeta o token
 > en los sistemas de Confidata y de uShield.
 >
 > Tiene dos partes, que se instalan una vez por computador: esta extensión y un programa pequeño, que
@@ -52,7 +54,7 @@ privacidade e o `extensao/PRIVACIDADE.md` mudam juntos.
 > Antes de cada firma, una ventana de la extensión muestra el nombre del documento, la dirección que lo
 > pide y el certificado elegido, y solo después se pide el PIN. El programa solo firma el resumen que el
 > sistema de esa dirección preparó y firmó, y revisa la dirección, el resumen, el certificado y el
-> plazo antes de pedir la firma. Una dirección solo usa el Assinador después de tu permiso, una vez.
+> plazo antes de pedir la firma. Una dirección solo usa el Assinador después de su permiso, una vez.
 >
 > La extensión funciona solo en https://*.confidata.app y https://ushield.app. El código de la
 > extensión y el del programa no abren conexión con internet, y ninguno de los dos guarda el PIN,
@@ -118,11 +120,19 @@ fora.
 | Tipo | Marcar | Por quê |
 |---|---|---|
 | Informações de identificação pessoal | Sim | A extensão entrega à página que a pessoa autorizou todos os certificados do computador que servem para assinar, inteiros: no e-CPF, o nome, o CPF e a data de nascimento e, conforme o certificado, o NIS, o RG, o título de eleitor e o e-mail; no e-CNPJ, os dados da empresa e do responsável. Junto de cada um, o nome da leitora, que pode trazer o número de série dela. O diagnóstico leva o nome do titular de cada certificado. É a finalidade da extensão |
-| Informações de autenticação | Sim, por cautela (decisão a confirmar: a declaração do Firefox, no manifesto, trata o PIN ao programa local como NÃO transmitido) | No Linux, o PIN passa pela janela da extensão até o programa local. Ele não sai do computador nem é guardado, mas é um PIN que a extensão toca, e a loja o lista nesta categoria |
+| Informações de autenticação | Pela régua abaixo | No Linux, o PIN passa pela janela da extensão até o programa local. Ele não sai do computador nem é guardado |
 | Os demais (saúde, finanças, comunicações, localização, histórico, atividade, conteúdo de site) | Não | A extensão não os acessa |
 
 As três certificações da aba (não vender os dados, não usá-los para fim alheio à finalidade única,
 não usá-los para crédito) valem, e se marcam.
+
+**A régua do PIN, a mesma nas três lojas:** o PIN vai só ao programa local e nunca sai do computador,
+e cada loja o declara pela definição DELA. A do Firefox foi lida em 2026-09-26: o que vai ao programa
+local não conta como transmissão, e o manifesto não o declara. Na Chrome Web Store e no Edge, ler a
+definição no formulário no envio: se a categoria for o que a extensão TRANSMITE para fora do computador,
+não se marca; se for o que ela coleta ou manipula, marca-se "Informações de autenticação", com a
+explicação da tabela. Na dúvida, marca-se: declarar a mais custa uma linha na ficha, e a menos custa
+a recusa.
 
 **Visibilidade:** decisão do Cairo no envio. Pública, a extensão aparece na busca da loja; não
 listada, só quem tem o link a acha (a tela de instalação leva a ele). A extensão só funciona nos dois

@@ -55,5 +55,6 @@
   "diagnosticoCopiado": { "message": "Diagnóstico copiado." },
   "diagnosticoNaoCopiado": { "message": "Não foi possível copiar. Selecione o texto abaixo e copie." },
   "privacidade": { "message": "Privacidade" },
-  "privacidadeTexto": { "message": "A extensão não acessa a internet, não lê o conteúdo das páginas que você visita e não guarda documentos nem PIN. Ela só atende os endereços que você permitiu e só fala com o programa Assinador instalado neste computador." }
+  "privacidadeTexto": { "message": "A extensão não acessa a internet, não lê o conteúdo das páginas que você visita e não guarda documentos nem PIN. Ela só atende os endereços que você permitiu e só fala com o programa Assinador instalado neste computador." },
+  "lerPoliticaDePrivacidade": { "message": "Ler a política de privacidade completa", "description": "Link para https://ushield.app/componente/privacidade, a política que as lojas publicam." }
 }

@@ -303,3 +303,12 @@
     não diziam do estado escuro nem que o fluxo de assinatura não se exerce na revisão; o
     empacotador é o Vite, e não o esbuild; e a linha de dado pessoal da Chrome Web Store dizia menos
     do que sai.
+  - P2 e P3, os lotes que o Cairo escolheu: o SUPORTE tira a instalação do usuário pelo caminho por
+    onde ela entrou (o `registrar-windows.ps1 -Remover` não aparece em Aplicativos), cita o Firefox e
+    o caso da empresa com um programa por usuário mais velho que o por máquina ("versão nova"); as
+    opções da extensão têm o nome novo no texto de reserva e o link para a política de privacidade; o
+    espanhol das lojas usa "usted", como a extensão; e o PIN tem uma régua só nas três lojas. No
+    ushield: a frase do diagnóstico recusado, a do embargo, o A3 fora do site até funcionar em
+    produção, e os endereços da política como links.
+  - Ficou: a descrição do manifesto do host em `cmd/manifestos` ainda diz "Assinador" (invisível na
+    prática, e o arquivo segue reservado pela F6b-i até o CI dela ficar verde).

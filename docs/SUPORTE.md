@@ -165,11 +165,18 @@ instalação oferece) e o por máquina (para a TI distribuir por GPO ou Intune).
   Chrome ou do Edge desligada, o navegador não abre programa instalado por usuário, e a extensão diz
   que falta o programa com ele instalado. Só o instalador por máquina funciona ali, e quem o instala é
   a TI. É o comportamento documentado da política **(não medido)**.
-- **Os dois instalados na mesma máquina.** O Chrome e o Edge leem a instalação do usuário antes da
-  da máquina, e um instalador não remove o outro. Se o por usuário for um pacote de desenvolvimento, o
-  navegador segue abrindo ele, que não aceita a extensão da loja (`nativo-ausente` com `falhou`).
-  Remover a instalação do usuário (Configurações do Windows, Aplicativos) resolve. Os pacotes de
-  desenvolvimento nunca são oferecidos em página pública, então o caso é de quem testa.
+- **Os dois instalados na mesma máquina.** O Chrome e o Edge leem a instalação do usuário (`HKCU`)
+  antes da da máquina (`HKLM`), e o Firefox também **(não medido)**; um instalador não remove o outro.
+  O navegador segue abrindo o programa do usuário, e o sintoma depende de qual ele é:
+  - um programa de DESENVOLVIMENTO, que não aceita a extensão da loja: `nativo-ausente` com `falhou`;
+  - um programa de produção MAIS VELHO que o por máquina que a TI atualizou: "Há uma versão nova do
+    Assinador", com a TI jurando que atualizou.
+
+  O remédio é tirar a instalação do usuário, pelo caminho por onde ela entrou: o instalador por usuário
+  (o de produção, ou o MSI de desenvolvimento, "(desenvolvimento)" no nome) sai por Configurações do
+  Windows, Aplicativos; o registro à mão das fases de teste sai por
+  `registrar-windows.ps1 -Remover`, e não aparece em Aplicativos. Os pacotes de desenvolvimento nunca
+  são oferecidos em página pública, então o primeiro caso é de quem testa.
 
 ### PIN e PUK
 

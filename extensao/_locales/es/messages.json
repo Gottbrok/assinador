@@ -55,5 +55,6 @@
   "diagnosticoCopiado": { "message": "Diagnóstico copiado." },
   "diagnosticoNaoCopiado": { "message": "No fue posible copiar. Seleccione el texto de abajo y cópielo." },
   "privacidade": { "message": "Privacidad" },
-  "privacidadeTexto": { "message": "La extensión no accede a internet, no lee el contenido de las páginas que usted visita y no guarda documentos ni PIN. Solo atiende las direcciones que usted permitió y solo habla con el programa Assinador instalado en este computador." }
+  "privacidadeTexto": { "message": "La extensión no accede a internet, no lee el contenido de las páginas que usted visita y no guarda documentos ni PIN. Solo atiende las direcciones que usted permitió y solo habla con el programa Assinador instalado en este computador." },
+  "lerPoliticaDePrivacidade": { "message": "Leer la política de privacidad completa" }
 }
