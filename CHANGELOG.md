@@ -211,3 +211,25 @@
   silêncio nos dois (o `-DeleteKey` pelo pipe não existe). A criação e a remoção passaram a correr
   atrás de um mutex do Windows entre processos, a remoção vai por certificado, e no CI a limpeza que
   falha reprova.
+- F6b-i: os MSI de DESENVOLVIMENTO do Windows, sem assinatura (a assinatura de código é a F6b-ii,
+  quando o certificado chegar).
+  - `instaladores/windows/Assinador.wxs` (WiX 5.0.2): um fonte e dois MSI, o por usuário
+    (`%LOCALAPPDATA%\Programs\Confidata Assinador` e `HKCU`, sem pedir administrador) e o por máquina
+    (`Program Files` e `HKLM`, para GPO e Intune), em x64 e arm64, com `MajorUpgrade`. Um
+    componente só: o programa, os dois manifestos e as chaves do Chrome, do Edge, do Chromium e do
+    Firefox instalam e saem juntos. Os `UpgradeCode` (um por escopo, os mesmos nas duas arquiteturas
+    e no MSI de produção) e os GUIDs dos componentes são nomes fixos.
+  - `cmd/manifestos -relativo`: o manifesto aponta o programa só pelo NOME, na mesma pasta, que os
+    navegadores resolvem no Windows; recusa pasta, `..`, separador e letra de unidade.
+  - `empacotar.ps1` monta os dois MSI da arquitetura pedida (programa `dev`, versão `X.Y.Z` do
+    Windows Installer igual à que o programa informa); `testar-instalador.ps1` prova cada um: o MSI
+    por usuário não exige elevação (resumo do pacote e `ALLUSERS`), a versão anterior instalada e
+    atualizada, as chaves, os manifestos e o programa conferidos, o olá pelo caminho que o navegador
+    segue, e a desinstalação sem sobra de arquivo, pasta ou chave (a foto do registro antes e depois).
+  - CI: o job `windows` monta e prova os dois escopos nas duas arquiteturas, sobre o .NET 8 do
+    `setup-dotnet`, e publica os MSI no artefato `assinador-dev-windows-<arq>`.
+  - Divergências do plano, decididas na implementação (com o Cairo): a F6b anda em duas partes,
+    porque o certificado da assinatura de código ainda não foi contratado; o MSI desta parte é o de
+    desenvolvimento (o de produção é da publicação); o WiX é o 5.0.2, e não o 6, que exige o EULA da
+    taxa de manutenção da OSMF; e a medição das chaves de extensão externa do Chrome e do Edge
+    precisa do ID da loja e vai para a publicação.

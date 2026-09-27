@@ -19,7 +19,7 @@ func TestManifestosComAsExtensoesDoPrograma(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		programa = `C:\Users\teste\AppData\Local\ConfidataAssinadorDev\assinador.exe`
 	}
-	err := gerar(saida, programa)
+	err := gerar(saida, programa, false)
 	if len(origem.ExtensoesChrome()) == 0 {
 		if err == nil {
 			t.Fatal("gerou manifesto sem extensão nenhuma do Chrome")
@@ -55,7 +55,44 @@ func TestManifestosComAsExtensoesDoPrograma(t *testing.T) {
 	if len(firefox.AllowedExtensions) != 1 || firefox.AllowedExtensions[0] != "assinador@confidata.com.br" || firefox.Name != chromium.Name {
 		t.Fatalf("%+v", firefox)
 	}
-	if err := gerar(saida, "relativo/assinador"); err == nil {
+	if err := gerar(saida, "relativo/assinador", false); err == nil {
 		t.Fatal("aceitou caminho relativo")
+	}
+}
+
+// O MSI do Windows (F6b) leva os manifestos ao lado do programa, apontando-o só pelo NOME: a pasta por
+// usuário só existe na hora da instalação. Qualquer coisa além do nome é recusada, e `-relativo` com
+// caminho absoluto também (os dois sistemas).
+func TestManifestoRelativoSoComONomeDoArquivo(t *testing.T) {
+	saida := t.TempDir()
+	err := gerar(saida, "assinador.exe", true)
+	if len(origem.ExtensoesChrome()) == 0 {
+		if err == nil {
+			t.Fatal("gerou manifesto sem extensão nenhuma do Chrome")
+		}
+		return
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, nome := range []string{"chromium.json", "firefox.json"} {
+		b, err := os.ReadFile(filepath.Join(saida, nome))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var m struct {
+			Path string `json:"path"`
+		}
+		if err := json.Unmarshal(b, &m); err != nil {
+			t.Fatal(err)
+		}
+		if m.Path != "assinador.exe" {
+			t.Fatalf("%s: path %q", nome, m.Path)
+		}
+	}
+	for _, ruim := range []string{"", ".", "..", "pasta/assinador.exe", `pasta\assinador.exe`, `..\assinador.exe`, "C:assinador.exe", `C:\Programas\assinador.exe`, "/usr/lib/confidata-assinador/assinador"} {
+		if err := gerar(saida, ruim, true); err == nil {
+			t.Errorf("-relativo aceitou %q", ruim)
+		}
 	}
 }

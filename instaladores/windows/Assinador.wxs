@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  O instalador do Assinador para o Windows (F6b), no WiX 5.
+
+  Um fonte, dois MSI: `-d Escopo=usuario` instala na pasta do usuário e grava em HKCU, sem pedir
+  administrador; `-d Escopo=maquina` instala em Program Files e grava em HKLM, para a distribuição por
+  GPO ou Intune (`msiexec /i ... /qn`). Os dois levam o programa e os dois manifestos de native
+  messaging na MESMA pasta, e as chaves que o Chrome, o Edge, o Chromium e o Firefox leem apontam para
+  os manifestos. Os manifestos apontam o programa pelo NOME (`"path": "assinador.exe"`), que os
+  navegadores resolvem a partir da pasta do manifesto no Windows: o caminho absoluto só existe na hora da
+  instalação, e o MSI não reescreve JSON. Quem gera os manifestos é o `cmd/manifestos -relativo`
+  (regra 13 do CLAUDE.md: nunca à mão), pelo `empacotar.ps1`.
+
+  NOMES FIXOS (trocá-los quebra a atualização de quem já instalou): os `UpgradeCode` abaixo, um por
+  escopo, o MESMO nas duas arquiteturas e no MSI de produção da F7a (o de produção atualiza o de
+  desenvolvimento; o arm64 substitui o x64 emulado); e os GUIDs dos componentes.
+
+  Uso (no Windows, com o WiX 5.0.2): ver `empacotar.ps1`.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <?ifndef Versao ?>
+    <?error Informe -d Versao=X.Y.Z (a mesma que o programa informa) ?>
+  <?endif?>
+  <?ifndef Origem ?>
+    <?error Informe -d Origem=<pasta com assinador.exe, chromium.json e firefox.json> ?>
+  <?endif?>
+  <?ifndef Escopo ?>
+    <?error Informe -d Escopo=usuario ou -d Escopo=maquina ?>
+  <?endif?>
+
+  <?if $(var.Escopo) = "usuario" ?>
+    <?define UpgradeCode = "{2122398D-0245-4473-B3DF-5A36586FD934}" ?>
+    <?define GuidDoComponente = "{BB6D6171-AD3C-4516-AA58-154A5E6E2459}" ?>
+    <?define EscopoDoPacote = "perUser" ?>
+  <?elseif $(var.Escopo) = "maquina" ?>
+    <?define UpgradeCode = "{E4C7EBA6-B6C8-490E-8406-E8B4B54B3970}" ?>
+    <?define GuidDoComponente = "{0CD55D61-81AD-4C70-AFC3-C7AC526033FE}" ?>
+    <?define EscopoDoPacote = "perMachine" ?>
+  <?else?>
+    <?error Escopo é usuario ou maquina ?>
+  <?endif?>
+
+  <Package Name="Assinador Confidata (desenvolvimento)"
+           Manufacturer="Confidata"
+           Version="$(var.Versao)"
+           UpgradeCode="$(var.UpgradeCode)"
+           Language="1046"
+           Codepage="1252"
+           Compressed="yes"
+           Scope="$(var.EscopoDoPacote)">
+
+    <MajorUpgrade DowngradeErrorMessage="Uma versão mais nova do Assinador já está instalada." />
+    <MediaTemplate EmbedCab="yes" />
+    <Property Id="ARPNOMODIFY" Value="1" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/Gottbrok/assinador" />
+
+<?if $(var.Escopo) = "usuario" ?>
+    <!-- %LOCALAPPDATA%\Programs, a pasta dos programas instalados por usuário. -->
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="PastaDosProgramas" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="Confidata Assinador" />
+      </Directory>
+    </StandardDirectory>
+<?else?>
+    <!-- Program Files da arquitetura do pacote (x64 ou arm64). -->
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="Confidata Assinador" />
+    </StandardDirectory>
+<?endif?>
+
+    <!--
+      Um componente só: o programa, os manifestos e as chaves que apontam para eles instalam e saem
+      juntos. No MSI por usuário, o que fica no perfil exige a chave de HKCU como caminho-chave e a
+      remoção explícita das pastas (ICE38 e ICE64).
+    -->
+    <Component Id="Assinador" Directory="INSTALLFOLDER" Guid="$(var.GuidDoComponente)">
+<?if $(var.Escopo) = "usuario" ?>
+      <File Id="Programa" Source="$(var.Origem)\assinador.exe" />
+      <File Id="ManifestoChromium" Source="$(var.Origem)\chromium.json" />
+      <File Id="ManifestoFirefox" Source="$(var.Origem)\firefox.json" />
+      <RegistryValue Root="HKCU" Key="Software\Google\Chrome\NativeMessagingHosts\br.com.confidata.assinador" Type="string" Value="[INSTALLFOLDER]chromium.json" KeyPath="yes" />
+      <RegistryValue Root="HKCU" Key="Software\Microsoft\Edge\NativeMessagingHosts\br.com.confidata.assinador" Type="string" Value="[INSTALLFOLDER]chromium.json" />
+      <RegistryValue Root="HKCU" Key="Software\Chromium\NativeMessagingHosts\br.com.confidata.assinador" Type="string" Value="[INSTALLFOLDER]chromium.json" />
+      <RegistryValue Root="HKCU" Key="Software\Mozilla\NativeMessagingHosts\br.com.confidata.assinador" Type="string" Value="[INSTALLFOLDER]firefox.json" />
+      <RemoveFolder Id="RemoverPastaDoAssinador" Directory="INSTALLFOLDER" On="uninstall" />
+      <RemoveFolder Id="RemoverPastaDosProgramas" Directory="PastaDosProgramas" On="uninstall" />
+<?else?>
+      <File Id="Programa" Source="$(var.Origem)\assinador.exe" KeyPath="yes" />
+      <File Id="ManifestoChromium" Source="$(var.Origem)\chromium.json" />
+      <File Id="ManifestoFirefox" Source="$(var.Origem)\firefox.json" />
+      <RegistryValue Root="HKLM" Key="Software\Google\Chrome\NativeMessagingHosts\br.com.confidata.assinador" Type="string" Value="[INSTALLFOLDER]chromium.json" />
+      <RegistryValue Root="HKLM" Key="Software\Microsoft\Edge\NativeMessagingHosts\br.com.confidata.assinador" Type="string" Value="[INSTALLFOLDER]chromium.json" />
+      <RegistryValue Root="HKLM" Key="Software\Chromium\NativeMessagingHosts\br.com.confidata.assinador" Type="string" Value="[INSTALLFOLDER]chromium.json" />
+      <RegistryValue Root="HKLM" Key="Software\Mozilla\NativeMessagingHosts\br.com.confidata.assinador" Type="string" Value="[INSTALLFOLDER]firefox.json" />
+<?endif?>
+    </Component>
+  </Package>
+</Wix>

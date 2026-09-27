@@ -4,8 +4,10 @@ name: nativo
 # as catracas do build de release, o desenho do PC/SC contra os cabeçalhos, staticcheck,
 # govulncheck, o binário, e os pacotes .deb e .rpm de desenvolvimento, provados em contêiner. E no
 # Windows (F6a): o provedor CNG e CSP com certificados de chave de software, o canal, a ponta a
-# ponta, as estruturas contra o SDK e o registro de desenvolvimento. As ações são pinadas por commit
-# (a tag vai no comentário): o repositório é público e o CI monta o que roda no computador da pessoa.
+# ponta, as estruturas contra o SDK e o registro de desenvolvimento; e (F6b) os MSI de
+# desenvolvimento, por usuário e por máquina, instalados, atualizados e removidos no executor. As
+# ações são pinadas por commit (a tag vai no comentário): o repositório é público e o CI monta o que
+# roda no computador da pessoa.
 
 on:
   push:
@@ -14,6 +16,7 @@ on:
       - "protocolo/**"
       - "ferramentas/**"
       - "instaladores/linux/**"
+      - "instaladores/windows/**"
       - ".github/workflows/nativo.yml"
   pull_request:
     paths:
@@ -21,6 +24,7 @@ on:
       - "protocolo/**"
       - "ferramentas/**"
       - "instaladores/linux/**"
+      - "instaladores/windows/**"
       - ".github/workflows/nativo.yml"
 
 permissions:
@@ -235,6 +239,48 @@ jobs:
             if (Test-Path -LiteralPath $chave) { throw "a chave $chave ficou" }
           }
           if (Test-Path "$env:LOCALAPPDATA\ConfidataAssinadorDev") { throw 'a pasta ficou' }
+
+      # Os MSI de DESENVOLVIMENTO (F6b): o WiX 5.0.2 (o 6 exige o EULA da taxa de manutenção da OSMF)
+      # roda sobre o .NET 8, que o setup-dotnet instala nas duas arquiteturas. Sem assinatura até o
+      # certificado de assinatura de código (F6b-ii).
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          dotnet-version: 8.0.x
+
+      - name: WiX 5.0.2
+        shell: pwsh
+        env:
+          DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+          DOTNET_NOLOGO: "1"
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          if ($LASTEXITCODE -ne 0) { throw "o dotnet tool install saiu com $LASTEXITCODE" }
+          Add-Content -LiteralPath $env:GITHUB_PATH -Value (Join-Path $env:USERPROFILE '.dotnet\tools')
+
+      # A versão deste CI e uma anterior (0.0.1), para provar a ATUALIZAÇÃO por cima da instalada.
+      - name: Os MSI por usuário e por máquina, desta versão e da anterior
+        shell: pwsh
+        env:
+          ARQUITETURA: ${{ matrix.arquitetura }}
+          VERSAO: 0.1.${{ github.run_number }}
+        run: |
+          wix --version
+          .\instaladores\windows\empacotar.ps1 -Versao $env:VERSAO -Saida dist -Arquitetura $env:ARQUITETURA
+          .\instaladores\windows\empacotar.ps1 -Versao 0.0.1 -Saida anterior -Arquitetura $env:ARQUITETURA
+
+      - name: O MSI por usuário não exige elevação, atualiza, conversa como o navegador e sai sem deixar nada
+        shell: pwsh
+        env:
+          ARQUITETURA: ${{ matrix.arquitetura }}
+          VERSAO: 0.1.${{ github.run_number }}
+        run: .\instaladores\windows\testar-instalador.ps1 -Msi "dist\assinador-dev-windows-$env:ARQUITETURA-usuario.msi" -Escopo usuario -Versao $env:VERSAO -MsiAnterior "anterior\assinador-dev-windows-$env:ARQUITETURA-usuario.msi" -VersaoAnterior 0.0.1
+
+      - name: O MSI por máquina (GPO e Intune), o mesmo roteiro em Program Files e HKLM
+        shell: pwsh
+        env:
+          ARQUITETURA: ${{ matrix.arquitetura }}
+          VERSAO: 0.1.${{ github.run_number }}
+        run: .\instaladores\windows\testar-instalador.ps1 -Msi "dist\assinador-dev-windows-$env:ARQUITETURA-maquina.msi" -Escopo maquina -Versao $env:VERSAO -MsiAnterior "anterior\assinador-dev-windows-$env:ARQUITETURA-maquina.msi" -VersaoAnterior 0.0.1
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

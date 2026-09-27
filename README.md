@@ -20,6 +20,7 @@ Em construção. Licença Apache-2.0.
 | `extensao/` | A extensão para Chrome, Edge e Firefox: a ponte da página, a permissão por endereço, a janela de confirmação e as opções. Ver [`extensao/README.md`](extensao/README.md) e [`extensao/PRIVACIDADE.md`](extensao/PRIVACIDADE.md) |
 | `protocolo/` | [`PROTOCOLO.md`](protocolo/PROTOCOLO.md), as chaves públicas de produção, a chave pública da extensão de desenvolvimento e as fixtures do bilhete |
 | `instaladores/linux/` | O `.deb` e o `.rpm` (`empacotar.sh`) e a prova deles em contêiner (`testar-pacotes.sh`) |
+| `instaladores/windows/` | Os MSI por usuário e por máquina (`Assinador.wxs`, montado pelo `empacotar.ps1`) e a prova deles no Windows (`testar-instalador.ps1`) |
 | `ferramentas/` | Prova e medição (F0), o `host-teste`, que fala com o programa como a extensão e serve a página de teste da extensão (`servir`), e o `registrar-windows.ps1`, que registra o programa de desenvolvimento no Windows antes do MSI. Nunca vai para release |
 | `docs/medicoes/` | O que foi medido com cartão real, com data e equipamento |
 
@@ -93,9 +94,53 @@ powershell -ExecutionPolicy Bypass -File .\registrar-windows.ps1 -Remover
 O registro copia o programa para `%LOCALAPPDATA%\ConfidataAssinadorDev` (e tira da cópia a marca de
 "veio da internet"), gera os manifestos (os IDs de extensão que o programa aceita) e grava as chaves
 `HKCU` do Chrome, do Edge, do Chromium e do Firefox; `-Remover` desfaz tudo. O programa de
-desenvolvimento não é assinado (a assinatura de código é da F6b), e o SmartScreen pode pedir
+desenvolvimento não é assinado (a assinatura de código espera o certificado), e o SmartScreen pode pedir
 confirmação na primeira execução. A chave dev do bilhete fica em
 `%APPDATA%\confidata-assinador\chaves-dev.json`.
+
+### O MSI de desenvolvimento
+
+O CI publica também, no mesmo artefato, dois MSI de DESENVOLVIMENTO por arquitetura (o programa com
+a tag `dev` e os manifestos com o ID provisório da extensão), nenhum assinado até o certificado de
+assinatura de código:
+
+| MSI | Instala em | Chaves | Para quem |
+|---|---|---|---|
+| `assinador-dev-windows-<arq>-usuario.msi` | `%LOCALAPPDATA%\Programs\Confidata Assinador` | `HKCU` | a pessoa, sem administrador (dois cliques ou `msiexec /i`) |
+| `assinador-dev-windows-<arq>-maquina.msi` | `%ProgramFiles%\Confidata Assinador` | `HKLM` | o administrador, por GPO ou Intune |
+
+Os dois levam o programa e os dois manifestos na mesma pasta, e as chaves do Chrome, do Edge, do
+Chromium e do Firefox apontam para os manifestos; os manifestos apontam o programa pelo NOME, que os
+navegadores resolvem a partir da pasta do manifesto. A instalação silenciosa, a atualização (a versão
+nova por cima da instalada) e a remoção:
+
+```powershell
+Unblock-File .\assinador-dev-windows-amd64-maquina.msi
+msiexec /i assinador-dev-windows-amd64-maquina.msi /qn
+msiexec /x assinador-dev-windows-amd64-maquina.msi /qn
+```
+
+Sem assinatura, o SmartScreen pode pedir confirmação ("Mais informações", "Executar assim mesmo").
+Use o MSI por usuário OU o `registrar-windows.ps1`, nunca os dois: eles gravam as mesmas chaves `HKCU`
+(rode `registrar-windows.ps1 -Remover` antes do MSI). A chave dev do bilhete continua em
+`%APPDATA%\confidata-assinador\chaves-dev.json`, de cada pessoa que for assinar, também no MSI por
+máquina.
+
+Montar e provar os MSI é no Windows (o WiX monta MSI só lá), no PowerShell 7 (`pwsh`), com o Go do
+`nativo/go.mod` e o WiX 5.0.2 sobre o .NET 8 (`dotnet tool install --global wix --version 5.0.2`; o
+6 exige o EULA da taxa de manutenção da OSMF):
+
+```powershell
+.\instaladores\windows\empacotar.ps1 -Versao 0.1.1 -Saida dist -Arquitetura amd64
+.\instaladores\windows\testar-instalador.ps1 -Msi dist\assinador-dev-windows-amd64-usuario.msi -Escopo usuario -Versao 0.1.1
+```
+
+A versão do MSI é `X.Y.Z` até `255.255.65535` e é a mesma que o programa informa. O
+`testar-instalador.ps1` parte de uma máquina sem o Assinador, instala (com `-MsiAnterior` e
+`-VersaoAnterior`, primeiro a versão anterior, para provar a atualização), confere as chaves, os
+manifestos e o programa, conversa com ele pelo caminho que o navegador segue, desinstala e reprova se
+sobrar arquivo, pasta ou chave. O CI roda os dois escopos nas duas arquiteturas; o MSI de produção,
+com os IDs das lojas e assinado, é da publicação, e atualiza o de desenvolvimento.
 
 Os testes do Windows rodam no CI (job `windows`, em x64 e arm64): certificados com chave de
 SOFTWARE criados pelo `New-SelfSignedCertificate` fazem o papel do cartão, um no caminho CNG e

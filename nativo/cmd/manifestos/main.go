@@ -2,6 +2,12 @@
 // instala.
 //
 //	go run -tags dev ./cmd/manifestos -saida <pasta> -programa /usr/lib/confidata-assinador/assinador
+//	go run -tags dev ./cmd/manifestos -saida <pasta> -programa assinador.exe -relativo
+//
+// O caminho do programa é ABSOLUTO, ou, com `-relativo`, só o NOME do arquivo, na mesma pasta do
+// manifesto: é o que o MSI do Windows usa (F6b), porque a pasta por usuário só existe na hora da
+// instalação, e o Chrome, o Edge e o Firefox resolvem caminho relativo à pasta do manifesto no Windows
+// (no Linux e no macOS eles exigem absoluto).
 //
 // Escreve `chromium.json` (Chrome, Chromium e Edge) e `firefox.json`. O `allowed_origins` sai de
 // `origem.ExtensoesChrome()` e o `allowed_extensions` de `origem.ExtensaoFirefox`: as MESMAS listas
@@ -17,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Gottbrok/assinador/nativo/internal/origem"
 )
@@ -41,17 +48,28 @@ type manifestoFirefox struct {
 
 func main() {
 	saida := flag.String("saida", "", "pasta onde escrever chromium.json e firefox.json")
-	programa := flag.String("programa", "", "caminho ABSOLUTO do programa instalado")
+	programa := flag.String("programa", "", "caminho ABSOLUTO do programa instalado (ou só o nome do arquivo, com -relativo)")
+	relativo := flag.Bool("relativo", false, "o -programa fica na MESMA pasta do manifesto e vai só pelo nome (Windows, MSI)")
 	flag.Parse()
-	if err := gerar(*saida, *programa); err != nil {
+	if err := gerar(*saida, *programa, *relativo); err != nil {
 		fmt.Fprintln(os.Stderr, "manifestos:", err)
 		os.Exit(1)
 	}
 }
 
-func gerar(saida, programa string) error {
-	if saida == "" || !filepath.IsAbs(programa) {
-		return errors.New("informe -saida e o caminho absoluto do -programa")
+// caminhoValido: absoluto; ou, relativo, só o NOME do arquivo, sem pasta, `..`, separador de nenhum
+// sistema nem letra de unidade (`C:assinador.exe` é relativo à pasta corrente da unidade C, e não à do
+// manifesto).
+func caminhoValido(programa string, relativo bool) bool {
+	if !relativo {
+		return filepath.IsAbs(programa)
+	}
+	return programa != "" && programa != "." && programa != ".." && !strings.ContainsAny(programa, `/\:`)
+}
+
+func gerar(saida, programa string, relativo bool) error {
+	if saida == "" || !caminhoValido(programa, relativo) {
+		return errors.New("informe -saida e o caminho absoluto do -programa (ou, com -relativo, só o nome do arquivo)")
 	}
 	ids := origem.ExtensoesChrome()
 	if len(ids) == 0 {

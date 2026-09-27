@@ -25,7 +25,9 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
 
 **Nomes internos fixos** (trocá-los depois quebra instalações): host de native messaging
 `br.com.confidata.assinador`; ID da extensão no Firefox `assinador@confidata.com.br`; módulo Go
-`github.com/Gottbrok/assinador/nativo`.
+`github.com/Gottbrok/assinador/nativo`; os `UpgradeCode` do MSI, um por escopo (por usuário e por
+máquina), os mesmos nas duas arquiteturas e no MSI de produção, e os GUIDs dos componentes, todos em
+`instaladores/windows/Assinador.wxs`.
 
 ## Regras que não se negociam
 
@@ -82,9 +84,14 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
     `protocolo/fixtures/ORIGEM.md` (🚫 editar fixture aqui). Os IDs de extensão que o programa aceita
     (`origem.ExtensoesChrome`) são os que vão aos manifestos (`cmd/manifestos`): 🚫 escrever
     manifesto à mão. O ID de desenvolvimento só existe no build `dev`.
-14. **Pacote de desenvolvimento não é release.** Os `.deb` e `.rpm` de `instaladores/linux` levam o
-    build `dev`; o de produção (sem a tag, com os IDs das lojas, assinado) é da F7a. Mudou o pacote,
-    rode `instaladores/linux/testar-pacotes.sh`: a remoção não pode deixar arquivo nem pasta.
+14. **Pacote de desenvolvimento não é release.** Os `.deb` e `.rpm` de `instaladores/linux` e os MSI
+    de `instaladores/windows` levam o build `dev`; o de produção (sem a tag, com os IDs das lojas,
+    assinado) é da F7a. Mudou o pacote, rode `instaladores/linux/testar-pacotes.sh`; mudou o MSI, o
+    `instaladores/windows/testar-instalador.ps1` roda no CI (os dois escopos, as duas arquiteturas,
+    a atualização por cima da versão anterior): a remoção não pode deixar arquivo, pasta nem chave de
+    registro. No MSI, os manifestos apontam o programa pelo NOME (`cmd/manifestos -relativo`, na
+    mesma pasta), porque a pasta por usuário só existe na hora da instalação e o MSI não reescreve
+    JSON.
 15. **A extensão só LIGA; quem decide é o programa e a pessoa.** Ela nunca confere o bilhete (só a
     forma) e as janelas mostram só o que veio do PROGRAMA (o bilhete conferido, o certificado) e do
     NAVEGADOR (a origem de quem pediu), nunca o que a página declara. A permissão é por ORIGEM, em
@@ -128,6 +135,9 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
   extraído sem root (`gcc-mingw-w64-x86-64-win32`, `mingw-w64-x86-64-dev` e dependências) e o
   `CC` apontando para ele; rodar, só no Windows. Teste que depende do sistema (a frase do diagnóstico,
   um caminho absoluto) fixa o sistema ou usa a forma dele: a suíte diz o mesmo no Linux e no Windows.
+  O MSI se monta e se prova só no Windows: fora dele, o `wix build` falha nos caminhos (`WIX0389`,
+  `WIX0027`), e isso não diz nada do fonte. Os scripts `.ps1` se conferem aqui com o `pwsh` (análise
+  da sintaxe e as funções que não tocam no Windows Installer).
 - **Na `extensao/`**: `npm run type-check`, `npm test`, `npm run reproduzivel` e `npm run
   lint:firefox`; o `npm run ponta-a-ponta` (Chromium do Playwright, programa dev e SoftHSM2) abre
   navegador, então pergunte ao Cairo antes de rodá-lo fora do CI.
