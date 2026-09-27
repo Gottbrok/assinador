@@ -233,3 +233,38 @@
     desenvolvimento (o de produção é da publicação); o WiX é o 5.0.2, e não o 6, que exige o EULA da
     taxa de manutenção da OSMF; e a medição das chaves de extensão externa do Chrome e do Edge
     precisa do ID da loja e vai para a publicação.
+- Auditoria da F6b-i (uma revisão adversarial independente e a nossa), antes do primeiro CI da fase:
+  nenhum P0. Dois P1 corrigidos:
+  - o `testar-instalador.ps1` quebraria no primeiro CI: o PowerShell desenrola objeto COM enumerável
+    que sai de função, e o StringList do `RelatedProducts` virava `$null` (zero produtos) ou o texto
+    do ProductCode (um). O resultado do `InvokeMember` sai inteiro, pela vírgula, e as listas se leem
+    para variável;
+  - o programa do MSI informava a versão do PACOTE (`0.1.N`), e a biblioteca, que exige a versão
+    mínima `1.0.0`, diria à pessoa que o Assinador está desatualizado. O MSI passou a ter duas
+    versões, como o Linux (`-VersaoDoMsi` e `-VersaoDoPrograma`), e a atualização se prova pela
+    versão do produto instalado e pela troca do programa (a 0.0.1 informa `0.0.1`).
+  Os P2 e P3, corrigidos por decisão do Cairo:
+  - os ICE não rodavam (no WiX 5 o `wix build` não valida): o `empacotar.ps1` roda o
+    `wix msi validate` em cada MSI;
+  - a atualização aceita a mesma versão e ignora o idioma (`AllowSameVersionUpgrades`,
+    `IgnoreLanguage`): o arm64 troca o x64 emulado da mesma versão, a mesma execução do CI rodada de
+    novo não duplica, e um MSI de produção em outro idioma acha este;
+  - a estrutura do MSI por usuário é conferida além do resumo (todo valor em `HKCU`, nenhuma pasta de
+    máquina), e a do por máquina ao contrário; instalar numa conta comum segue com o teste manual;
+  - a conversa leva os argumentos que o Chrome passa no Windows (`--parent-window=0`), com origem
+    neutra, e mostra o erro padrão do programa quando falha; o texto não promete mais "o mesmo
+    caminho do navegador";
+  - o README: a remoção por "Configurações, Aplicativos" (o `msiexec /x` só funciona com o mesmo
+    arquivo), o `/qn` do por máquina num prompt de administrador, o `HKCU` que o Chrome e o Edge leem
+    antes do `HKLM` (o por usuário esconde o por máquina), a política `NativeMessagingUserLevelHosts`
+    e as duas versões;
+  - o `-relativo` do gerador de manifestos aceita só o nome de um `.exe` em lista branca, e recusa
+    nome de dispositivo do Windows;
+  - o `empacotar.ps1` devolve as variáveis do Go da sessão e recusa zero à esquerda na versão;
+  - o CI confere que o WiX é o 5.0.2, o msiexec tenta de novo no 1618, a falha mostra o trecho do log
+    em volta do "Return value 3", e os MSI e os logs sobem como artefato quando algo falha;
+  - a pasta-mãe e as chaves-mãe que já existiam VAZIAS podem sumir na desinstalação (a regra do
+    Windows Installer apaga a chave que fica vazia, sem olhar quem a criou), e isso não reprova mais;
+  - o resumo do pacote sai em português.
+  - Aceito: o título do commit da F6b-i diz "provados no CI" antes de o CI rodar (o
+    `docs/medicoes/F6b.md` diz o que foi e o que não foi provado).

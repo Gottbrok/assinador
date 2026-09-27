@@ -111,36 +111,54 @@ assinatura de código:
 
 Os dois levam o programa e os dois manifestos na mesma pasta, e as chaves do Chrome, do Edge, do
 Chromium e do Firefox apontam para os manifestos; os manifestos apontam o programa pelo NOME, que os
-navegadores resolvem a partir da pasta do manifesto. A instalação silenciosa, a atualização (a versão
-nova por cima da instalada) e a remoção:
+navegadores resolvem a partir da pasta do manifesto.
+
+O MSI por usuário se instala com dois cliques; sem assinatura, o SmartScreen pode pedir confirmação
+("Mais informações", "Executar assim mesmo"), e o `Unblock-File` no arquivo baixado a evita. O por
+máquina se instala em silêncio num prompt de ADMINISTRADOR (fora dele, o `/qn` falha sem perguntar
+nada):
 
 ```powershell
-Unblock-File .\assinador-dev-windows-amd64-maquina.msi
 msiexec /i assinador-dev-windows-amd64-maquina.msi /qn
-msiexec /x assinador-dev-windows-amd64-maquina.msi /qn
 ```
 
-Sem assinatura, o SmartScreen pode pedir confirmação ("Mais informações", "Executar assim mesmo").
-Use o MSI por usuário OU o `registrar-windows.ps1`, nunca os dois: eles gravam as mesmas chaves `HKCU`
-(rode `registrar-windows.ps1 -Remover` antes do MSI). A chave dev do bilhete continua em
-`%APPDATA%\confidata-assinador\chaves-dev.json`, de cada pessoa que for assinar, também no MSI por
-máquina.
+A versão nova se instala por cima da instalada (o mesmo escopo; a mesma versão também, o que troca o
+x64 emulado pelo arm64). Para remover, "Configurações, Aplicativos, Assinador Confidata
+(desenvolvimento)", ou `msiexec /x <arquivo> /qn` com o MESMO arquivo que instalou: cada MSI montado
+é um produto novo, e o de outra execução do CI responde 1605.
 
-Montar e provar os MSI é no Windows (o WiX monta MSI só lá), no PowerShell 7 (`pwsh`), com o Go do
-`nativo/go.mod` e o WiX 5.0.2 sobre o .NET 8 (`dotnet tool install --global wix --version 5.0.2`; o
-6 exige o EULA da taxa de manutenção da OSMF):
+Três cuidados:
+- **Um mecanismo de cada vez.** O MSI por usuário e o `registrar-windows.ps1` gravam as mesmas chaves
+  `HKCU`: rode `registrar-windows.ps1 -Remover` antes do MSI. E o Chrome e o Edge leem `HKCU` antes de
+  `HKLM`, então, com o por usuário e o por máquina instalados, o navegador abre o por usuário (um MSI
+  por máquina não remove o por usuário). Onde a política `NativeMessagingUserLevelHosts` do Chrome
+  estiver desligada (organização gerenciada), só o MSI por máquina funciona.
+- **Duas versões.** O PACOTE de desenvolvimento tem a versão `0.1.<execução do CI>`, abaixo de
+  qualquer publicação; o PROGRAMA informa a da próxima publicação (hoje `1.0.0`), que é a que a
+  biblioteca compara com a versão mínima, como os pacotes do Linux (`1.0.0~dev.N`). Um MSI de
+  execução mais antiga não se instala por cima de um mais novo ("Uma versão mais nova do Assinador
+  já está instalada"): remova antes.
+- **A chave dev do bilhete** continua em `%APPDATA%\confidata-assinador\chaves-dev.json`, de cada
+  pessoa que for assinar, também no MSI por máquina.
+
+Montar, validar e provar os MSI é no Windows (o WiX monta MSI só lá), no PowerShell 7 (`pwsh`), com o
+Go do `nativo/go.mod` e o WiX 5.0.2 sobre o .NET 8 (`dotnet tool install --global wix --version
+5.0.2`; o 6 exige o EULA da taxa de manutenção da OSMF):
 
 ```powershell
-.\instaladores\windows\empacotar.ps1 -Versao 0.1.1 -Saida dist -Arquitetura amd64
-.\instaladores\windows\testar-instalador.ps1 -Msi dist\assinador-dev-windows-amd64-usuario.msi -Escopo usuario -Versao 0.1.1
+.\instaladores\windows\empacotar.ps1 -VersaoDoMsi 0.1.1 -VersaoDoPrograma 1.0.0 -Saida dist -Arquitetura amd64
+.\instaladores\windows\testar-instalador.ps1 -Msi dist\assinador-dev-windows-amd64-usuario.msi -Escopo usuario -VersaoDoPrograma 1.0.0
 ```
 
-A versão do MSI é `X.Y.Z` até `255.255.65535` e é a mesma que o programa informa. O
-`testar-instalador.ps1` parte de uma máquina sem o Assinador, instala (com `-MsiAnterior` e
-`-VersaoAnterior`, primeiro a versão anterior, para provar a atualização), confere as chaves, os
-manifestos e o programa, conversa com ele pelo caminho que o navegador segue, desinstala e reprova se
-sobrar arquivo, pasta ou chave. O CI roda os dois escopos nas duas arquiteturas; o MSI de produção,
-com os IDs das lojas e assinado, é da publicação, e atualiza o de desenvolvimento.
+O `empacotar.ps1` roda os ICE (`wix msi validate`, que o `wix build` do WiX 5 não roda). O
+`testar-instalador.ps1` confere a estrutura do pacote (no por usuário: nada exige elevação, todo
+valor em `HKCU`, nenhuma pasta de máquina), parte de uma máquina sem o Assinador, instala (com
+`-MsiAnterior` e `-VersaoAnteriorDoPrograma`, primeiro a versão anterior, para provar a
+atualização), confere o produto, as chaves, os manifestos e o programa, conversa com ele como o
+Chrome conversa, desinstala e reprova se sobrar arquivo, pasta ou chave. O CI roda os dois escopos
+nas duas arquiteturas; o executor é administrador, então instalar numa conta comum e abrir pelo
+navegador de verdade são do teste manual. O MSI de produção, com os IDs das lojas e assinado, é da
+publicação, e atualiza o de desenvolvimento do mesmo escopo.
 
 Os testes do Windows rodam no CI (job `windows`, em x64 e arm64): certificados com chave de
 SOFTWARE criados pelo `New-SelfSignedCertificate` fazem o papel do cartão, um no caminho CNG e

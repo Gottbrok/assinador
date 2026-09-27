@@ -91,7 +91,11 @@ máquina), os mesmos nas duas arquiteturas e no MSI de produção, e os GUIDs do
     a atualização por cima da versão anterior): a remoção não pode deixar arquivo, pasta nem chave de
     registro. No MSI, os manifestos apontam o programa pelo NOME (`cmd/manifestos -relativo`, na
     mesma pasta), porque a pasta por usuário só existe na hora da instalação e o MSI não reescreve
-    JSON.
+    JSON. O MSI tem DUAS versões, como o Linux: a do pacote (`-VersaoDoMsi`, abaixo da primeira
+    publicação, para o de produção atualizar o de desenvolvimento) e a que o programa informa
+    (`-VersaoDoPrograma`, a da PRÓXIMA publicação, que a biblioteca compara com a versão mínima):
+    🚫 nunca a do pacote no programa, senão a página diz à pessoa que o Assinador está desatualizado.
+    O `empacotar.ps1` roda os ICE (`wix msi validate`): no WiX 5 o `wix build` não valida.
 15. **A extensão só LIGA; quem decide é o programa e a pessoa.** Ela nunca confere o bilhete (só a
     forma) e as janelas mostram só o que veio do PROGRAMA (o bilhete conferido, o certificado) e do
     NAVEGADOR (a origem de quem pediu), nunca o que a página declara. A permissão é por ORIGEM, em
@@ -135,9 +139,14 @@ máquina), os mesmos nas duas arquiteturas e no MSI de produção, e os GUIDs do
   extraído sem root (`gcc-mingw-w64-x86-64-win32`, `mingw-w64-x86-64-dev` e dependências) e o
   `CC` apontando para ele; rodar, só no Windows. Teste que depende do sistema (a frase do diagnóstico,
   um caminho absoluto) fixa o sistema ou usa a forma dele: a suíte diz o mesmo no Linux e no Windows.
-  O MSI se monta e se prova só no Windows: fora dele, o `wix build` falha nos caminhos (`WIX0389`,
-  `WIX0027`), e isso não diz nada do fonte. Os scripts `.ps1` se conferem aqui com o `pwsh` (análise
-  da sintaxe e as funções que não tocam no Windows Installer).
+  O MSI se monta e se prova só no Windows: fora dele, o `wix build` para nos caminhos (`WIX0389`,
+  `WIX0027`) e, sem eles, no `msi.dll`. As TABELAS se conferem aqui com uma variante do `.wxs` sem as
+  pastas e os arquivos, compilada com `-outputtype intermediatepostlink` (pré-processador, linker,
+  atualização, resumo do pacote). Os scripts `.ps1` se conferem com o `pwsh` (análise da sintaxe, e as
+  funções carregadas pela árvore de sintaxe, com o COM trocado por um falso). ⚠️ No PowerShell, objeto
+  COM enumerável que sai de função é DESENROLADO (o StringList do `RelatedProducts` vira `$null` ou
+  texto): resultado de `InvokeMember` sai com a vírgula (`, $x`), e lista devolvida assim se lê para
+  uma variável, nunca por `@(...)`, que a embrulharia de novo.
 - **Na `extensao/`**: `npm run type-check`, `npm test`, `npm run reproduzivel` e `npm run
   lint:firefox`; o `npm run ponta-a-ponta` (Chromium do Playwright, programa dev e SoftHSM2) abre
   navegador, então pergunte ao Cairo antes de rodá-lo fora do CI.
