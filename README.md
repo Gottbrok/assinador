@@ -78,8 +78,12 @@ o Cairo, depois de conferir. Os nomes são estáveis, para o endereço
 `https://github.com/Gottbrok/assinador/releases/latest/download/<arquivo>` não mudar entre versões.
 
 A assinatura das somas é conferida, antes de a release existir, com SÓ a chave pública de
-`protocolo/chave-gpg-das-releases.asc`: a privada vive no segredo `ASSINADOR_GPG_CHAVE` (com a senha em
-`ASSINADOR_GPG_SENHA`), e sem as duas o workflow para. Quem baixa confere assim:
+`protocolo/chave-gpg-das-releases.asc`. A privada (`ASSINADOR_GPG_CHAVE`, com a senha em
+`ASSINADOR_GPG_SENHA`) mora SÓ no ambiente `release` do GitHub, e não entre os segredos do repositório,
+que qualquer workflow de qualquer ramo lê. Configuração do GitHub, feita pelo Cairo antes da primeira
+release: o ambiente `release` com os dois segredos, o Cairo como revisor obrigatório e a política de
+implantação só para tags `v*.*.*`, e uma regra de tag que só deixa o Cairo criar `v*`. O job que assina
+espera a aprovação dele antes de ler a chave; sem a chave, o workflow para. Quem baixa confere assim:
 
 ```sh
 gpg --import chave-gpg-das-releases.asc

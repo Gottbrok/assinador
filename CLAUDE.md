@@ -83,7 +83,9 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
     (`origem.ExtensoesChrome`) são os que vão aos manifestos (`cmd/manifestos`): 🚫 escrever
     manifesto à mão. O ID de desenvolvimento só existe no build `dev`. A chave GPG das releases:
     a PÚBLICA mora em `protocolo/chave-gpg-das-releases.asc` (a mesma que a tela de instalação
-    mostra), e a PRIVADA só no segredo `ASSINADOR_GPG_CHAVE` do GitHub Actions (regra 5).
+    mostra), e a PRIVADA só no segredo `ASSINADOR_GPG_CHAVE` do AMBIENTE `release` do GitHub, com o
+    Cairo como revisor obrigatório (regra 5). 🚫 Esse segredo entre os do repositório: qualquer
+    workflow de qualquer ramo o leria.
 14. **Pacote de desenvolvimento não é release.** O `empacotar.sh` sem argumento de modo monta o
     pacote de desenvolvimento (a tag `dev`, `assinador-dev-*`); o de produção (`producao`: sem a tag,
     com os IDs das lojas, os nomes estáveis) só sai pelo `release.yml`, que cria a release como

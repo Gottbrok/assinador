@@ -8,6 +8,12 @@ name: release
 # Sem os IDs das lojas no programa (o gerador de manifestos recusa), sem a chave pública em
 # `protocolo/chave-gpg-das-releases.asc` ou sem a privada no segredo `ASSINADOR_GPG_CHAVE`, o workflow
 # para: não existe release pela metade. As ações são pinadas por commit (a tag vai no comentário).
+#
+# A chave privada das releases mora SÓ no ambiente `release` do GitHub, e não entre os segredos do
+# repositório: segredo do repositório qualquer workflow de qualquer ramo lê, inclusive um `release.yml`
+# alterado numa tag nova. O ambiente (configuração do GitHub, feita pelo Cairo na F7a) tem o Cairo como
+# revisor obrigatório e aceita só tags `v*.*.*`, e uma regra de tag deixa só o Cairo criar `v*`: o job
+# que assina espera a aprovação dele antes de ler a chave.
 
 on:
   push:
@@ -115,6 +121,8 @@ jobs:
   publicar:
     needs: [versao, linux, extensoes]
     runs-on: ubuntu-24.04
+    # Os segredos da chave das releases moram só neste ambiente, que pede a aprovação do Cairo.
+    environment: release
     permissions:
       contents: write
     steps:
