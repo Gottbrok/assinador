@@ -57,7 +57,8 @@ bin/assinador diagnostico --json   # o mesmo relatório, em JSON
 
 Mostra o sistema, as leitoras e o ATR de cada cartão (com o programa do fabricante que o lê,
 quando o ATR está no catálogo medido), os programas de cartão (módulos PKCS#11) com o estado de
-cada um, os certificados com o nome mascarado, e avisos em frase ("o serviço pcscd não está
+cada um, os certificados com os dígitos de CPF e CNPJ trocados por `*` (o nome do titular sai
+inteiro), e avisos em frase ("o serviço pcscd não está
 rodando", "este cartão usa o SafeSign, que não está instalado").
 
 ## Pacotes para Linux

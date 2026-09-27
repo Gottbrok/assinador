@@ -13,7 +13,7 @@ privacidade e o `extensao/PRIVACIDADE.md` mudam juntos.
 | Nome | **Assinador uShield** (decisão D2 do plano, 2026-09-27), o mesmo nas duas línguas; vem do `nomeDaExtensao` |
 | Resumo | O `descricaoDaExtensao` de cada `_locales` (132 caracteres no máximo, conferido por teste) |
 | Idiomas | Português do Brasil (padrão) e espanhol |
-| Política de privacidade | `https://ushield.app/componente/privacidade` |
+| Política de privacidade | `https://ushield.app/componente/privacidade`. Na addons.mozilla.org, a política pode ser um campo de TEXTO da ficha, e não um endereço: conferir no envio, e, se for, colar o texto da página (e ele vira mais uma cópia a manter igual) |
 | Página de apoio | `https://ushield.app/componente` (instalar, conferir a instalação e copiar o diagnóstico) |
 | Código-fonte | `https://github.com/Gottbrok/assinador` |
 | Pacotes | `assinador-extensao-chrome.zip` (Chrome e Edge) e `assinador-extensao-firefox.zip`, os MESMOS bytes da release (conferidos pelo `SHA256SUMS`); nunca um zip montado à parte |
@@ -25,15 +25,17 @@ privacidade e o `extensao/PRIVACIDADE.md` mudam juntos.
 >
 > Ele tem duas partes, instaladas uma vez por computador: esta extensão e um programa pequeno, que lê o
 > cartão pelo programa do fabricante (no Linux) ou pelo próprio Windows. A extensão sozinha não
-> assina: sem o programa, ela diz o que falta e leva à página de instalação.
+> assina: sem o programa, os sistemas do Confidata e do uShield dizem o que falta e levam à página de
+> instalação.
 >
-> Antes de cada assinatura, uma janela da extensão mostra o documento, o endereço que pede e o
-> certificado escolhido, e só então pede o PIN. O programa só assina o resumo que o sistema daquele
-> endereço preparou e assinou, e confere o endereço, o resumo, o certificado e o prazo antes de pedir a
-> assinatura ao cartão. Um endereço só usa o Assinador depois da sua permissão, uma vez.
+> Antes de cada assinatura, uma janela da extensão mostra o nome do documento, o endereço que pede e o
+> certificado escolhido, e só depois o PIN é pedido. O programa só assina o resumo que o sistema
+> daquele endereço preparou e assinou, e confere o endereço, o resumo, o certificado e o prazo antes de
+> pedir a assinatura. Um endereço só usa o Assinador depois da sua permissão, uma vez.
 >
-> A extensão funciona só em https://*.confidata.app e https://ushield.app. Nem ela nem o programa
-> acessam a internet, e nenhum dos dois guarda o PIN, documentos ou certificados. O código é aberto.
+> A extensão funciona só em https://*.confidata.app e https://ushield.app. O código da extensão e o do
+> programa não abrem conexão com a internet, e nenhum dos dois guarda o PIN, documentos ou
+> certificados. O código é aberto.
 >
 > Para instalar o programa e conferir a instalação: https://ushield.app/componente
 
@@ -44,39 +46,54 @@ privacidade e o `extensao/PRIVACIDADE.md` mudam juntos.
 >
 > Tiene dos partes, que se instalan una vez por computador: esta extensión y un programa pequeño, que
 > lee la tarjeta a través del programa del fabricante (en Linux) o del propio Windows. La extensión
-> sola no firma: sin el programa, dice lo que falta y lleva a la página de instalación.
+> sola no firma: sin el programa, los sistemas de Confidata y de uShield dicen lo que falta y llevan a
+> la página de instalación.
 >
-> Antes de cada firma, una ventana de la extensión muestra el documento, la dirección que lo pide y el
-> certificado elegido, y solo entonces pide el PIN. El programa solo firma el resumen que el sistema de
-> esa dirección preparó y firmó, y revisa la dirección, el resumen, el certificado y el plazo antes de
-> pedir la firma a la tarjeta. Una dirección solo usa el Assinador después de tu permiso, una vez.
+> Antes de cada firma, una ventana de la extensión muestra el nombre del documento, la dirección que lo
+> pide y el certificado elegido, y solo después se pide el PIN. El programa solo firma el resumen que el
+> sistema de esa dirección preparó y firmó, y revisa la dirección, el resumen, el certificado y el
+> plazo antes de pedir la firma. Una dirección solo usa el Assinador después de tu permiso, una vez.
 >
-> La extensión funciona solo en https://*.confidata.app y https://ushield.app. Ni ella ni el programa
-> acceden a internet, y ninguno de los dos guarda el PIN, documentos ni certificados. El código es
-> abierto.
+> La extensión funciona solo en https://*.confidata.app y https://ushield.app. El código de la
+> extensión y el del programa no abren conexión con internet, y ninguno de los dos guarda el PIN,
+> documentos ni certificados. El código es abierto.
 >
 > Para instalar el programa y revisar la instalación: https://ushield.app/componente
 
-### Notas para quem revisa (Edge e Firefox pedem; em inglês)
+### Notas para quem revisa (em inglês)
+
+O Edge ("Notes for certification") e a addons.mozilla.org têm campo para elas; na Chrome Web Store,
+conferir no envio se há campo de instruções de teste e, havendo, usá-lo. Elas dizem o que a revisão
+consegue ver: durante a revisão, os dois sistemas estão no ESTADO ESCURO (a página de instalação não
+oferece download, e nenhum pedido de assinatura é emitido), e o fluxo de assinatura não se exerce.
 
 > This extension only works together with a native program ("Assinador") installed on the computer
 > and a smart card or USB token holding a Brazilian ICP-Brasil certificate. It talks to the program
-> through native messaging and never accesses the network.
+> through native messaging, and neither the extension code nor the program code opens network
+> connections.
 >
-> It runs only on https://*.confidata.app and https://ushield.app. To see it without a card: install
-> the extension, open https://ushield.app/componente and click "Conferir agora" (check now). Without
-> the native program, the page says that the program is missing, and the first request from the page
-> opens the extension's own permission window for that address. The native program for Windows and
-> Linux is in the GitHub release of the same version (https://github.com/Gottbrok/assinador/releases);
-> with it installed, the check confirms the installation. The options page lists the addresses the
-> user has allowed, each with a "Remover" (remove) button, and "Gerar diagnóstico" shows the readers,
-> card programs and certificates the program finds.
+> It runs only on https://*.confidata.app and https://ushield.app. While the extension is under review,
+> those sites keep the component in a "dark state": the install page does not offer downloads, and no
+> signing request is issued. What can be checked:
 >
-> A signature needs a request prepared and signed by the server of the allowed address (a short-lived
-> ticket that the native program verifies) and the user's confirmation in the extension's own window,
-> which shows the document, the requesting address and the chosen certificate before asking for the
-> PIN. The scripts are bundled by esbuild but not minified; the Firefox source build instructions are
-> below.
+> 1. Install the native program from the GitHub release of the same version
+>    (https://github.com/Gottbrok/assinador/releases: the Windows installer, or the Linux .deb or .rpm).
+> 2. Open https://ushield.app/componente and click "Conferir agora" (check now). The first request
+>    from the page opens the extension's own permission window for that address ("Permitir" allows).
+>    Without the native program, the page says, in Portuguese, that the program that reads the card is
+>    missing; with it, the page says "O Assinador está instalado" (the Assinador is installed) and that
+>    card signing has not reached that address yet, which is the dark state.
+> 3. The extension's options page lists the allowed addresses, each with a "Remover" (remove) button,
+>    and "Gerar diagnóstico" (generate diagnostic) shows the readers, card programs and certificates the
+>    program finds.
+>
+> The signing flow itself cannot be exercised during review: it needs a signing request prepared and
+> signed by the server of an allowed address (a short-lived ticket that the native program verifies
+> before signing), a verified account and a card. In that flow, the extension's own confirmation window
+> shows the document name, the requesting address and the chosen certificate before the PIN is asked.
+>
+> The scripts are built by Vite (library mode), one file per entry point, without minification; the
+> Firefox source build instructions are in the source submission.
 
 ## Chrome Web Store
 
@@ -100,8 +117,8 @@ fora.
 
 | Tipo | Marcar | Por quê |
 |---|---|---|
-| Informações de identificação pessoal | Sim | A extensão entrega à página que a pessoa autorizou os certificados do computador, com o nome e o CPF ou o CNPJ do titular e, no e-CPF, a data de nascimento. É a finalidade da extensão |
-| Informações de autenticação | Sim, por cautela | No Linux, o PIN passa pela janela da extensão até o programa local. Ele não sai do computador nem é guardado, mas é um PIN que a extensão toca, e a loja o lista nesta categoria |
+| Informações de identificação pessoal | Sim | A extensão entrega à página que a pessoa autorizou todos os certificados do computador que servem para assinar, inteiros: no e-CPF, o nome, o CPF e a data de nascimento e, conforme o certificado, o NIS, o RG, o título de eleitor e o e-mail; no e-CNPJ, os dados da empresa e do responsável. Junto de cada um, o nome da leitora, que pode trazer o número de série dela. O diagnóstico leva o nome do titular de cada certificado. É a finalidade da extensão |
+| Informações de autenticação | Sim, por cautela (decisão a confirmar: a declaração do Firefox, no manifesto, trata o PIN ao programa local como NÃO transmitido) | No Linux, o PIN passa pela janela da extensão até o programa local. Ele não sai do computador nem é guardado, mas é um PIN que a extensão toca, e a loja o lista nesta categoria |
 | Os demais (saúde, finanças, comunicações, localização, histórico, atividade, conteúdo de site) | Não | A extensão não os acessa |
 
 As três certificações da aba (não vender os dados, não usá-los para fim alheio à finalidade única,
@@ -131,8 +148,8 @@ O Edge dá à extensão um ID PRÓPRIO, diferente do da Chrome Web Store: os doi
   (o "Source code" que o GitHub anexa à release, ou `git archive v<versão>`), e estas instruções para
   quem revisa:
 
-> The package is built from the `extensao/` folder of this source archive. The scripts are bundled by
-> esbuild, one file per entry point, without minification.
+> The package is built from the `extensao/` folder of this source archive. The scripts are built by
+> Vite (library mode, IIFE), one file per entry point, without minification.
 >
 > Environment: Linux (the release is built on Ubuntu 24.04), Node.js 22 (22.18 or newer), npm 10,
 > and Info-ZIP `zip` 3.0.
@@ -151,6 +168,10 @@ O Edge dá à extensão um ID PRÓPRIO, diferente do da Chrome Web Store: os doi
 
 ## Antes de enviar
 
+- [ ] A release da versão PUBLICADA no GitHub, com o instalador do Windows (a F6b-ii, o MSI assinado)
+      e os pacotes Linux: quem revisa baixa o programa dali, e a release nasce RASCUNHO, invisível a
+      quem não é do repositório. Os sistemas seguem no estado escuro até as três aprovações (a
+      `DISTRIBUICAO` da biblioteca só se publica depois delas).
 - [ ] O deploy do ushield com `https://ushield.app/componente/privacidade` no ar (a página existe
       desde a F7a; as lojas abrem o endereço na revisão).
 - [ ] O encarregado de dados configurado no ushield (`USHIELD_ENCARREGADO_NOME` e

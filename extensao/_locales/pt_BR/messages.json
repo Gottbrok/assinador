@@ -46,7 +46,7 @@
   "programaSemResposta": { "message": "Programa: não respondeu. Se o problema continuar, reinstale o programa." },
   "diagnostico": { "message": "Diagnóstico" },
   "diagnosticoExplicacao": { "message": "Um relatório para o suporte: sistema, leitoras, programas de cartão e certificados, sem CPF." },
-  "consentirDiagnostico": { "message": "Permitir que os endereços autorizados recebam o diagnóstico (versões, sistema e leitoras, sem CPF).", "description": "Só no Firefox: o consentimento do dado técnico que o diagnóstico leva à página." },
+  "consentirDiagnostico": { "message": "Permitir que os endereços autorizados recebam o diagnóstico (versões, sistema, navegador, leitoras, programas de cartão e certificados com o nome do titular, sem os números de documento).", "description": "Só no Firefox: o consentimento do diagnóstico que vai à página. Diz tudo o que ele leva: o nome do titular sai inteiro (só os dígitos viram asterisco)." },
   "botaoGerarDiagnostico": { "message": "Gerar diagnóstico" },
   "botaoCopiarDiagnostico": { "message": "Copiar diagnóstico" },
   "gerandoDiagnostico": { "message": "Gerando o diagnóstico. Com o cartão conectado, pode levar alguns segundos." },

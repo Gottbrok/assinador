@@ -20,8 +20,9 @@ O que está aqui é o que o código faz hoje. O que ainda não foi medido com ca
 ## O primeiro pedido: o diagnóstico
 
 O diagnóstico é o relatório do Assinador para o suporte: o sistema, as leitoras e o cartão em cada
-uma, os programas de cartão com o estado de cada um, os certificados (com o nome mascarado) e os
-avisos em frase. Três jeitos de conseguir, do mais fácil para o mais difícil:
+uma, os programas de cartão com o estado de cada um, os certificados (com o nome do titular e os
+dígitos de CPF e CNPJ trocados por `*`) e os avisos em frase. Três jeitos de conseguir, do mais fácil
+para o mais difícil:
 
 1. **Pela extensão:** nas opções da extensão, "Gerar diagnóstico" e "Copiar diagnóstico". As opções
    abrem pela página de extensões do navegador: no Chrome e no Edge, "Extensões", o Assinador,

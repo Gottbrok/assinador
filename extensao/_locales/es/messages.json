@@ -46,7 +46,7 @@
   "programaSemResposta": { "message": "Programa: no respondió. Si el problema continúa, reinstale el programa." },
   "diagnostico": { "message": "Diagnóstico" },
   "diagnosticoExplicacao": { "message": "Un informe para soporte: sistema, lectores, programas de tarjeta y certificados, sin números de documento." },
-  "consentirDiagnostico": { "message": "Permitir que las direcciones autorizadas reciban el diagnóstico (versiones, sistema y lectores, sin números de documento)." },
+  "consentirDiagnostico": { "message": "Permitir que las direcciones autorizadas reciban el diagnóstico (versiones, sistema, navegador, lectores, programas de tarjeta y certificados con el nombre del titular, sin números de documento)." },
   "botaoGerarDiagnostico": { "message": "Generar diagnóstico" },
   "botaoCopiarDiagnostico": { "message": "Copiar diagnóstico" },
   "gerandoDiagnostico": { "message": "Generando el diagnóstico. Con la tarjeta conectada, puede tardar algunos segundos." },

@@ -285,3 +285,21 @@
     só usa o instalador por máquina, e o programa por usuário é lido antes do por máquina.
   - Divergência do plano: a política de privacidade seria uma seção da tela de instalação do
     Confidata; é uma página do ushield, porque o componente leva o nome dele.
+- Auditoria da preparação do envio às lojas (uma revisão adversarial independente e a nossa): nenhum
+  P0; os P1, corrigidos, eram todos texto que afirmava o que o código não faz.
+  - A política (aqui e na página do ushield) dizia "nome mascarado" no diagnóstico, e o
+    `assinatura.Mascarar` troca só os dígitos; dizia "só as versões" sem permissão, e o `ola` entrega
+    também o sistema, a arquitetura e o estado da instalação; e subestimava o certificado, que vai
+    inteiro (o NIS, o RG, o título de eleitor e o e-mail do e-CPF; o CPF e o nascimento do
+    responsável do e-CNPJ), com o nome da leitora (que pode trazer o número de série) e o estado do
+    PIN. Também: no Windows vão todos os certificados de assinatura do usuário, inclusive os de
+    terceiros, e a chave pode estar no repositório do Windows; o PIN da leitora com teclado não passa
+    pelo Assinador; e quem não abre conexão é o código da extensão e do programa (o do fabricante é de
+    terceiros e roda junto).
+  - A caixa de consentimento do diagnóstico no Firefox dizia "versões, sistema e leitoras, sem CPF", e
+    escondia os certificados com o nome do titular e o navegador.
+  - O README e o SUPORTE diziam "nome mascarado" no diagnóstico.
+  - `docs/LOJAS.md`: as notas para quem revisa prometiam o programa numa release que nasce RASCUNHO e
+    não diziam do estado escuro nem que o fluxo de assinatura não se exerce na revisão; o
+    empacotador é o Vite, e não o esbuild; e a linha de dado pessoal da Chrome Web Store dizia menos
+    do que sai.
