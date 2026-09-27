@@ -24,7 +24,11 @@ Em construção. Licença Apache-2.0.
 | `ferramentas/` | Prova e medição (F0), o `host-teste`, que fala com o programa como a extensão e serve a página de teste da extensão (`servir`), e o `registrar-windows.ps1`, que registra o programa de desenvolvimento no Windows antes do MSI. Nunca vai para release |
 | `docs/medicoes/` | O que foi medido com cartão real, com data e equipamento |
 
-A segurança do programa está em [`SECURITY.md`](SECURITY.md).
+O nome visível é **Assinador uShield**. A segurança do programa está em [`SECURITY.md`](SECURITY.md).
+Para quem atende o chamado de quem não consegue assinar, cada código de erro e cada aviso do
+diagnóstico, com a causa e o que fazer, está em [`docs/SUPORTE.md`](docs/SUPORTE.md). O que as lojas de
+extensão pedem, com os textos prontos, está em [`docs/LOJAS.md`](docs/LOJAS.md), e a política de
+privacidade que elas publicam é `https://ushield.app/componente/privacidade`.
 
 ## Compilar e testar (Linux)
 
@@ -54,7 +58,8 @@ bin/assinador diagnostico --json   # o mesmo relatório, em JSON
 
 Mostra o sistema, as leitoras e o ATR de cada cartão (com o programa do fabricante que o lê,
 quando o ATR está no catálogo medido), os programas de cartão (módulos PKCS#11) com o estado de
-cada um, os certificados com o nome mascarado, e avisos em frase ("o serviço pcscd não está
+cada um, os certificados com os dígitos de CPF e CNPJ trocados por `*` (o nome do titular sai
+inteiro), e avisos em frase ("o serviço pcscd não está
 rodando", "este cartão usa o SafeSign, que não está instalado").
 
 ## Pacotes para Linux
@@ -65,7 +70,59 @@ instaladores/linux/testar-pacotes.sh dist          # instala, roda e remove em c
 ```
 
 São pacotes de DESENVOLVIMENTO: o programa com a tag `dev` e os manifestos com o ID provisório da
-extensão. Os de produção, assinados e com os IDs das lojas, vêm com a publicação.
+extensão. Os de produção (`empacotar.sh <X.Y.Z> dist producao`) só saem pela release, e só depois de
+os IDs das lojas existirem: antes disso, o gerador de manifestos recusa.
+
+## Release
+
+Uma tag `vX.Y.Z` (sem zero à esquerda) num commit que foi ponta da `main` roda o
+`.github/workflows/release.yml`. Antes de montar, ele confere que o programa leva chave de bilhete de
+produção e que a extensão (`extensao/package.json`) está na versão da tag, e roda de novo os testes do
+programa (x64 e arm64) e da extensão, sem cache. Monta os pacotes Linux de produção (x64 e arm64,
+instalados e removidos em contêiner: cada manifesto é o do gerador de produção, sem o ID de
+desenvolvimento, e o programa e o pacote estão na versão da tag), os zips das extensões para as lojas
+(reproduzíveis, com o `SOURCE_DATE_EPOCH` nas notas da release), o `SHA256SUMS` e o `SHA256SUMS.asc`.
+A release nasce como RASCUNHO, com exatamente os cinco arquivos nomeados abaixo mais as somas, e quem
+a publica é o Cairo, depois de conferir. Se já existe release ou rascunho da tag (um rascunho parcial
+de uma execução que falhou, por exemplo), o workflow para: apague o rascunho e rode de novo. Os nomes
+são estáveis, para o endereço `https://github.com/Gottbrok/assinador/releases/latest/download/<arquivo>`
+não mudar entre versões: `assinador-linux-amd64.deb`, `assinador-linux-arm64.deb`,
+`assinador-linux-x86_64.rpm` (o nome da arquitetura é o de cada gerenciador de pacotes),
+`assinador-extensao-chrome.zip` e `assinador-extensao-firefox.zip` (os que vão às lojas; a pessoa
+instala a extensão pela loja).
+
+A assinatura das somas é conferida, antes de a release existir, com SÓ a chave pública de
+`protocolo/chave-gpg-das-releases.asc`, e tem de ser da chave cuja impressão digital está pinada em
+`protocolo/chave-gpg-das-releases.impressao` (uma linha, em hexadecimal maiúsculo, como o gpg a
+imprime; é a que a tela de instalação mostra).
+
+A guarda da chave: a PRIMÁRIA (só certifica) é gerada e fica fora de qualquer máquina ligada ao
+GitHub, com o certificado de revogação guardado à parte. O segredo `ASSINADOR_GPG_CHAVE` leva só a
+SUBCHAVE de assinatura (`gpg --armor --export-secret-subkeys <impressão>`), cifrada com a senha que vai
+em `ASSINADOR_GPG_SENHA`; os dois moram SÓ no ambiente `release` do GitHub, e não entre os segredos do
+repositório, que qualquer workflow de qualquer ramo lê. O script das somas recusa, antes de assinar, a
+pública com mais de uma chave, com parte privada ou fora do pino, e o segredo sem a senha, com a
+primária inteira, com mais de uma subchave de assinatura ou de outra chave. Subchave vazada ou vencida:
+revogá-la com a primária, criar outra, e publicar a chave pública nova no repositório; a impressão
+digital (a da primária) não muda.
+
+Configuração do GitHub, feita pelo Cairo antes da primeira release: o ambiente `release` com os dois
+segredos, o Cairo como revisor obrigatório e a política de implantação só para tags `v*.*.*`, e uma
+regra de tag que só deixa o Cairo criar `v*`. O job que assina espera a aprovação dele antes de ler a
+chave; sem a subchave ou sem a senha, o workflow para.
+
+Quem baixa confere a impressão digital com a da tela de instalação e confere as somas com um chaveiro
+só para isso, sem importar a chave no próprio:
+
+```sh
+gpg --show-keys chave-gpg-das-releases.asc          # a impressão digital é a da tela de instalação?
+gpg --dearmor < chave-gpg-das-releases.asc > releases.gpg
+gpgv --keyring ./releases.gpg SHA256SUMS.asc SHA256SUMS
+sha256sum --check --ignore-missing SHA256SUMS
+```
+
+O MSI do Windows entra na release com a assinatura de código (F6b-ii): hoje existe só o MSI de
+desenvolvimento, sem assinatura, descrito na seção do Windows.
 
 ## Windows (desenvolvimento)
 

@@ -206,7 +206,7 @@ O que o programa produz, e quando:
 | `token-bloqueado` | `CKR_PIN_LOCKED`, `CKR_PIN_EXPIRED`, token já bloqueado antes do login, ou o PIN errado que bloqueou |
 | `cancelado` | `CKR_FUNCTION_CANCELED` (a pessoa cancelou no leitor ou no diálogo do middleware) |
 | `tempo-esgotado` | o filho do módulo não respondeu no prazo do `assinar` (90 s) |
-| `modulo-falhou` | o módulo não carregou, falhou ou caiu (o filho morreu) |
+| `modulo-falhou` | o módulo não carregou, falhou ou caiu (o filho morreu) no `assinar`; no `listar`, o módulo que falha ou passa do prazo (20 s) vira aviso, e os outros seguem |
 | `interno` | a assinatura devolvida não confere com o certificado; falha inesperada |
 
 No Windows, os mesmos códigos saem da recusa do provedor (os códigos do Windows vão no `detalhe`,
@@ -222,9 +222,13 @@ com a etapa):
 | `chave-ausente` | `NTE_NO_KEY`, `NTE_BAD_KEYSET`, `CRYPT_E_NO_KEY_PROPERTY`, e `NTE_BAD_PUBLIC_KEY` (a chave não é a do certificado) |
 | `modulo-falhou` | `NTE_KEYSET_NOT_DEF` (o provedor do fabricante não está instalado), `NTE_PERM` e `ERROR_ACCESS_DENIED` (o provedor recusou o acesso), a recusa sem código (`E_FAIL`) e qualquer outra recusa do provedor |
 
-`nativo-ausente`, `nativo-desatualizado`, `permissao-negada` e `bilhete-expirado` são da extensão ou
-da biblioteca; o programa não os produz. (A `permissao-negada` é a do ENDEREÇO nas opções da
-extensão: um acesso negado pelo provedor do Windows é `modulo-falhou`, e não ela.)
+`nativo-ausente` e `permissao-negada` são da extensão; o programa não os produz. (A
+`permissao-negada` é a do ENDEREÇO, recusado na janela de permissão, ou, no Firefox, o diagnóstico
+sem o consentimento do envio às páginas: um acesso negado pelo provedor do Windows é `modulo-falhou`,
+e não ela.) `bilhete-expirado` e `nativo-desatualizado` estão no vocabulário e hoje nenhuma ponta os
+produz: o programa responde `relogio` ao bilhete fora do prazo, e a versão mínima quem confere é a
+biblioteca, no `ola`, com o `outdated` dela, que diz a peça (`nativo` ou `extensao`).
+O que cada código significa para quem atende o chamado está em `docs/SUPORTE.md`.
 
 ## Módulos PKCS#11 (Linux e macOS)
 

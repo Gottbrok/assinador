@@ -274,3 +274,104 @@
   `%ProgramFiles%\Assinador uShield`, antes `Confidata Assinador`). Os nomes internos não mudam, e o
   `Manufacturer` segue Confidata, como o `vendor` dos pacotes Linux. A mensagem do `.wxs` sem versão
   passou a dizer que a versão é a do pacote (a auditoria separou as duas).
+- F7a adiantada (decisão do Cairo): só o que não depende das lojas, do certificado da D4 nem da F6b.
+  - `docs/SUPORTE.md`: para quem atende o chamado, os vinte códigos do protocolo com a frase que a
+    pessoa lê, a causa no Linux e no Windows, o que fazer e quem resolve; os avisos do diagnóstico
+    por sistema; e o que nunca pedir (PIN, PUK, arquivo do certificado, CPF).
+  - `release.yml`: a tag `vX.Y.Z` num commit da `main` monta os pacotes Linux de produção e os zips
+    das extensões, assina as somas e cria a release como RASCUNHO. O `empacotar.sh` e o
+    `testar-pacotes.sh` ganharam o modo `producao`; o `somas-e-assinatura.sh` confere a assinatura
+    com SÓ a chave pública do repositório. Nada disso roda de verdade antes dos IDs das lojas e da
+    chave GPG das releases: até lá, o gerador de manifestos e o script das somas recusam.
+  - O PROTOCOLO dizia que o `bilhete-expirado` era da extensão ou da biblioteca; hoje nenhuma ponta o
+    produz (o programa responde `relogio` ao bilhete fora do prazo).
+  - Divergência do plano: a F7a pedia a release pronta para publicar; ela nasce RASCUNHO, porque
+    publicar é do Cairo (regra do CLAUDE.md), e o MSI do Windows fica para quando a F6b fechar.
+- Auditoria da F7a adiantada (uma revisão adversarial independente e a nossa): nenhum P0, dois P1 e
+  vinte P2 e P3, todos corrigidos (o Cairo escolheu os três lotes).
+  - P1: o SUPORTE nunca manda apagar certificado (apagar do repositório do Windows pode levar a chave
+    junto, e o que parece velho pode ser o válido), e o `chave-ausente` do Windows fica como não
+    medido; a chave privada das releases mora só no ambiente `release` do GitHub, com o Cairo como
+    revisor obrigatório, e não entre os segredos do repositório, que qualquer workflow de qualquer
+    ramo lê.
+  - SUPORTE fiel ao código: o `token-bloqueado` cobre também o PIN VENCIDO do Linux, que se troca sem
+    o PUK, e o PUK também tem tentativas contadas; a `permissao-negada` não manda mais desfazer uma
+    recusa que as opções não guardam; na listagem, o módulo que passa de 20 s é deixado de lado e não
+    dá `tempo-esgotado`, que é da assinatura e do orçamento da extensão (o diálogo de PIN do Windows
+    sem resposta); os avisos do `listar`, que a biblioteca descarta, saíram da tabela, e entraram as
+    situações de certificado que o diagnóstico imprime e a linha do repositório do Windows que falhou;
+    o `nativo-ausente` distingue `ausente` de `falhou` (o manifesto que não autoriza a extensão); o
+    `nativo-desatualizado` é da biblioteca, que diz a peça, também no PROTOCOLO; as frases que a
+    biblioteca diz sem código e os navegadores mínimos ganharam seção; o que não foi medido no
+    Windows leva a marca "(não medido)"; os avisos só do Linux saíram de "Em qualquer sistema", e
+    entrou o de outros sistemas.
+  - A frase da biblioteca para a `permissao-negada` ("A permissão se muda nas opções da extensão")
+    promete o que as opções não fazem: o conserto é na `@confidata/icp-brasil`, e o SUPORTE diz como
+    é hoje.
+  - Release mais dura: a tag tem de estar num commit que foi PONTA da `main` (a linha dos primeiros
+    pais; o commit de um ramo mergeado é ancestral sem nunca ter sido ela), sem zero à esquerda e com
+    até seis dígitos por parte (a forma da biblioteca), também no `empacotar.sh`; o programa tem de
+    levar chave de bilhete de produção, com o `chaves.go` igual ao do `go generate`, e a extensão tem
+    de estar na versão da tag; os testes do programa (x64 e arm64, e o arm64 passou a testar a cada
+    push no `nativo.yml`) e da extensão rodam de novo sobre a tag; nenhum job usa cache, e o `npm ci`
+    roda sem os scripts de instalação; release ou rascunho que já existe da tag para o workflow (a
+    lista de releases, que inclui os rascunhos); a release leva exatamente os cinco arquivos de nome
+    estável. O `testar-pacotes.sh producao <versão>` compara cada manifesto instalado, byte a byte,
+    com o que o gerador escreve (também no modo de desenvolvimento), reprova o ID de desenvolvimento
+    e o pacote `assinador-dev-*`, e confere a versão do pacote e do programa e a descrição.
+  - Achado nosso: o job das extensões fazia checkout raso, e o carimbo do zip (a data do último
+    commit em `extensao/` e `protocolo/`) sairia a do commit da tag, e não a que quem audita obtém do
+    clone completo. O checkout é completo, e o `SOURCE_DATE_EPOCH` vai explícito e nas notas da
+    release, como o README da extensão prometia.
+  - A chave GPG, conferência e guarda: a impressão digital da primária fica PINADA em
+    `protocolo/chave-gpg-das-releases.impressao`, e o `somas-e-assinatura.sh` recusa, antes de
+    assinar, a pública com mais de uma chave primária, com parte privada ou fora do pino, e o segredo
+    sem a senha, com a primária inteira (ela fica fora do CI, com o certificado de revogação), com
+    mais de uma subchave de assinatura utilizável ou de outra chave; a assinatura tem de ser da chave
+    pinada (o `VALIDSIG`), e a saída do gpg não é mais escondida. Quem baixa confere a impressão
+    digital com a da tela de instalação e as somas com o `gpgv` num chaveiro só para isso. Provado
+    com chaves descartáveis, fora do repositório, em catorze casos.
+- F7a, a preparação do envio às lojas (o que não depende das lojas, do certificado da D4 nem da F6b):
+  - O nome visível é **Assinador uShield** (decisão D2 do Cairo, 2026-09-27), o mesmo nas duas
+    línguas: a extensão (nome e título das opções) e a descrição dos pacotes Linux. Os nomes internos
+    não mudam.
+  - `docs/LOJAS.md`: o que as três lojas pedem, com os textos prontos (as descrições em português e
+    em espanhol, a finalidade única e a justificativa de cada permissão da Chrome Web Store, o uso de
+    dados, as notas para quem revisa e as instruções de build das fontes para a loja do Firefox) e a
+    lista do que falta antes de enviar.
+  - A política de privacidade que as lojas publicam é uma página pública do ushield
+    (`https://ushield.app/componente/privacidade`, decisão do Cairo), e o `extensao/PRIVACIDADE.md`
+    passou a dizer o mesmo que ela: o PIN do Windows, que é digitado no diálogo do Windows ou do
+    fabricante e que o programa não recebe; as versões, que a página recebe sem pedir; e o
+    certificado inteiro, com a data de nascimento no e-CPF.
+  - `docs/SUPORTE.md`: a empresa que desliga o programa por usuário (`NativeMessagingUserLevelHosts`)
+    só usa o instalador por máquina, e o programa por usuário é lido antes do por máquina.
+  - Divergência do plano: a política de privacidade seria uma seção da tela de instalação do
+    Confidata; é uma página do ushield, porque o componente leva o nome dele.
+- Auditoria da preparação do envio às lojas (uma revisão adversarial independente e a nossa): nenhum
+  P0; os P1, corrigidos, eram todos texto que afirmava o que o código não faz.
+  - A política (aqui e na página do ushield) dizia "nome mascarado" no diagnóstico, e o
+    `assinatura.Mascarar` troca só os dígitos; dizia "só as versões" sem permissão, e o `ola` entrega
+    também o sistema, a arquitetura e o estado da instalação; e subestimava o certificado, que vai
+    inteiro (o NIS, o RG, o título de eleitor e o e-mail do e-CPF; o CPF e o nascimento do
+    responsável do e-CNPJ), com o nome da leitora (que pode trazer o número de série) e o estado do
+    PIN. Também: no Windows vão todos os certificados de assinatura do usuário, inclusive os de
+    terceiros, e a chave pode estar no repositório do Windows; o PIN da leitora com teclado não passa
+    pelo Assinador; e quem não abre conexão é o código da extensão e do programa (o do fabricante é de
+    terceiros e roda junto).
+  - A caixa de consentimento do diagnóstico no Firefox dizia "versões, sistema e leitoras, sem CPF", e
+    escondia os certificados com o nome do titular e o navegador.
+  - O README e o SUPORTE diziam "nome mascarado" no diagnóstico.
+  - `docs/LOJAS.md`: as notas para quem revisa prometiam o programa numa release que nasce RASCUNHO e
+    não diziam do estado escuro nem que o fluxo de assinatura não se exerce na revisão; o
+    empacotador é o Vite, e não o esbuild; e a linha de dado pessoal da Chrome Web Store dizia menos
+    do que sai.
+  - P2 e P3, os lotes que o Cairo escolheu: o SUPORTE tira a instalação do usuário pelo caminho por
+    onde ela entrou (o `registrar-windows.ps1 -Remover` não aparece em Aplicativos), cita o Firefox e
+    o caso da empresa com um programa por usuário mais velho que o por máquina ("versão nova"); as
+    opções da extensão têm o nome novo no texto de reserva e o link para a política de privacidade; o
+    espanhol das lojas usa "usted", como a extensão; e o PIN tem uma régua só nas três lojas. No
+    ushield: a frase do diagnóstico recusado, a do embargo, o A3 fora do site até funcionar em
+    produção, e os endereços da política como links.
+  - Ficou: a descrição do manifesto do host em `cmd/manifestos` ainda diz "Assinador" (invisível na
+    prática, e o arquivo segue reservado pela F6b-i até o CI dela ficar verde).

@@ -1,5 +1,5 @@
 {
-  "nomeDaExtensao": { "message": "Assinador Confidata" },
+  "nomeDaExtensao": { "message": "Assinador uShield" },
   "descricaoDaExtensao": { "message": "Firma con el certificado digital de su tarjeta o token (ICP-Brasil), con su confirmación antes de cada firma." },
   "carregando": { "message": "Cargando" },
   "janelaExpirou": { "message": "Esta ventana ya no es válida. Ciérrela e intente de nuevo desde la página." },
@@ -31,7 +31,7 @@
   "botaoNaoPermitir": { "message": "No permitir" },
   "botaoPermitir": { "message": "Permitir" },
 
-  "opcoesTitulo": { "message": "Assinador: opciones" },
+  "opcoesTitulo": { "message": "Assinador uShield: opciones" },
   "enderecosPermitidos": { "message": "Direcciones permitidas" },
   "enderecosExplicacao": { "message": "Solo estas direcciones pueden ver los certificados de este computador y pedir firmas. Al quitar una, vuelve a pedir permiso." },
   "nenhumEndereco": { "message": "Todavía no hay direcciones permitidas." },
@@ -46,7 +46,7 @@
   "programaSemResposta": { "message": "Programa: no respondió. Si el problema continúa, reinstale el programa." },
   "diagnostico": { "message": "Diagnóstico" },
   "diagnosticoExplicacao": { "message": "Un informe para soporte: sistema, lectores, programas de tarjeta y certificados, sin números de documento." },
-  "consentirDiagnostico": { "message": "Permitir que las direcciones autorizadas reciban el diagnóstico (versiones, sistema y lectores, sin números de documento)." },
+  "consentirDiagnostico": { "message": "Permitir que las direcciones autorizadas reciban el diagnóstico (versiones, sistema, navegador, lectores, programas de tarjeta y certificados con el nombre del titular, sin números de documento)." },
   "botaoGerarDiagnostico": { "message": "Generar diagnóstico" },
   "botaoCopiarDiagnostico": { "message": "Copiar diagnóstico" },
   "gerandoDiagnostico": { "message": "Generando el diagnóstico. Con la tarjeta conectada, puede tardar algunos segundos." },
@@ -55,5 +55,6 @@
   "diagnosticoCopiado": { "message": "Diagnóstico copiado." },
   "diagnosticoNaoCopiado": { "message": "No fue posible copiar. Seleccione el texto de abajo y cópielo." },
   "privacidade": { "message": "Privacidad" },
-  "privacidadeTexto": { "message": "La extensión no accede a internet, no lee el contenido de las páginas que usted visita y no guarda documentos ni PIN. Solo atiende las direcciones que usted permitió y solo habla con el programa Assinador instalado en este computador." }
+  "privacidadeTexto": { "message": "La extensión no accede a internet, no lee el contenido de las páginas que usted visita y no guarda documentos ni PIN. Solo atiende las direcciones que usted permitió y solo habla con el programa Assinador instalado en este computador." },
+  "lerPoliticaDePrivacidade": { "message": "Leer la política de privacidad completa" }
 }

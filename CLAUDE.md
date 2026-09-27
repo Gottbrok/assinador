@@ -25,9 +25,14 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
 
 **Nomes internos fixos** (trocá-los depois quebra instalações): host de native messaging
 `br.com.confidata.assinador`; ID da extensão no Firefox `assinador@confidata.com.br`; módulo Go
-`github.com/Gottbrok/assinador/nativo`; os `UpgradeCode` do MSI, um por escopo (por usuário e por
-máquina), os mesmos nas duas arquiteturas e no MSI de produção, e os GUIDs dos componentes, todos em
-`instaladores/windows/Assinador.wxs`.
+`github.com/Gottbrok/assinador/nativo`; pacote Linux `confidata-assinador`; os `UpgradeCode` do MSI,
+um por escopo (por usuário e por máquina), os mesmos nas duas arquiteturas e no MSI de produção, e os
+GUIDs dos componentes, todos em `instaladores/windows/Assinador.wxs`. O nome VISÍVEL é
+**Assinador uShield** (decisão D2 do plano, 2026-09-27), o mesmo nas duas línguas, nas lojas, na
+extensão, nos instaladores (o produto e a pasta do MSI) e nos textos; os nomes internos não mudam com
+ele. A política de privacidade que as lojas publicam é `https://ushield.app/componente/privacidade`
+(no repositório do ushield, `src/content/privacidadeDoAssinador.ts`): mudou o que a extensão ou o
+programa acessam, ela muda junto com o `extensao/PRIVACIDADE.md` daqui.
 
 ## Regras que não se negociam
 
@@ -83,10 +88,27 @@ máquina), os mesmos nas duas arquiteturas e no MSI de produção, e os GUIDs do
     (🚫 à mão). As fixtures do bilhete vêm da biblioteca por `git archive` da tag, com as somas em
     `protocolo/fixtures/ORIGEM.md` (🚫 editar fixture aqui). Os IDs de extensão que o programa aceita
     (`origem.ExtensoesChrome`) são os que vão aos manifestos (`cmd/manifestos`): 🚫 escrever
-    manifesto à mão. O ID de desenvolvimento só existe no build `dev`.
-14. **Pacote de desenvolvimento não é release.** Os `.deb` e `.rpm` de `instaladores/linux` e os MSI
-    de `instaladores/windows` levam o build `dev`; o de produção (sem a tag, com os IDs das lojas,
-    assinado) é da F7a. Mudou o pacote, rode `instaladores/linux/testar-pacotes.sh`; mudou o MSI, o
+    manifesto à mão. O ID de desenvolvimento só existe no build `dev`. A chave GPG das releases:
+    a PÚBLICA mora em `protocolo/chave-gpg-das-releases.asc`, com a impressão digital da primária
+    PINADA em `protocolo/chave-gpg-das-releases.impressao` (a que a tela de instalação mostra; o
+    script das somas exige que quem assina seja ela). A PRIMÁRIA fica fora de qualquer máquina ligada
+    ao GitHub, com o certificado de revogação à parte, e o segredo `ASSINADOR_GPG_CHAVE` do AMBIENTE
+    `release` do GitHub, com o Cairo como revisor obrigatório (regra 5), leva só a SUBCHAVE de
+    assinatura, cifrada com a senha de `ASSINADOR_GPG_SENHA`. 🚫 Esse segredo entre os do repositório
+    (qualquer workflow de qualquer ramo o leria); 🚫 a primária inteira nele (o script recusa); 🚫
+    trocar a impressão pinada para a release sair: subchave vazada se revoga com a primária, e a
+    impressão não muda.
+14. **Pacote de desenvolvimento não é release.** O `empacotar.sh` sem argumento de modo monta o
+    pacote de desenvolvimento (a tag `dev`, `assinador-dev-*`); o de produção (`producao`: sem a tag,
+    com os IDs das lojas, os nomes estáveis) só sai pelo `release.yml`, que cria a release como
+    RASCUNHO com o `SHA256SUMS` assinado e conferido contra a chave pública do repositório. 🚫 Artefato
+    `assinador-dev-*` do CI em página pública, e 🚫 publicar a release sem conferir: publicar é do
+    Cairo. Mudou o pacote, rode `instaladores/linux/testar-pacotes.sh` (com `producao <versão>` no
+    de produção): cada manifesto instalado é, byte a byte, o que o gerador escreve, e a remoção não
+    pode deixar arquivo nem pasta. A release só sai de tag `vX.Y.Z` sem zero à esquerda, num commit
+    que foi PONTA da `main`, com chave de bilhete de produção e a extensão na versão da tag; 🚫
+    afrouxar um desses portões para a release sair. Os MSI de `instaladores/windows` são, por ora, só
+    de DESENVOLVIMENTO (o de produção, assinado, entra no `release.yml` com a F6b-ii); mudou o MSI, o
     `instaladores/windows/testar-instalador.ps1` roda no CI (os dois escopos, as duas arquiteturas,
     a atualização por cima da versão anterior): a remoção não pode deixar arquivo, pasta nem chave de
     registro. No MSI, os manifestos apontam o programa pelo NOME (`cmd/manifestos -relativo`, na
