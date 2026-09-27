@@ -222,9 +222,11 @@ com a etapa):
 | `chave-ausente` | `NTE_NO_KEY`, `NTE_BAD_KEYSET`, `CRYPT_E_NO_KEY_PROPERTY`, e `NTE_BAD_PUBLIC_KEY` (a chave não é a do certificado) |
 | `modulo-falhou` | `NTE_KEYSET_NOT_DEF` (o provedor do fabricante não está instalado), `NTE_PERM` e `ERROR_ACCESS_DENIED` (o provedor recusou o acesso), a recusa sem código (`E_FAIL`) e qualquer outra recusa do provedor |
 
-`nativo-ausente`, `nativo-desatualizado`, `permissao-negada` e `bilhete-expirado` são da extensão ou
-da biblioteca; o programa não os produz. (A `permissao-negada` é a do ENDEREÇO nas opções da
-extensão: um acesso negado pelo provedor do Windows é `modulo-falhou`, e não ela.)
+`nativo-ausente`, `nativo-desatualizado` e `permissao-negada` são da extensão ou da biblioteca; o
+programa não os produz. (A `permissao-negada` é a do ENDEREÇO nas opções da extensão: um acesso
+negado pelo provedor do Windows é `modulo-falhou`, e não ela.) `bilhete-expirado` está no
+vocabulário e hoje nenhuma ponta o produz: o programa responde `relogio` ao bilhete fora do prazo.
+O que cada código significa para quem atende o chamado está em `docs/SUPORTE.md`.
 
 ## Módulos PKCS#11 (Linux e macOS)
 
