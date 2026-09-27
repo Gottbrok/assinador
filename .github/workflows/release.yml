@@ -9,14 +9,14 @@ name: release
 # ponta da `main`, que o programa leva chave de bilhete de produção e que a extensão está na versão da
 # tag. Os testes do programa e da extensão rodam de novo aqui, sobre o commit da tag, e nenhum job usa
 # cache (a release é montada do zero). Sem os IDs das lojas no programa (o gerador de manifestos
-# recusa), sem a chave pública em `protocolo/chave-gpg-das-releases.asc` ou sem a privada no ambiente,
-# o workflow para antes de a release existir. Se a criação do rascunho falhar no meio, o rascunho
+# recusa), sem a chave pública em `protocolo/chave-gpg-das-releases.asc` e a impressão digital pinada
+# ao lado dela, ou sem a subchave e a senha no ambiente, o workflow para antes de a release existir. Se a criação do rascunho falhar no meio, o rascunho
 # parcial fica, e a próxima execução para ao vê-lo: o Cairo o apaga antes de rodar de novo. As ações
 # são pinadas por commit (a tag vai no comentário).
 #
-# A chave privada das releases mora SÓ no ambiente `release` do GitHub, e não entre os segredos do
-# repositório: segredo do repositório qualquer workflow de qualquer ramo lê, inclusive um `release.yml`
-# alterado numa tag nova. O ambiente (configuração do GitHub, feita pelo Cairo na F7a) tem o Cairo como
+# A subchave de assinatura das releases mora SÓ no ambiente `release` do GitHub (a primária fica fora
+# do CI, regra 13), e não entre os segredos do repositório: segredo do repositório qualquer workflow de
+# qualquer ramo lê, inclusive um `release.yml` alterado numa tag nova. O ambiente (configuração do GitHub, feita pelo Cairo na F7a) tem o Cairo como
 # revisor obrigatório e aceita só tags `v*.*.*`, e uma regra de tag deixa só o Cairo criar `v*`: o job
 # que assina espera a aprovação dele antes de ler a chave.
 
@@ -252,4 +252,4 @@ jobs:
             --draft \
             --verify-tag \
             --title "Assinador $VERSAO" \
-            --notes "Assinador $VERSAO. O que mudou está no CHANGELOG.md. Confira os arquivos com o SHA256SUMS, e o SHA256SUMS com o SHA256SUMS.asc e a chave pública de protocolo/chave-gpg-das-releases.asc. Os zips das extensões se remontam das fontes na tag com SOURCE_DATE_EPOCH=$EPOCH."
+            --notes "Assinador $VERSAO. O que mudou está no CHANGELOG.md. Confira os arquivos com o SHA256SUMS, e o SHA256SUMS com o SHA256SUMS.asc e a chave pública de protocolo/chave-gpg-das-releases.asc, cuja impressão digital está em protocolo/chave-gpg-das-releases.impressao e na tela de instalação. Os zips das extensões se remontam das fontes na tag com SOURCE_DATE_EPOCH=$EPOCH."

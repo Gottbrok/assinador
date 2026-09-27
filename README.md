@@ -88,16 +88,32 @@ não mudar entre versões: `assinador-linux-amd64.deb`, `assinador-linux-arm64.d
 instala a extensão pela loja).
 
 A assinatura das somas é conferida, antes de a release existir, com SÓ a chave pública de
-`protocolo/chave-gpg-das-releases.asc`. A privada (`ASSINADOR_GPG_CHAVE`, com a senha em
-`ASSINADOR_GPG_SENHA`) mora SÓ no ambiente `release` do GitHub, e não entre os segredos do repositório,
-que qualquer workflow de qualquer ramo lê. Configuração do GitHub, feita pelo Cairo antes da primeira
-release: o ambiente `release` com os dois segredos, o Cairo como revisor obrigatório e a política de
-implantação só para tags `v*.*.*`, e uma regra de tag que só deixa o Cairo criar `v*`. O job que assina
-espera a aprovação dele antes de ler a chave; sem a chave, o workflow para. Quem baixa confere assim:
+`protocolo/chave-gpg-das-releases.asc`, e tem de ser da chave cuja impressão digital está pinada em
+`protocolo/chave-gpg-das-releases.impressao` (uma linha, em hexadecimal maiúsculo, como o gpg a
+imprime; é a que a tela de instalação mostra).
+
+A guarda da chave: a PRIMÁRIA (só certifica) é gerada e fica fora de qualquer máquina ligada ao
+GitHub, com o certificado de revogação guardado à parte. O segredo `ASSINADOR_GPG_CHAVE` leva só a
+SUBCHAVE de assinatura (`gpg --armor --export-secret-subkeys <impressão>`), cifrada com a senha que vai
+em `ASSINADOR_GPG_SENHA`; os dois moram SÓ no ambiente `release` do GitHub, e não entre os segredos do
+repositório, que qualquer workflow de qualquer ramo lê. O script das somas recusa, antes de assinar, a
+pública com mais de uma chave, com parte privada ou fora do pino, e o segredo sem a senha, com a
+primária inteira, com mais de uma subchave de assinatura ou de outra chave. Subchave vazada ou vencida:
+revogá-la com a primária, criar outra, e publicar a chave pública nova no repositório; a impressão
+digital (a da primária) não muda.
+
+Configuração do GitHub, feita pelo Cairo antes da primeira release: o ambiente `release` com os dois
+segredos, o Cairo como revisor obrigatório e a política de implantação só para tags `v*.*.*`, e uma
+regra de tag que só deixa o Cairo criar `v*`. O job que assina espera a aprovação dele antes de ler a
+chave; sem a subchave ou sem a senha, o workflow para.
+
+Quem baixa confere a impressão digital com a da tela de instalação e confere as somas com um chaveiro
+só para isso, sem importar a chave no próprio:
 
 ```sh
-gpg --import chave-gpg-das-releases.asc
-gpg --verify SHA256SUMS.asc SHA256SUMS
+gpg --show-keys chave-gpg-das-releases.asc          # a impressão digital é a da tela de instalação?
+gpg --dearmor < chave-gpg-das-releases.asc > releases.gpg
+gpgv --keyring ./releases.gpg SHA256SUMS.asc SHA256SUMS
 sha256sum --check --ignore-missing SHA256SUMS
 ```
 

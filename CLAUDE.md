@@ -82,10 +82,15 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
     `protocolo/fixtures/ORIGEM.md` (🚫 editar fixture aqui). Os IDs de extensão que o programa aceita
     (`origem.ExtensoesChrome`) são os que vão aos manifestos (`cmd/manifestos`): 🚫 escrever
     manifesto à mão. O ID de desenvolvimento só existe no build `dev`. A chave GPG das releases:
-    a PÚBLICA mora em `protocolo/chave-gpg-das-releases.asc` (a mesma que a tela de instalação
-    mostra), e a PRIVADA só no segredo `ASSINADOR_GPG_CHAVE` do AMBIENTE `release` do GitHub, com o
-    Cairo como revisor obrigatório (regra 5). 🚫 Esse segredo entre os do repositório: qualquer
-    workflow de qualquer ramo o leria.
+    a PÚBLICA mora em `protocolo/chave-gpg-das-releases.asc`, com a impressão digital da primária
+    PINADA em `protocolo/chave-gpg-das-releases.impressao` (a que a tela de instalação mostra; o
+    script das somas exige que quem assina seja ela). A PRIMÁRIA fica fora de qualquer máquina ligada
+    ao GitHub, com o certificado de revogação à parte, e o segredo `ASSINADOR_GPG_CHAVE` do AMBIENTE
+    `release` do GitHub, com o Cairo como revisor obrigatório (regra 5), leva só a SUBCHAVE de
+    assinatura, cifrada com a senha de `ASSINADOR_GPG_SENHA`. 🚫 Esse segredo entre os do repositório
+    (qualquer workflow de qualquer ramo o leria); 🚫 a primária inteira nele (o script recusa); 🚫
+    trocar a impressão pinada para a release sair: subchave vazada se revoga com a primária, e a
+    impressão não muda.
 14. **Pacote de desenvolvimento não é release.** O `empacotar.sh` sem argumento de modo monta o
     pacote de desenvolvimento (a tag `dev`, `assinador-dev-*`); o de produção (`producao`: sem a tag,
     com os IDs das lojas, os nomes estáveis) só sai pelo `release.yml`, que cria a release como

@@ -260,3 +260,11 @@
     commit em `extensao/` e `protocolo/`) sairia a do commit da tag, e não a que quem audita obtém do
     clone completo. O checkout é completo, e o `SOURCE_DATE_EPOCH` vai explícito e nas notas da
     release, como o README da extensão prometia.
+  - A chave GPG, conferência e guarda: a impressão digital da primária fica PINADA em
+    `protocolo/chave-gpg-das-releases.impressao`, e o `somas-e-assinatura.sh` recusa, antes de
+    assinar, a pública com mais de uma chave primária, com parte privada ou fora do pino, e o segredo
+    sem a senha, com a primária inteira (ela fica fora do CI, com o certificado de revogação), com
+    mais de uma subchave de assinatura utilizável ou de outra chave; a assinatura tem de ser da chave
+    pinada (o `VALIDSIG`), e a saída do gpg não é mais escondida. Quem baixa confere a impressão
+    digital com a da tela de instalação e as somas com o `gpgv` num chaveiro só para isso. Provado
+    com chaves descartáveis, fora do repositório, em catorze casos.
