@@ -224,3 +224,24 @@
     produz (o programa responde `relogio` ao bilhete fora do prazo).
   - Divergência do plano: a F7a pedia a release pronta para publicar; ela nasce RASCUNHO, porque
     publicar é do Cairo (regra do CLAUDE.md), e o MSI do Windows fica para quando a F6b fechar.
+- Auditoria da F7a adiantada (uma revisão adversarial independente e a nossa): nenhum P0, dois P1 e
+  vinte P2 e P3, todos corrigidos (o Cairo escolheu os três lotes).
+  - P1: o SUPORTE nunca manda apagar certificado (apagar do repositório do Windows pode levar a chave
+    junto, e o que parece velho pode ser o válido), e o `chave-ausente` do Windows fica como não
+    medido; a chave privada das releases mora só no ambiente `release` do GitHub, com o Cairo como
+    revisor obrigatório, e não entre os segredos do repositório, que qualquer workflow de qualquer
+    ramo lê.
+  - SUPORTE fiel ao código: o `token-bloqueado` cobre também o PIN VENCIDO do Linux, que se troca sem
+    o PUK, e o PUK também tem tentativas contadas; a `permissao-negada` não manda mais desfazer uma
+    recusa que as opções não guardam; na listagem, o módulo que passa de 20 s é deixado de lado e não
+    dá `tempo-esgotado`, que é da assinatura e do orçamento da extensão (o diálogo de PIN do Windows
+    sem resposta); os avisos do `listar`, que a biblioteca descarta, saíram da tabela, e entraram as
+    situações de certificado que o diagnóstico imprime e a linha do repositório do Windows que falhou;
+    o `nativo-ausente` distingue `ausente` de `falhou` (o manifesto que não autoriza a extensão); o
+    `nativo-desatualizado` é da biblioteca, que diz a peça, também no PROTOCOLO; as frases que a
+    biblioteca diz sem código e os navegadores mínimos ganharam seção; o que não foi medido no
+    Windows leva a marca "(não medido)"; os avisos só do Linux saíram de "Em qualquer sistema", e
+    entrou o de outros sistemas.
+  - A frase da biblioteca para a `permissao-negada` ("A permissão se muda nas opções da extensão")
+    promete o que as opções não fazem: o conserto é na `@confidata/icp-brasil`, e o SUPORTE diz como
+    é hoje.
