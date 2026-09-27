@@ -245,3 +245,18 @@
   - A frase da biblioteca para a `permissao-negada` ("A permissão se muda nas opções da extensão")
     promete o que as opções não fazem: o conserto é na `@confidata/icp-brasil`, e o SUPORTE diz como
     é hoje.
+  - Release mais dura: a tag tem de estar num commit que foi PONTA da `main` (a linha dos primeiros
+    pais; o commit de um ramo mergeado é ancestral sem nunca ter sido ela), sem zero à esquerda e com
+    até seis dígitos por parte (a forma da biblioteca), também no `empacotar.sh`; o programa tem de
+    levar chave de bilhete de produção, com o `chaves.go` igual ao do `go generate`, e a extensão tem
+    de estar na versão da tag; os testes do programa (x64 e arm64, e o arm64 passou a testar a cada
+    push no `nativo.yml`) e da extensão rodam de novo sobre a tag; nenhum job usa cache, e o `npm ci`
+    roda sem os scripts de instalação; release ou rascunho que já existe da tag para o workflow (a
+    lista de releases, que inclui os rascunhos); a release leva exatamente os cinco arquivos de nome
+    estável. O `testar-pacotes.sh producao <versão>` compara cada manifesto instalado, byte a byte,
+    com o que o gerador escreve (também no modo de desenvolvimento), reprova o ID de desenvolvimento
+    e o pacote `assinador-dev-*`, e confere a versão do pacote e do programa e a descrição.
+  - Achado nosso: o job das extensões fazia checkout raso, e o carimbo do zip (a data do último
+    commit em `extensao/` e `protocolo/`) sairia a do commit da tag, e não a que quem audita obtém do
+    clone completo. O checkout é completo, e o `SOURCE_DATE_EPOCH` vai explícito e nas notas da
+    release, como o README da extensão prometia.

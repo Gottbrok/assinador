@@ -5,9 +5,14 @@ name: release
 # GPG das releases e cria a release como RASCUNHO: publicar é do Cairo, na página da release, depois de
 # conferir (regra do CLAUDE.md). O MSI do Windows entra quando a F6b fechar.
 #
-# Sem os IDs das lojas no programa (o gerador de manifestos recusa), sem a chave pública em
-# `protocolo/chave-gpg-das-releases.asc` ou sem a privada no segredo `ASSINADOR_GPG_CHAVE`, o workflow
-# para: não existe release pela metade. As ações são pinadas por commit (a tag vai no comentário).
+# Antes de montar qualquer coisa, o job `versao` confere que a tag é `vX.Y.Z`, que o commit dela foi
+# ponta da `main`, que o programa leva chave de bilhete de produção e que a extensão está na versão da
+# tag. Os testes do programa e da extensão rodam de novo aqui, sobre o commit da tag, e nenhum job usa
+# cache (a release é montada do zero). Sem os IDs das lojas no programa (o gerador de manifestos
+# recusa), sem a chave pública em `protocolo/chave-gpg-das-releases.asc` ou sem a privada no ambiente,
+# o workflow para antes de a release existir. Se a criação do rascunho falhar no meio, o rascunho
+# parcial fica, e a próxima execução para ao vê-lo: o Cairo o apaga antes de rodar de novo. As ações
+# são pinadas por commit (a tag vai no comentário).
 #
 # A chave privada das releases mora SÓ no ambiente `release` do GitHub, e não entre os segredos do
 # repositório: segredo do repositório qualquer workflow de qualquer ramo lê, inclusive um `release.yml`
@@ -38,20 +43,49 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      # A versão é exatamente `X.Y.Z` (a que a biblioteca compara com a versão mínima), e a tag está
-      # num commit que já entrou na `main`: release de ramo não sai.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: nativo/go.mod
+          cache: false
+
+      # A versão é exatamente `X.Y.Z`, sem zero à esquerda e com até seis dígitos por parte (a forma
+      # que a biblioteca compara com a versão mínima), e o commit da tag foi PONTA da `main` (está na
+      # linha dos primeiros pais): o commit de um ramo que entrou por merge é ancestral da `main` sem
+      # nunca ter sido ela, e release dele não sai.
       - id: versao
+        name: A tag é vX.Y.Z num commit que foi ponta da main
         run: |
           versao="${GITHUB_REF_NAME#v}"
-          if ! [[ "$versao" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "a tag $GITHUB_REF_NAME não é vX.Y.Z" >&2
+          if ! [[ "$versao" =~ ^(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})$ ]]; then
+            echo "a tag $GITHUB_REF_NAME não é vX.Y.Z sem zero à esquerda" >&2
             exit 1
           fi
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "o commit da tag $GITHUB_REF_NAME não está na main" >&2
+          if ! grep -qxF "$GITHUB_SHA" <<< "$(git rev-list --first-parent origin/main)"; then
+            echo "o commit da tag $GITHUB_REF_NAME nunca foi a ponta da main" >&2
             exit 1
           fi
           echo "versao=$versao" >> "$GITHUB_OUTPUT"
+
+      # Sem chave de produção, o programa de release recusa todo bilhete: sairia um programa que não
+      # assina nada. E o `chaves.go` tem de ser o que o `go generate` escreve do JSON.
+      - name: O programa leva as chaves de bilhete de produção
+        run: |
+          if ! jq -e 'type == "array" and length > 0' protocolo/chaves-publicas.json > /dev/null; then
+            echo "protocolo/chaves-publicas.json não tem chave de produção" >&2
+            exit 1
+          fi
+          (cd nativo && go generate ./internal/bilhete)
+          git diff --exit-code -- nativo/internal/bilhete/chaves.go
+
+      - name: A extensão está na versão da tag
+        env:
+          VERSAO: ${{ steps.versao.outputs.versao }}
+        run: |
+          da_extensao="$(jq -r .version extensao/package.json)"
+          if [ "$da_extensao" != "$VERSAO" ]; then
+            echo "a extensão está na versão $da_extensao, e a tag é $VERSAO" >&2
+            exit 1
+          fi
 
   linux:
     needs: versao
@@ -71,15 +105,28 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: nativo/go.mod
-          cache-dependency-path: nativo/go.sum
+          cache: false
+
+      - name: SoftHSM2 e openssl
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends softhsm2 openssl
+
+      - name: Testes do programa de release, com o SoftHSM2 obrigatório
+        working-directory: nativo
+        env:
+          ASSINADOR_EXIGE_SOFTHSM: "1"
+        run: go test ./...
 
       - name: Pacotes de produção
         env:
           VERSAO: ${{ needs.versao.outputs.versao }}
         run: instaladores/linux/empacotar.sh "$VERSAO" dist producao
 
-      - name: Instalar e remover em contêiner, com os IDs das lojas
-        run: instaladores/linux/testar-pacotes.sh dist producao
+      - name: Instalar e remover em contêiner, com os manifestos, a versão e a descrição de produção
+        env:
+          VERSAO: ${{ needs.versao.outputs.versao }}
+        run: instaladores/linux/testar-pacotes.sh dist producao "$VERSAO"
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -90,21 +137,44 @@ jobs:
   extensoes:
     needs: versao
     runs-on: ubuntu-24.04
+    outputs:
+      epoch: ${{ steps.epoch.outputs.epoch }}
     defaults:
       run:
         working-directory: extensao
     steps:
+      # O histórico inteiro: o carimbo do zip é a data do último commit que tocou `extensao/` ou
+      # `protocolo/`, e num clone raso o `git log` daria a data do commit da tag, e o zip não seria o
+      # que quem audita monta do clone completo.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: extensao/package-lock.json
 
-      - run: npm ci
+      # Sem os scripts de instalação das dependências: o build não precisa deles (o esbuild vem pelo
+      # pacote da plataforma), e na release nada de terceiro roda fora do build.
+      - run: npm ci --ignore-scripts
+
+      - run: npm run type-check
+
+      - run: npm test
+
+      # O `SOURCE_DATE_EPOCH` explícito, e registrado nas notas da release: é o número com que quem
+      # tem só as fontes (a loja do Firefox pede as fontes) remonta o mesmo zip.
+      - id: epoch
+        name: O carimbo dos zips
+        run: |
+          epoch="$(git -C .. log -1 --format=%ct -- extensao protocolo)"
+          if ! [[ "$epoch" =~ ^[0-9]+$ ]]; then
+            echo "sem a data do último commit da extensão" >&2
+            exit 1
+          fi
+          echo "SOURCE_DATE_EPOCH=$epoch" >> "$GITHUB_ENV"
+          echo "epoch=$epoch" >> "$GITHUB_OUTPUT"
 
       # Os builds da loja (sem localhost nem a chave de desenvolvimento), montados duas vezes e
       # comparados: é o mesmo passo do `extensao.yml`, e o zip reproduzível é o que a loja do Firefox
@@ -136,6 +206,35 @@ jobs:
           path: dist
           merge-multiple: true
 
+      # Os nomes estáveis da §3.10, e só eles: um pacote de desenvolvimento, um zip a mais ou um que
+      # falte não viram release.
+      - name: Os arquivos são exatamente os cinco da release
+        run: |
+          esperados="$(printf '%s\n' \
+            assinador-extensao-chrome.zip \
+            assinador-extensao-firefox.zip \
+            assinador-linux-amd64.deb \
+            assinador-linux-arm64.deb \
+            assinador-linux-x86_64.rpm)"
+          achados="$(find dist -mindepth 1 -printf '%P\n' | LC_ALL=C sort)"
+          if [ "$achados" != "$esperados" ]; then
+            echo "os arquivos da release não são os esperados:" >&2
+            echo "$achados" >&2
+            exit 1
+          fi
+
+      # A lista de releases inclui os rascunhos (o token deste job escreve no repositório); a busca
+      # por tag não os acha. Release ou rascunho que já existe para a tag para o workflow.
+      - name: Ainda não há release nem rascunho desta tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existentes="$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[].tag_name')"
+          if grep -qxF "$GITHUB_REF_NAME" <<< "$existentes"; then
+            echo "já existe release (ou rascunho) de $GITHUB_REF_NAME: apague o rascunho antes de rodar de novo" >&2
+            exit 1
+          fi
+
       - name: Somas e assinatura, conferidas como quem baixa confere
         env:
           ASSINADOR_GPG_CHAVE: ${{ secrets.ASSINADOR_GPG_CHAVE }}
@@ -146,10 +245,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSAO: ${{ needs.versao.outputs.versao }}
+          EPOCH: ${{ needs.extensoes.outputs.epoch }}
         run: |
           gh release create "$GITHUB_REF_NAME" dist/* \
             --repo "$GITHUB_REPOSITORY" \
             --draft \
             --verify-tag \
             --title "Assinador $VERSAO" \
-            --notes "Assinador $VERSAO. O que mudou está no CHANGELOG.md. Confira os arquivos com o SHA256SUMS, e o SHA256SUMS com o SHA256SUMS.asc e a chave pública de protocolo/chave-gpg-das-releases.asc."
+            --notes "Assinador $VERSAO. O que mudou está no CHANGELOG.md. Confira os arquivos com o SHA256SUMS, e o SHA256SUMS com o SHA256SUMS.asc e a chave pública de protocolo/chave-gpg-das-releases.asc. Os zips das extensões se remontam das fontes na tag com SOURCE_DATE_EPOCH=$EPOCH."

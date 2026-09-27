@@ -26,9 +26,10 @@ RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 NFPM="github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.47.0"
 
 if [ "$MODO" = producao ]; then
-  # A versão publicada é exatamente `X.Y.Z`: é a que a biblioteca compara com a versão mínima.
-  if ! [[ "$VERSAO" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    echo "a versão de produção é X.Y.Z (1.0.0), e não $VERSAO" >&2
+  # A versão publicada é exatamente `X.Y.Z`, sem zero à esquerda e com até seis dígitos por parte: é
+  # a forma que a biblioteca compara com a versão mínima (fora dela, a peça nunca "atende").
+  if ! [[ "$VERSAO" =~ ^(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})$ ]]; then
+    echo "a versão de produção é X.Y.Z sem zero à esquerda (1.0.0), e não $VERSAO" >&2
     exit 2
   fi
   TAGS=""

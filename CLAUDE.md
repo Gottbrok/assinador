@@ -91,8 +91,11 @@ e espelhados aqui, com teste que compara as duas listas pelas fixtures.
     com os IDs das lojas, os nomes estáveis) só sai pelo `release.yml`, que cria a release como
     RASCUNHO com o `SHA256SUMS` assinado e conferido contra a chave pública do repositório. 🚫 Artefato
     `assinador-dev-*` do CI em página pública, e 🚫 publicar a release sem conferir: publicar é do
-    Cairo. Mudou o pacote, rode `instaladores/linux/testar-pacotes.sh` (com `producao` no de
-    produção): a remoção não pode deixar arquivo nem pasta.
+    Cairo. Mudou o pacote, rode `instaladores/linux/testar-pacotes.sh` (com `producao <versão>` no
+    de produção): cada manifesto instalado é, byte a byte, o que o gerador escreve, e a remoção não
+    pode deixar arquivo nem pasta. A release só sai de tag `vX.Y.Z` sem zero à esquerda, num commit
+    que foi PONTA da `main`, com chave de bilhete de produção e a extensão na versão da tag; 🚫
+    afrouxar um desses portões para a release sair.
 15. **A extensão só LIGA; quem decide é o programa e a pessoa.** Ela nunca confere o bilhete (só a
     forma) e as janelas mostram só o que veio do PROGRAMA (o bilhete conferido, o certificado) e do
     NAVEGADOR (a origem de quem pediu), nunca o que a página declara. A permissão é por ORIGEM, em

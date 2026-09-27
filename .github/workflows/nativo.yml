@@ -132,6 +132,18 @@ jobs:
           go-version-file: nativo/go.mod
           cache-dependency-path: nativo/go.sum
 
+      # O job `linux` testa no x64; a release testa também no arm64, e aqui ele roda a cada push, para
+      # a falha de uma arquitetura não aparecer só na hora da release.
+      - name: Testes do programa de release no arm64, com o SoftHSM2 obrigatório
+        if: matrix.arquitetura == 'arm64'
+        working-directory: nativo
+        env:
+          ASSINADOR_EXIGE_SOFTHSM: "1"
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends softhsm2 openssl
+          go test ./...
+
       - name: Montar os pacotes
         run: instaladores/linux/empacotar.sh "1.0.0~dev.${{ github.run_number }}" dist
 

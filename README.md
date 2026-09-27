@@ -71,11 +71,21 @@ os IDs das lojas existirem: antes disso, o gerador de manifestos recusa.
 
 ## Release
 
-Uma tag `vX.Y.Z` num commit da `main` roda o `.github/workflows/release.yml`: os pacotes Linux de
-produção (x64 e arm64, provados em contêiner com os IDs das lojas), os zips das extensões para as lojas
-(reproduzíveis), o `SHA256SUMS` e o `SHA256SUMS.asc`. A release nasce como RASCUNHO, e quem a publica é
-o Cairo, depois de conferir. Os nomes são estáveis, para o endereço
-`https://github.com/Gottbrok/assinador/releases/latest/download/<arquivo>` não mudar entre versões.
+Uma tag `vX.Y.Z` (sem zero à esquerda) num commit que foi ponta da `main` roda o
+`.github/workflows/release.yml`. Antes de montar, ele confere que o programa leva chave de bilhete de
+produção e que a extensão (`extensao/package.json`) está na versão da tag, e roda de novo os testes do
+programa (x64 e arm64) e da extensão, sem cache. Monta os pacotes Linux de produção (x64 e arm64,
+instalados e removidos em contêiner: cada manifesto é o do gerador de produção, sem o ID de
+desenvolvimento, e o programa e o pacote estão na versão da tag), os zips das extensões para as lojas
+(reproduzíveis, com o `SOURCE_DATE_EPOCH` nas notas da release), o `SHA256SUMS` e o `SHA256SUMS.asc`.
+A release nasce como RASCUNHO, com exatamente os cinco arquivos nomeados abaixo mais as somas, e quem
+a publica é o Cairo, depois de conferir. Se já existe release ou rascunho da tag (um rascunho parcial
+de uma execução que falhou, por exemplo), o workflow para: apague o rascunho e rode de novo. Os nomes
+são estáveis, para o endereço `https://github.com/Gottbrok/assinador/releases/latest/download/<arquivo>`
+não mudar entre versões: `assinador-linux-amd64.deb`, `assinador-linux-arm64.deb`,
+`assinador-linux-x86_64.rpm` (o nome da arquitetura é o de cada gerenciador de pacotes),
+`assinador-extensao-chrome.zip` e `assinador-extensao-firefox.zip` (os que vão às lojas; a pessoa
+instala a extensão pela loja).
 
 A assinatura das somas é conferida, antes de a release existir, com SÓ a chave pública de
 `protocolo/chave-gpg-das-releases.asc`. A privada (`ASSINADOR_GPG_CHAVE`, com a senha em
