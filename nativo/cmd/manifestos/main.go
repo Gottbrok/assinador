@@ -4,7 +4,7 @@
 //	go run -tags dev ./cmd/manifestos -saida <pasta> -programa /usr/lib/confidata-assinador/assinador
 //	go run -tags dev ./cmd/manifestos -saida <pasta> -programa assinador.exe -relativo
 //
-// O caminho do programa é ABSOLUTO, ou, com `-relativo`, só o NOME do arquivo, na mesma pasta do
+// O caminho do programa é ABSOLUTO, ou, com `-relativo`, só o NOME do `.exe`, na mesma pasta do
 // manifesto: é o que o MSI do Windows usa (F6b), porque a pasta por usuário só existe na hora da
 // instalação, e o Chrome, o Edge e o Firefox resolvem caminho relativo à pasta do manifesto no Windows
 // (no Linux e no macOS eles exigem absoluto).
@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/Gottbrok/assinador/nativo/internal/origem"
@@ -48,8 +49,8 @@ type manifestoFirefox struct {
 
 func main() {
 	saida := flag.String("saida", "", "pasta onde escrever chromium.json e firefox.json")
-	programa := flag.String("programa", "", "caminho ABSOLUTO do programa instalado (ou só o nome do arquivo, com -relativo)")
-	relativo := flag.Bool("relativo", false, "o -programa fica na MESMA pasta do manifesto e vai só pelo nome (Windows, MSI)")
+	programa := flag.String("programa", "", "caminho ABSOLUTO do programa instalado (ou só o nome do .exe, com -relativo)")
+	relativo := flag.Bool("relativo", false, "o -programa fica na MESMA pasta do manifesto e vai só pelo nome do .exe (Windows, MSI)")
 	flag.Parse()
 	if err := gerar(*saida, *programa, *relativo); err != nil {
 		fmt.Fprintln(os.Stderr, "manifestos:", err)
@@ -57,19 +58,29 @@ func main() {
 	}
 }
 
-// caminhoValido: absoluto; ou, relativo, só o NOME do arquivo, sem pasta, `..`, separador de nenhum
-// sistema nem letra de unidade (`C:assinador.exe` é relativo à pasta corrente da unidade C, e não à do
-// manifesto).
+// nomeDePrograma é o que `-relativo` aceita: o NOME de um `.exe`, em lista branca. Fica de fora pasta,
+// `..`, separador de qualquer sistema, letra de unidade (`C:assinador.exe` é relativo à pasta corrente
+// da unidade C, e não à do manifesto), espaço e ponto no fim (que o Windows apaga do nome), caractere
+// de controle e os proibidos no nome de arquivo do Windows.
+var nomeDePrograma = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*\.exe$`)
+
+// nomeReservado são os nomes de dispositivo do Windows, que valem com qualquer extensão (`nul.exe`
+// abre o dispositivo, e não um arquivo).
+var nomeReservado = regexp.MustCompile(`(?i)^(CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])$`)
+
+// caminhoValido: absoluto; ou, com `-relativo`, só o nome de um `.exe` (`nomeDePrograma`) que não seja
+// nome de dispositivo.
 func caminhoValido(programa string, relativo bool) bool {
 	if !relativo {
 		return filepath.IsAbs(programa)
 	}
-	return programa != "" && programa != "." && programa != ".." && !strings.ContainsAny(programa, `/\:`)
+	base, _, _ := strings.Cut(programa, ".")
+	return nomeDePrograma.MatchString(programa) && !nomeReservado.MatchString(base)
 }
 
 func gerar(saida, programa string, relativo bool) error {
 	if saida == "" || !caminhoValido(programa, relativo) {
-		return errors.New("informe -saida e o caminho absoluto do -programa (ou, com -relativo, só o nome do arquivo)")
+		return errors.New("informe -saida e o caminho absoluto do -programa (ou, com -relativo, só o nome do .exe)")
 	}
 	ids := origem.ExtensoesChrome()
 	if len(ids) == 0 {

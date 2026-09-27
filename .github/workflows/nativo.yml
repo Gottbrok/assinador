@@ -165,6 +165,12 @@ jobs:
     defaults:
       run:
         shell: bash
+    env:
+      # Os MSI de desenvolvimento (F6b): o pacote cresce a cada execução, abaixo da primeira
+      # publicação, e o programa informa a versão da PRÓXIMA publicação (como o 1.0.0~dev.N dos
+      # pacotes do Linux), que é a que a biblioteca compara com a versão mínima.
+      VERSAO_DO_MSI: 0.1.${{ github.run_number }}
+      VERSAO_DO_PROGRAMA: 1.0.0
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -211,7 +217,7 @@ jobs:
           go run honnef.co/go/tools/cmd/staticcheck@v0.8.1 -tags dev ./...
           go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
 
-      - name: Programa e gerador de manifestos de DESENVOLVIMENTO (sem assinatura até a F6b)
+      - name: Programa e gerador de manifestos de DESENVOLVIMENTO (sem assinatura até o certificado, F6b-ii)
         working-directory: nativo
         run: |
           go build -trimpath -tags dev -o ../dist/assinador-dev.exe ./cmd/assinador
@@ -255,35 +261,49 @@ jobs:
         run: |
           dotnet tool install --global wix --version 5.0.2
           if ($LASTEXITCODE -ne 0) { throw "o dotnet tool install saiu com $LASTEXITCODE" }
-          Add-Content -LiteralPath $env:GITHUB_PATH -Value (Join-Path $env:USERPROFILE '.dotnet\tools')
+          $ferramentas = Join-Path $env:USERPROFILE '.dotnet\tools'
+          $versao = (& (Join-Path $ferramentas 'wix.exe') --version | Out-String).Trim()
+          if ($versao -notlike '5.0.2*') { throw "o wix instalado é o $versao, e não o 5.0.2" }
+          Add-Content -LiteralPath $env:GITHUB_PATH -Value $ferramentas
 
-      # A versão deste CI e uma anterior (0.0.1), para provar a ATUALIZAÇÃO por cima da instalada.
+      # Montados e validados pelos ICE (o `wix msi validate` roda dentro do empacotar.ps1). A versão
+      # anterior (0.0.1, com o programa informando 0.0.1) prova a ATUALIZAÇÃO por cima da instalada e a
+      # troca do programa.
       - name: Os MSI por usuário e por máquina, desta versão e da anterior
         shell: pwsh
         env:
           ARQUITETURA: ${{ matrix.arquitetura }}
-          VERSAO: 0.1.${{ github.run_number }}
         run: |
-          wix --version
-          .\instaladores\windows\empacotar.ps1 -Versao $env:VERSAO -Saida dist -Arquitetura $env:ARQUITETURA
-          .\instaladores\windows\empacotar.ps1 -Versao 0.0.1 -Saida anterior -Arquitetura $env:ARQUITETURA
+          .\instaladores\windows\empacotar.ps1 -VersaoDoMsi $env:VERSAO_DO_MSI -VersaoDoPrograma $env:VERSAO_DO_PROGRAMA -Saida dist -Arquitetura $env:ARQUITETURA
+          .\instaladores\windows\empacotar.ps1 -VersaoDoMsi 0.0.1 -VersaoDoPrograma 0.0.1 -Saida anterior -Arquitetura $env:ARQUITETURA
 
-      - name: O MSI por usuário não exige elevação, atualiza, conversa como o navegador e sai sem deixar nada
+      # O executor é administrador: o "sem elevação" do MSI por usuário é provado pela ESTRUTURA do
+      # pacote, e a instalação numa conta comum é do teste manual.
+      - name: O MSI por usuário (estrutura sem elevação), atualiza, conversa como o navegador e sai sem deixar nada
         shell: pwsh
         env:
           ARQUITETURA: ${{ matrix.arquitetura }}
-          VERSAO: 0.1.${{ github.run_number }}
-        run: .\instaladores\windows\testar-instalador.ps1 -Msi "dist\assinador-dev-windows-$env:ARQUITETURA-usuario.msi" -Escopo usuario -Versao $env:VERSAO -MsiAnterior "anterior\assinador-dev-windows-$env:ARQUITETURA-usuario.msi" -VersaoAnterior 0.0.1
+        run: .\instaladores\windows\testar-instalador.ps1 -Msi "dist\assinador-dev-windows-$env:ARQUITETURA-usuario.msi" -Escopo usuario -VersaoDoPrograma $env:VERSAO_DO_PROGRAMA -MsiAnterior "anterior\assinador-dev-windows-$env:ARQUITETURA-usuario.msi" -VersaoAnteriorDoPrograma 0.0.1 -PastaDeLogs logs-msi
 
       - name: O MSI por máquina (GPO e Intune), o mesmo roteiro em Program Files e HKLM
         shell: pwsh
         env:
           ARQUITETURA: ${{ matrix.arquitetura }}
-          VERSAO: 0.1.${{ github.run_number }}
-        run: .\instaladores\windows\testar-instalador.ps1 -Msi "dist\assinador-dev-windows-$env:ARQUITETURA-maquina.msi" -Escopo maquina -Versao $env:VERSAO -MsiAnterior "anterior\assinador-dev-windows-$env:ARQUITETURA-maquina.msi" -VersaoAnterior 0.0.1
+        run: .\instaladores\windows\testar-instalador.ps1 -Msi "dist\assinador-dev-windows-$env:ARQUITETURA-maquina.msi" -Escopo maquina -VersaoDoPrograma $env:VERSAO_DO_PROGRAMA -MsiAnterior "anterior\assinador-dev-windows-$env:ARQUITETURA-maquina.msi" -VersaoAnteriorDoPrograma 0.0.1 -PastaDeLogs logs-msi
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: assinador-dev-windows-${{ matrix.arquitetura }}
           path: dist/*
           if-no-files-found: error
+
+      # Na falha, os MSI e os logs do msiexec, para ler o motivo sem repetir a execução.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: msi-com-falha-windows-${{ matrix.arquitetura }}
+          path: |
+            dist/*.msi
+            anterior/*.msi
+            logs-msi/
+          if-no-files-found: ignore

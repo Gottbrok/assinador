@@ -12,8 +12,11 @@
   (regra 13 do CLAUDE.md: nunca à mão), pelo `empacotar.ps1`.
 
   NOMES FIXOS (trocá-los quebra a atualização de quem já instalou): os `UpgradeCode` abaixo, um por
-  escopo, o MESMO nas duas arquiteturas e no MSI de produção da F7a (o de produção atualiza o de
-  desenvolvimento; o arm64 substitui o x64 emulado); e os GUIDs dos componentes.
+  escopo, o MESMO nas duas arquiteturas e no MSI de produção da F7a (no MESMO escopo, o de produção
+  atualiza o de desenvolvimento e o arm64 substitui o x64 emulado, mesmo com a mesma versão); e os
+  GUIDs dos componentes. Escopos diferentes são produtos diferentes: um MSI por máquina não remove o
+  por usuário, e o Chrome e o Edge leem HKCU antes de HKLM, então o por usuário que ficar instalado
+  continua sendo o que o navegador abre.
 
   Uso (no Windows, com o WiX 5.0.2): ver `empacotar.ps1`.
 -->
@@ -50,7 +53,19 @@
            Compressed="yes"
            Scope="$(var.EscopoDoPacote)">
 
-    <MajorUpgrade DowngradeErrorMessage="Uma versão mais nova do Assinador já está instalada." />
+    <SummaryInformation Codepage="1252"
+                        Description="Assinador Confidata (desenvolvimento)"
+                        Keywords="Instalador"
+                        Comments="Instala o programa que assina com o certificado digital do cartão ou do token, e o registra nos navegadores." />
+
+    <!--
+      A mesma versão também atualiza (o arm64 no lugar do x64 emulado, e a mesma execução do CI
+      rodada de novo, que gera outro ProductCode com a mesma versão), e o idioma do pacote não conta
+      (um MSI de produção em outro idioma precisa achar este).
+    -->
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
+                  IgnoreLanguage="yes"
+                  DowngradeErrorMessage="Uma versão mais nova do Assinador já está instalada." />
     <MediaTemplate EmbedCab="yes" />
     <Property Id="ARPNOMODIFY" Value="1" />
     <Property Id="ARPURLINFOABOUT" Value="https://github.com/Gottbrok/assinador" />

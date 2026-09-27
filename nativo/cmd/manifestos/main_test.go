@@ -61,9 +61,28 @@ func TestManifestosComAsExtensoesDoPrograma(t *testing.T) {
 }
 
 // O MSI do Windows (F6b) leva os manifestos ao lado do programa, apontando-o só pelo NOME: a pasta por
-// usuário só existe na hora da instalação. Qualquer coisa além do nome é recusada, e `-relativo` com
-// caminho absoluto também (os dois sistemas).
+// usuário só existe na hora da instalação. Qualquer coisa além do nome de um `.exe` é recusada (o que o
+// Windows normaliza, nome de dispositivo, caractere proibido ou de controle), e `-relativo` com caminho
+// absoluto também (os dois sistemas).
 func TestManifestoRelativoSoComONomeDoArquivo(t *testing.T) {
+	// A forma do nome vale nos dois builds (o release, sem os IDs das lojas, recusa antes de gerar).
+	for _, ruim := range []string{
+		"", ".", "..", "pasta/assinador.exe", `pasta\assinador.exe`, `..\assinador.exe`, "C:assinador.exe",
+		`C:\Programas\assinador.exe`, "/usr/lib/confidata-assinador/assinador",
+		"assinador.exe ", "assinador.exe.", " assinador.exe", "-assinador.exe", "assinador", "assinador.EXE",
+		"CON.exe", "nul.exe", "Com1.exe", "lpt9.exe", "aux.dev.exe",
+		"assin*dor.exe", "assin?dor.exe", `assin"dor.exe`, "assin<dor.exe", "assin|dor.exe", "assin\x01dor.exe", "assinador\x00.exe",
+	} {
+		if caminhoValido(ruim, true) {
+			t.Errorf("-relativo aceitou %q", ruim)
+		}
+	}
+	for _, bom := range []string{"assinador.exe", "assinador-dev.exe", "Assinador_2.exe", "console.exe", "nulo.exe", "com10.exe"} {
+		if !caminhoValido(bom, true) {
+			t.Errorf("-relativo recusou %q", bom)
+		}
+	}
+
 	saida := t.TempDir()
 	err := gerar(saida, "assinador.exe", true)
 	if len(origem.ExtensoesChrome()) == 0 {
@@ -90,9 +109,8 @@ func TestManifestoRelativoSoComONomeDoArquivo(t *testing.T) {
 			t.Fatalf("%s: path %q", nome, m.Path)
 		}
 	}
-	for _, ruim := range []string{"", ".", "..", "pasta/assinador.exe", `pasta\assinador.exe`, `..\assinador.exe`, "C:assinador.exe", `C:\Programas\assinador.exe`, "/usr/lib/confidata-assinador/assinador"} {
-		if err := gerar(saida, ruim, true); err == nil {
-			t.Errorf("-relativo aceitou %q", ruim)
-		}
+	// E o gerador recusa o que o nome não admite, sem escrever nada por cima.
+	if err := gerar(saida, "nul.exe", true); err == nil {
+		t.Fatal("-relativo gerou manifesto para nome de dispositivo")
 	}
 }
