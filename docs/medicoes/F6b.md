@@ -41,15 +41,24 @@ nunca presumido.
   - o resumo do pacote em português, na página de código 1252.
   Validar (os ICE, pelo `wix msi validate` do `empacotar.ps1`) e instalar só o Windows faz: é do CI.
 
+**2026-09-28 · o primeiro CI da F6b (run 36360600092 do GitHub Actions, no `main` em `3bb1ccc`, sem
+leitora nem cartão; executor administrador)**
+
+- **`windows-latest` (x64) e `windows-11-arm` (arm64), os dois verdes.** Os quatro MSI montados e
+  validados pelos ICE sem erro nenhum, só com os avisos previstos: três ICE91 no por usuário (os
+  arquivos no perfil) e um ICE61 em cada MSI (a mesma versão atualiza, de propósito).
+- **O `testar-instalador.ps1` verde nos dois escopos e nas duas arquiteturas:** a estrutura conferida
+  (no por usuário, nada exige elevação, todo valor em `HKCU`, nenhuma pasta de máquina); a 0.0.1
+  instalada (o programa informa `0.0.1`) e a 0.1.7 por cima dela (o produto na versão do MSI, um só
+  com o UpgradeCode, e o programa informando `1.0.0`), em `%LOCALAPPDATA%\Programs\Assinador uShield`
+  e em `C:\Program Files\Assinador uShield`; o olá respondido pelo programa instalado, achado pelo
+  manifesto como o Chrome o acha (`windows-amd64` e `windows-arm64`); e a desinstalação sem sobra de
+  arquivo, pasta ou chave. As chaves-mãe que o MSI criou sumiram com ele, como a documentação da
+  tabela Registry diz, e a tolerância à chave vazia que já existia não precisou agir.
+- Os MSI estão no artefato `assinador-dev-windows-amd64` (e `-arm64`) desse run, para o teste manual.
+
 ## Pendente
 
-- [ ] **O primeiro CI da F6b** (job `windows`, x64 e arm64): os dois MSI montados e validados, com
-      três avisos ICE91 esperados no por usuário (arquivos no perfil, inofensivos em pacote só por
-      usuário, pela documentação da Microsoft), um ICE61 nos dois (a mesma versão atualiza, de
-      propósito) e nenhum erro; e o `testar-instalador.ps1` verde nos
-      dois escopos, com a atualização por cima da 0.0.1. A documentação da tabela Registry diz que o
-      Windows Installer apaga a chave depois de remover o último valor ou a última subchave dela, então
-      as chaves-mãe que o MSI criou devem sumir na desinstalação; o CI confirma.
 - [ ] **Windows 10 e 11, com o Cairo**, junto do gate da F6a:
   - o MSI por usuário, baixado do artefato, instala numa conta SEM administrador, sem pedido de
     elevação, e também numa conta com acento no nome (o caminho do perfil entra no manifesto que o
